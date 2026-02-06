@@ -699,10 +699,7 @@ module.exports = async (interaction) => {
                     key: keyCode,
                     duration: durationStr,
                     expiresToUseAt: useDeadlineDate,
-                    permissions: {
-                        type: type,
-                        value: value
-                    }
+                    permissions: { type: type, value: value } // type já vem como 'standard', 'all', 'category' ou 'texture'
                 });
 
                 let accessLabel = '';

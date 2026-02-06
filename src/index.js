@@ -3,6 +3,12 @@ require('dotenv').config({ quiet: true }); // Carrega uma única vez e sem polui
 
 const { REST, Routes, SlashCommandBuilder, Events, MessageFlags } = require('discord.js');
 const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+
+const Key = require('./database/models/Key');
+const Texture = require('./database/models/Texture');
+const Version = require('./database/models/Version');
 
 // Carregar Client e Banco DEPOIS do dotenv
 const client = require('./discord/client');

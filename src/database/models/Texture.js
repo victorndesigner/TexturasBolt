@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const TextureSchema = new mongoose.Schema({
     name: { type: String, required: true },
-    category: { type: String, enum: ['StumbleGuys', 'StumbleCups', 'Reviver'], default: 'StumbleCups' },
+    category: { type: String, default: 'Geral' },
     profileImage: { type: String, default: 'https://i.imgur.com/YahM0Nf.png' },
     downloadUrl: { type: String, required: true },
     downloadUrlPart2: { type: String, default: '' },

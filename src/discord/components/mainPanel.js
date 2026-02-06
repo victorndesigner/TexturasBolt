@@ -52,6 +52,7 @@ const createMainPanel = (guild, version = '1.0', keyShortener = 'Não definido',
                             { label: 'Arquivos Originais', description: 'Links de remoção (Cups)', value: 'manage_original_links', emoji: { name: '🛡️' } },
                             { label: 'Keys', description: 'Ver todas as keys geradas', value: 'list_keys', emoji: { name: '📋' } },
                             { label: 'Encurtador', description: 'Link da key', value: 'manage_shortener', emoji: { name: '🔗' } },
+                            { label: 'Categorias', description: 'Gerenciar categorias de texturas', value: 'manage_categories', emoji: { name: '🏷️' } },
                             { label: 'Texturas', description: 'Abrir catálogo', value: 'manage_textures', emoji: { name: '🎨' } }
                         ]
                     }

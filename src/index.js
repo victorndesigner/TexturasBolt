@@ -184,16 +184,8 @@ app.post('/api/validate', async (req, res) => {
         }
 
         // Primeira vez usando a key
-        let expirationDate = null;
-        if (keyData.duration !== 'permanente') {
-            const timeValue = parseInt(keyData.duration);
-            const unit = keyData.duration.slice(-1);
-            expirationDate = new Date();
-
-            if (unit === 'h') expirationDate.setHours(expirationDate.getHours() + timeValue);
-            else if (unit === 'm') expirationDate.setMinutes(expirationDate.getMinutes() + timeValue);
-            else expirationDate.setHours(expirationDate.getHours() + 4); // Default 4h
-        }
+        const { applyDuration } = require('./utils/durationParser');
+        const expirationDate = applyDuration(new Date(), keyData.duration);
 
         keyData.isUsed = true;
         keyData.usedBy = hwid;
@@ -203,7 +195,8 @@ app.post('/api/validate', async (req, res) => {
         res.json({
             success: true,
             duration: keyData.duration,
-            expiresAt: expirationDate
+            expiresAt: expirationDate,
+            permissions: keyData.permissions || { type: 'all', value: null }
         });
     } catch (error) {
         res.status(500).json({ error: 'Erro interno no servidor.' });
@@ -232,10 +225,28 @@ app.post('/api/textures', async (req, res) => {
             return res.status(403).json({ error: 'Sessão expirada.' });
         }
 
-        const textures = await Texture.find();
+        const permissions = keyData.permissions || { type: 'all', value: null };
+        let textures;
+
+        if (permissions.type === 'all') {
+            textures = await Texture.find();
+        } else if (permissions.type === 'category') {
+            textures = await Texture.find({ category: permissions.value });
+        } else if (permissions.type === 'texture') {
+            // Tenta buscar por ID, se falhar ou não encontrar, tenta por nome (para flexibilidade)
+            const mongoose = require('mongoose');
+            if (mongoose.Types.ObjectId.isValid(permissions.value)) {
+                textures = await Texture.find({ _id: permissions.value });
+            } else {
+                textures = await Texture.find({ name: permissions.value });
+            }
+        } else {
+            textures = await Texture.find();
+        }
 
         res.json({
             textures,
+            permissions,
             version: config?.version || '1.0',
             keyShortener: config?.keyShortener,
             profileImage: config?.profileImage || 'https://i.imgur.com/YahM0Nf.png',
@@ -244,6 +255,7 @@ app.post('/api/textures', async (req, res) => {
             removeUrlPart2: config?.removeUrlPart2 || ''
         });
     } catch (error) {
+        console.error('Erro ao buscar texturas:', error);
         res.status(500).json({ error: 'Erro ao buscar texturas.' });
     }
 });

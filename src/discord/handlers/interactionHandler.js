@@ -2,6 +2,7 @@ const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, String
 const Version = require('../../database/models/Version');
 const Texture = require('../../database/models/Texture');
 const Key = require('../../database/models/Key');
+const Category = require('../../database/models/Category');
 const { createMainPanel } = require('../components/mainPanel');
 const { createTexturePanel } = require('../components/texturePanel');
 const crypto = require('crypto');
@@ -81,19 +82,39 @@ module.exports = async (interaction) => {
                 }
 
                 if (value === 'generate_key') {
-                    const modal = new ModalBuilder()
-                        .setCustomId('modal_generate_key')
-                        .setTitle('Gerar Nova Key');
-
-                    const keyTimeInput = new TextInputBuilder()
-                        .setCustomId('key_time_input')
-                        .setLabel('Duração desta Key')
-                        .setPlaceholder('Ex: 4h, permanente (vazio = padrão)')
-                        .setStyle(TextInputStyle.Short)
-                        .setRequired(false);
-
-                    modal.addComponents(new ActionRowBuilder().addComponents(keyTimeInput));
-                    return await interaction.showModal(modal);
+                    await interaction.deferUpdate();
+                    const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                    const container = {
+                        type: 17,
+                        accent_color: 0xc773ff,
+                        components: [
+                            {
+                                type: 9,
+                                components: [{ type: 10, content: `## 🔑 GERAR KEY\n> Selecione o tipo de permissão para a nova chave:` }],
+                                accessory: { type: 11, media: { url: serverIcon } }
+                            },
+                            {
+                                type: 1,
+                                components: [
+                                    {
+                                        type: 3,
+                                        custom_id: 'gen_key_type_select',
+                                        placeholder: 'Selecione o tipo de acesso...',
+                                        options: [
+                                            { label: 'Acesso Total', description: 'Todas as texturas, sem download direto', value: 'all', emoji: { name: '🌐' } },
+                                            { label: 'Por Categoria', description: 'Somente uma categoria + Download Direto', value: 'category', emoji: { name: '🏷️' } },
+                                            { label: 'Por Textura', description: 'Somente uma textura + Download Direto', value: 'texture', emoji: { name: '🎨' } }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                type: 1,
+                                components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }]
+                            }
+                        ]
+                    };
+                    return await interaction.editReply({ components: [container], flags: 32768 });
                 }
 
                 if (value === 'list_keys') {
@@ -174,6 +195,11 @@ module.exports = async (interaction) => {
                     return await interaction.showModal(modal);
                 }
 
+                if (value === 'manage_categories') {
+                    await interaction.deferUpdate();
+                    return await showCategoriesPanel(interaction);
+                }
+
                 if (value === 'manage_textures') {
                     await interaction.deferUpdate();
                     const textures = await Texture.find();
@@ -210,6 +236,8 @@ module.exports = async (interaction) => {
                     timeContent += `\n> **Expira acesso em:** <t:${Math.floor(keyData.expiresAt.getTime() / 1000)}:R>`;
                 }
 
+                const permissionText = keyData.permissions?.type === 'all' ? 'Acesso Total' : (keyData.permissions?.type === 'category' ? `Categoria: ${keyData.permissions.value}` : `Textura: ${keyData.permissions.value}`);
+
                 const container = {
                     type: 17,
                     accent_color: 0xc773ff,
@@ -218,7 +246,7 @@ module.exports = async (interaction) => {
                             type: 9,
                             components: [{
                                 type: 10,
-                                content: `## 🔑 DETALHES DA KEY\n${timeContent}`
+                                content: `## 🔑 DETALHES DA KEY\n${timeContent}\n> **Permissão:** \`${permissionText}\``
                             }],
                             accessory: { type: 11, media: { url: serverIcon } }
                         },
@@ -280,6 +308,66 @@ module.exports = async (interaction) => {
                     }]
                 };
                 return await interaction.followUp({ components: [successContainer], flags: 64 + 32768 });
+            }
+
+            if (interaction.customId === 'gen_key_type_select') {
+                await interaction.deferUpdate();
+                const type = interaction.values[0];
+
+                if (type === 'all') {
+                    const modal = new ModalBuilder().setCustomId('modal_gen_key_final_all').setTitle('Gerar Key (Acesso Total)');
+                    modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('key_time').setLabel('Duração (ex: 7d, 1d30m, permanente)').setPlaceholder('Vazio = Padrão').setStyle(TextInputStyle.Short).setRequired(false)));
+                    return await interaction.showModal(modal);
+                }
+
+                if (type === 'category') {
+                    const categories = await Category.find();
+                    const container = {
+                        type: 17, accent_color: 0xc773ff,
+                        components: [
+                            { type: 9, components: [{ type: 10, content: `## 🔑 GERAR POR CATEGORIA\n> Escolha a categoria:` }], accessory: { type: 11, media: { url: interaction.guild.iconURL() } } },
+                            {
+                                type: 1, components: [{
+                                    type: 3, custom_id: 'gen_key_value_cat_select', placeholder: 'Selecione a categoria...',
+                                    options: categories.map(c => ({ label: c.name, value: c.name }))
+                                }]
+                            }
+                        ]
+                    };
+                    return await interaction.editReply({ components: [container], flags: 32768 });
+                }
+
+                if (type === 'texture') {
+                    const textures = await Texture.find();
+                    const container = {
+                        type: 17, accent_color: 0xc773ff,
+                        components: [
+                            { type: 9, components: [{ type: 10, content: `## 🔑 GERAR POR TEXTURA\n> Escolha a textura:` }], accessory: { type: 11, media: { url: interaction.guild.iconURL() } } },
+                            {
+                                type: 1, components: [{
+                                    type: 3, custom_id: 'gen_key_value_tex_select', placeholder: 'Selecione a textura...',
+                                    options: textures.slice(0, 25).map(t => ({ label: t.name, value: t._id.toString() }))
+                                }]
+                            }
+                        ]
+                    };
+                    return await interaction.editReply({ components: [container], flags: 32768 });
+                }
+            }
+
+            if (interaction.customId === 'gen_key_value_cat_select') {
+                const value = interaction.values[0];
+                const modal = new ModalBuilder().setCustomId(`modal_gen_key_final_category_${value}`).setTitle(`Gerar Key: ${value}`);
+                modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('key_time').setLabel('Duração (ex: 7d, 1d30m, permanente)').setPlaceholder('Vazio = Padrão').setStyle(TextInputStyle.Short).setRequired(false)));
+                return await interaction.showModal(modal);
+            }
+
+            if (interaction.customId === 'gen_key_value_tex_select') {
+                const value = interaction.values[0];
+                const texture = await Texture.findById(value);
+                const modal = new ModalBuilder().setCustomId(`modal_gen_key_final_texture_${value}`).setTitle(`Gerar Key: ${texture.name}`);
+                modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('key_time').setLabel('Duração (ex: 7d, 1d30m, permanente)').setPlaceholder('Vazio = Padrão').setStyle(TextInputStyle.Short).setRequired(false)));
+                return await interaction.showModal(modal);
             }
         }
 
@@ -422,6 +510,58 @@ module.exports = async (interaction) => {
                 };
                 return await interaction.editReply({ components: [container], flags: 32768 });
             }
+
+            if (interaction.customId === 'create_category') {
+                const modal = new ModalBuilder()
+                    .setCustomId('modal_create_category')
+                    .setTitle('Criar Categoria');
+
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_name').setLabel('Nome da Categoria').setStyle(TextInputStyle.Short).setRequired(true)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_desc').setLabel('Descrição (Opcional)').setStyle(TextInputStyle.Short).setRequired(false))
+                );
+                return await interaction.showModal(modal);
+            }
+
+            if (interaction.customId === 'remove_category_btn') {
+                const categories = await Category.find();
+                if (categories.length === 0) {
+                    return await interaction.followUp({ content: '❌ Nenhuma categoria para remover.', flags: [MessageFlags.Ephemeral] });
+                }
+
+                const selectMenu = new ActionRowBuilder().addComponents(
+                    new StringSelectMenuBuilder()
+                        .setCustomId('remove_category_select')
+                        .setPlaceholder('Selecione uma categoria para remover...')
+                        .addOptions(categories.map(c => ({ label: c.name, value: c._id.toString() })))
+                );
+
+                const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                const container = {
+                    type: 17,
+                    accent_color: 0xc773ff,
+                    components: [
+                        {
+                            type: 9,
+                            components: [{ type: 10, content: `## 🗑️ REMOVER CATEGORIA\n> Escolha uma categoria abaixo para remover.` }],
+                            accessory: { type: 11, media: { url: serverIcon } }
+                        },
+                        { type: 1, components: [selectMenu] },
+                        { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_categories' }] }
+                    ]
+                };
+                return await interaction.reply({ components: [container], flags: 64 + 32768 });
+            }
+        }
+
+        // --- SELECT MENUS EXTRAS ---
+        if (interaction.isStringSelectMenu()) {
+            if (interaction.customId === 'remove_category_select') {
+                await interaction.deferUpdate();
+                const catId = interaction.values[0];
+                await Category.findByIdAndDelete(catId);
+                return await showCategoriesPanel(interaction);
+            }
         }
 
         // --- MODALS ---
@@ -460,28 +600,32 @@ module.exports = async (interaction) => {
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
-            if (interaction.customId === 'modal_generate_key') {
-                let duration = interaction.fields.getTextInputValue('key_time_input');
+            if (interaction.customId.startsWith('modal_gen_key_final_')) {
+                const parts = interaction.customId.replace('modal_gen_key_final_', '').split('_');
+                const type = parts[0]; // all, category, texture
+                const value = parts.slice(1).join('_') || null;
+
+                let durationStr = interaction.fields.getTextInputValue('key_time');
                 let versionData = await Version.findOne({ id: 'global' });
-                if (!duration) duration = versionData?.defaultAccessTime || '4h';
+                if (!durationStr) durationStr = versionData?.defaultAccessTime || '4h';
 
                 const keyCode = `TEXTURE-B-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
 
                 // Calcular Prazo para Usar
                 let useDeadlineDate = null;
-                const deadline = versionData?.keyUseDeadline || '24h';
-                const dValue = parseInt(deadline);
-                const dUnit = deadline.slice(-1);
-                useDeadlineDate = new Date();
-                if (dUnit === 'h') useDeadlineDate.setHours(useDeadlineDate.getHours() + dValue);
-                else if (dUnit === 'm') useDeadlineDate.setMinutes(useDeadlineDate.getMinutes() + dValue);
-                else if (dUnit === 's') useDeadlineDate.setSeconds(useDeadlineDate.getSeconds() + dValue);
-                else useDeadlineDate.setHours(useDeadlineDate.getHours() + 24);
+                const deadlineStr = versionData?.keyUseDeadline || '24h';
+                const { parseDuration } = require('../../utils/durationParser');
+                const deadlineMs = parseDuration(deadlineStr) || (24 * 60 * 60 * 1000);
+                useDeadlineDate = new Date(Date.now() + deadlineMs);
 
                 await Key.create({
                     key: keyCode,
-                    duration: duration,
-                    expiresToUseAt: useDeadlineDate
+                    duration: durationStr,
+                    expiresToUseAt: useDeadlineDate,
+                    permissions: {
+                        type: type,
+                        value: value
+                    }
                 });
 
                 const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
@@ -493,7 +637,7 @@ module.exports = async (interaction) => {
                             type: 9,
                             components: [{
                                 type: 10,
-                                content: `## ✅ KEY GERADA COM SUCESSO!\n> **Cod:** \`${keyCode}\`\n> **Duração:** \`${duration}\`\n> **Expira resgate em:** <t:${Math.floor(useDeadlineDate.getTime() / 1000)}:R>\n> -# Chave disponível no banco.`
+                                content: `## ✅ KEY GERADA COM SUCESSO!\n> **Cod:** \`${keyCode}\`\n> **Duração:** \`${durationStr}\`\n> **Acesso:** \`${type === 'all' ? 'Total' : (type === 'category' ? `Categoria: ${value}` : `Textura: ${value}`)}\`\n> **Expira resgate em:** <t:${Math.floor(useDeadlineDate.getTime() / 1000)}:R>\n> -# Chave disponível no banco.`
                             }],
                             accessory: { type: 11, media: { url: serverIcon } }
                         }
@@ -503,6 +647,13 @@ module.exports = async (interaction) => {
                 const panel = createMainPanel(interaction.guild, versionData?.version || '1.0', versionData?.keyShortener, versionData?.defaultAccessTime, versionData?.keyUseDeadline, versionData?.targetFolderName);
                 await interaction.followUp({ components: [successContainer], flags: 32768 + 64 });
                 return await interaction.editReply({ ...panel, flags: 32768 });
+            }
+
+            if (interaction.customId === 'modal_create_category') {
+                const name = interaction.fields.getTextInputValue('cat_name');
+                const description = interaction.fields.getTextInputValue('cat_desc');
+                await Category.findOneAndUpdate({ name }, { name, description }, { upsert: true });
+                return await showCategoriesPanel(interaction);
             }
 
             if (interaction.customId === 'modal_create_texture') {
@@ -557,7 +708,6 @@ module.exports = async (interaction) => {
                 return await interaction.editReply(createTexturePanel(interaction.guild, textures));
             }
         }
-
     } catch (error) {
         console.error('Erro no interactionHandler:', error);
         const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
@@ -621,12 +771,18 @@ async function showKeysList(interaction) {
                         type: 3,
                         custom_id: 'manage_keys_select',
                         placeholder: 'Escolha uma key da lista...',
-                        options: keys.map(k => ({
-                            label: k.key,
-                            description: `Duração App: ${k.duration} | ${k.isUsed ? 'USADA' : 'SOLTA'}`,
-                            value: k._id.toString(),
-                            emoji: { name: k.isUsed ? '🔴' : '🟢' }
-                        }))
+                        options: keys.map(k => {
+                            const pType = k.permissions?.type || 'all';
+                            const pVal = k.permissions?.value ? ` (${k.permissions.value})` : '';
+                            const accessLabel = pType === 'all' ? 'TOTAL' : (pType === 'category' ? 'CAT' : 'TEX');
+
+                            return {
+                                label: k.key.replace('TEXTURE-B-', ''),
+                                description: `Exp: ${k.duration} | ${accessLabel}${pVal} | ${k.isUsed ? 'USADA' : 'SOLTA'}`,
+                                value: k._id.toString(),
+                                emoji: { name: k.isUsed ? '🔴' : '🟢' }
+                            };
+                        })
                     }
                 ]
             },
@@ -641,4 +797,42 @@ async function showKeysList(interaction) {
     };
 
     return await interaction.editReply({ components: [container], flags: 32768 });
+}
+
+async function showCategoriesPanel(interaction) {
+    const categories = await Category.find().sort({ name: 1 });
+    const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+
+    let content = '## 🏷️ GESTÃO DE CATEGORIAS\n> Liste, crie ou remova categorias para organizar suas texturas.';
+    if (categories.length > 0) {
+        content += '\n\n**Categorias cadastradas:**\n' + categories.map(c => `- \`${c.name}\`${c.description ? ` (${c.description})` : ''}`).join('\n');
+    } else {
+        content += '\n\n*Nenhuma categoria cadastrada.*';
+    }
+
+    const container = {
+        type: 17,
+        accent_color: 0xc773ff,
+        components: [
+            {
+                type: 9,
+                components: [{ type: 10, content: content }],
+                accessory: { type: 11, media: { url: serverIcon } }
+            },
+            {
+                type: 1,
+                components: [
+                    { type: 2, style: 3, label: 'Criar Categoria', custom_id: 'create_category', emoji: { name: '➕' } },
+                    { type: 2, style: 4, label: 'Remover Categoria', custom_id: 'remove_category_btn', emoji: { name: '🗑️' } },
+                    { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main', emoji: { name: '⬅️' } }
+                ]
+            }
+        ]
+    };
+
+    if (interaction.deferred || interaction.replied) {
+        return await interaction.editReply({ components: [container], flags: 32768 });
+    } else {
+        return await interaction.reply({ components: [container], flags: 32768 });
+    }
 }

@@ -3,6 +3,14 @@ const Version = require('../../database/models/Version');
 const { MessageFlags } = require('discord.js');
 
 module.exports = async (interaction) => {
+    // --- VERIFICAÇÃO DE PERMISSÃO ---
+    if (!interaction.member?.permissions.has('Administrator')) {
+        return interaction.reply({
+            content: '❌ **Acesso Negado.** Apenas administradores podem acessar o Painel de Controle.',
+            flags: 64
+        });
+    }
+
     // --- VERIFICAÇÃO DE CONEXÃO COM O BANCO ---
     const mongoose = require('mongoose');
     if (mongoose.connection.readyState !== 1) {

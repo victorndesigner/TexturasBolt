@@ -162,6 +162,42 @@ app.get('/api/generate-key', async (req, res) => {
     }
 });
 
+const KeyRequest = require('./database/models/KeyRequest');
+
+app.post('/api/redeem-key', async (req, res) => {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: 'Token inválido.' });
+
+    try {
+        const request = await KeyRequest.findOne({ token });
+        if (!request) return res.status(404).json({ error: 'Solicitação expirada ou inválida. Gere um novo botão no Discord.' });
+
+        const crypto = require('crypto');
+        const newKeyCode = `TEXTURE-B-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+        const versionConfig = await Version.findOne({ id: 'global' });
+
+        const duration = versionConfig?.defaultAccessTime || '4h'; // Duração da sessão
+
+        let expiresToUseAt = new Date();
+        expiresToUseAt.setHours(expiresToUseAt.getHours() + 24);
+
+        const newKey = await Key.create({
+            key: newKeyCode,
+            duration: duration,
+            generatedBy: request.userId, // VINCULAÇÃO IMPORTANTE
+            createdAt: new Date(),
+            expiresToUseAt: expiresToUseAt
+        });
+
+        await KeyRequest.deleteOne({ _id: request._id });
+
+        res.json({ success: true, key: newKey.key, duration: newKey.duration, user: request.userTag });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Erro interno ao gerar key.' });
+    }
+});
+
 // Login / Validar Key
 app.post('/api/validate', async (req, res) => {
     const { key, hwid } = req.body;
@@ -184,25 +220,61 @@ app.post('/api/validate', async (req, res) => {
             });
         }
 
-        // --- TRAVA DE SERVIDOR ---
+        // --- VINCULAÇÃO/ATUALIZAÇÃO DE USUÁRIO (Multi-Conta Support) ---
+        if (keyData.generatedBy) {
+            try {
+                // Se user não existe, cria agora para garantir vinculo antes do check
+                if (!userData) {
+                    const userObj = await client.users.fetch(keyData.generatedBy).catch(() => null);
+                    userData = new User({
+                        hwid,
+                        discordId: keyData.generatedBy,
+                        discordTag: userObj ? userObj.tag : 'Unknown',
+                        lastIp: req.headers['x-forwarded-for'] || req.socket.remoteAddress
+                    });
+                    await userData.save();
+                } else if (userData.discordId !== keyData.generatedBy) {
+                    // ATUALIZA SE A KEY PERTENCE A OUTRO DISCORD (Troca de conta no mesmo PC)
+                    const userObj = await client.users.fetch(keyData.generatedBy).catch(() => null);
+                    userData.discordId = keyData.generatedBy;
+                    userData.discordTag = userObj ? userObj.tag : 'Unknown';
+                    await userData.save();
+                }
+            } catch (updateErr) {
+                console.error('Erro ao atualizar usuário:', updateErr);
+            }
+        }
+
+        // --- TRAVA DE SERVIDOR (STRICT) ---
         try {
             const config = await Version.findOne({ id: 'global' });
-            if (config && config.requiredServerId && userData && userData.discordId) {
+            if (config && config.requiredServerId) {
+                let isMember = false;
                 const guild = client.guilds.cache.get(config.requiredServerId);
-                if (guild) {
+
+                // Se tiver ID vinculado, checa se está no servidor
+                if (userData && userData.discordId && guild) {
                     try {
                         await guild.members.fetch(userData.discordId);
+                        isMember = true;
                     } catch (memberErr) {
-                        return res.status(403).json({
-                            error: 'SERVER_REQUIRED',
-                            serverName: guild.name,
-                            inviteUrl: config.requiredServerInvite || ''
-                        });
+                        isMember = false;
                     }
+                }
+                // Se não tiver ID (key anônima) ou guild não achada, isMember continua false
+
+                if (!isMember) {
+                    return res.status(403).json({
+                        error: 'SERVER_REQUIRED',
+                        serverName: guild ? guild.name : 'Servidor Oficial',
+                        inviteUrl: config.requiredServerInvite || ''
+                    });
                 }
             }
         } catch (serverCheckErr) {
             console.error('Erro na verificação de servidor:', serverCheckErr);
+            // Em caso de erro CRÍTICO (banco off etc), deixamos passar ou bloqueamos?
+            // Por segurança do fluxo, melhor bloquear se a config diz que é obrigatório.
         }
 
         const now = new Date();
@@ -410,7 +482,10 @@ client.once(Events.ClientReady, async () => {
     const commands = [
         new SlashCommandBuilder()
             .setName('painel')
-            .setDescription('Abre o painel administrativo de texturas e versões.')
+            .setDescription('Abre o painel administrativo (Apenas Admins).'),
+        new SlashCommandBuilder()
+            .setName('setup_keys')
+            .setDescription('Cria o painel público de geração de keys (Apenas Admins).')
     ].map(command => command.toJSON());
 
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
@@ -440,6 +515,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 const painelHandler = require('./discord/handlers/painelHandler');
                 return await painelHandler(interaction);
             }
+            if (interaction.commandName === 'setup_keys') {
+                const { setupKeysPanel } = require('./discord/handlers/keysPanelHandler');
+                return await setupKeysPanel(interaction);
+            }
+        }
+
+        if (interaction.isButton() && interaction.customId === 'public_gen_key') {
+            const { handleKeyGeneration } = require('./discord/handlers/keysPanelHandler');
+            return await handleKeyGeneration(interaction);
         }
 
         if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) {

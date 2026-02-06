@@ -48,7 +48,7 @@ const getClientIp = (req) => {
 };
 
 // Iniciar processo de download (App pede)
-app.post('/api/download/start', async (req, res) => {
+app.post(['/api/download/start', '/download/start'], async (req, res) => {
     const { hwid, textureId } = req.body;
     if (!hwid || !textureId) return res.status(400).json({ error: 'Faltam dados.' });
 
@@ -64,8 +64,8 @@ app.post('/api/download/start', async (req, res) => {
     res.json({ success: true });
 });
 
-// Confirmar processo de download
-app.get('/api/download/confirm', async (req, res) => {
+// Confirmar processo de download (Site chama)
+app.get(['/api/download/confirm', '/download/confirm'], async (req, res) => {
     let { hwid, textureId } = req.query;
     const clientIp = getClientIp(req);
 
@@ -112,7 +112,7 @@ app.get('/api/download/confirm', async (req, res) => {
 });
 
 // Checar status do download (App polla aqui)
-app.get('/api/download/status', async (req, res) => {
+app.get(['/api/download/status', '/download/status'], async (req, res) => {
     const { hwid, textureId } = req.query;
     const key = `${hwid}_${textureId}`;
     const data = pendingDownloads.get(key);

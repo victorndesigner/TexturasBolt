@@ -9,12 +9,6 @@ const crypto = require('crypto');
 
 module.exports = async (interaction) => {
     try {
-        // --- LIMPEZA AUTOMÁTICA DE KEYS EXPIRADAS (Resgate) ---
-        const mongoose = require('mongoose');
-        if (mongoose.connection.readyState === 1) {
-            Key.deleteMany({ isUsed: false, expiresToUseAt: { $lt: new Date() } }).catch(() => { });
-        }
-
         // --- SELECT MENUS ---
         if (interaction.isStringSelectMenu()) {
             if (interaction.customId === 'main_select') {

@@ -3,7 +3,6 @@ const connectDB = require('./database/connect');
 const logger = require('./utils/logger');
 require('dotenv').config();
 
-
 const { REST, Routes, SlashCommandBuilder, Events, MessageFlags } = require('discord.js');
 const express = require('express');
 const cors = require('cors');
@@ -12,8 +11,10 @@ const Key = require('./database/models/Key');
 const Texture = require('./database/models/Texture');
 const Version = require('./database/models/Version');
 
-
 const app = express();
+
+// Conectar ao Banco de Dados IMEDIATAMENTE
+connectDB();
 
 // Configuração CORS para permitir acesso dos sites externos
 app.use(cors({
@@ -153,6 +154,11 @@ app.post('/api/validate', async (req, res) => {
     const { key, hwid } = req.body;
     if (!key) return res.status(400).json({ error: 'Key é obrigatória.' });
 
+    const mongoose = require('mongoose');
+    if (mongoose.connection.readyState !== 1) {
+        return res.status(503).json({ error: 'Servidor iniciando conexão com banco de dados. Tente novamente em segundos.' });
+    }
+
     try {
         const keyData = await Key.findOne({ key });
         if (!keyData) return res.status(404).json({ error: 'Key inválida.' });
@@ -206,6 +212,12 @@ app.post('/api/validate', async (req, res) => {
 // Listar Texturas (Protegido)
 app.post('/api/textures', async (req, res) => {
     const { key, hwid } = req.body;
+
+    const mongoose = require('mongoose');
+    if (mongoose.connection.readyState !== 1 && key !== 'get_shortener') {
+        return res.status(503).json({ error: 'Banco de dados desconectado. Tente novamente.' });
+    }
+
     try {
         const config = await Version.findOne({ id: 'global' });
 
@@ -271,6 +283,9 @@ app.get('/', (req, res) => res.send('API Online 💜'));
 // Limpa keys que expiraram do prazo de resgate ou sessões que já acabaram
 setInterval(async () => {
     try {
+        const mongoose = require('mongoose');
+        if (mongoose.connection.readyState !== 1) return;
+
         const now = new Date();
         // 1. Deletar keys não usadas que passaram do prazo de resgate
         const deletedUnused = await Key.deleteMany({ isUsed: false, expiresToUseAt: { $lt: now } });
@@ -296,11 +311,7 @@ setInterval(async () => {
 
 // Evento Ready
 client.once(Events.ClientReady, async () => {
-    // Aguardar conexão com o banco caso ainda não tenha terminado
     const mongoose = require('mongoose');
-    if (mongoose.connection.readyState !== 1) {
-        await connectDB();
-    }
 
     console.clear();
 

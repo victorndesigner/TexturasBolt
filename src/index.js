@@ -240,6 +240,8 @@ app.listen(PORT, () => {
     console.log(`📡 API para o Aplicativo rodando na porta ${PORT}`);
 });
 
+app.get('/', (req, res) => res.send('API Online 💜'));
+
 // --- TAREFA DE LIMPEZA AUTOMÁTICA EM SEGUNDO PLANO ---
 // Limpa keys que expiraram do prazo de resgate ou sessões que já acabaram
 setInterval(async () => {

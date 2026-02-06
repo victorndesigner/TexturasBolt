@@ -8,6 +8,9 @@ const { createTexturePanel } = require('../components/texturePanel');
 const crypto = require('crypto');
 
 module.exports = async (interaction) => {
+    // DEBUG: Verificar estado da interação
+    // console.log(`[Interaction] ID: ${interaction.customId} | Type: ${interaction.type} | Deferred: ${interaction.deferred} | Replied: ${interaction.replied}`);
+
     // --- VERIFICAÇÃO DE CONEXÃO COM O BANCO ---
     const mongoose = require('mongoose');
     if (mongoose.connection.readyState !== 1) {
@@ -308,7 +311,7 @@ module.exports = async (interaction) => {
                             type: 9,
                             components: [{
                                 type: 10,
-                                content: `## 👤 INFORMAÇÕES DO USUÁRIO\n> **Status:** ${userData.isBlacklisted ? '🚫 **BANIDO**' : '✅ Ativo'}\n\n**Discord:** ${userData.discordTag || 'Não vinculado'}\n**Discord ID:** \`${userData.discordId || 'N/A'}\`\n**HWID:** \`${userData.hwid}\`\n**Último IP:** \`${userData.lastIp || 'N/A'}\`\n**Última Key Usada:** \`${userData.lastKeyUsed || 'N/A'}\`\n**Total de Instalações:** \`${userData.totalInstalls}\`\n**Criado em:** <t:${Math.floor(userData.createdAt.getTime() / 1000)}:R>\n**Atualizado em:** <t:${Math.floor(userData.updatedAt.getTime() / 1000)}:R>`
+                                content: `## 👤 INFORMAÇÕES DO USUÁRIO\n> **Status:** ${userData.isBlacklisted ? '🚫 **BANIDO**' : '✅ Ativo'}\n\n**Discord:** ${userData.discordTag || 'Não vinculado'}\n**Discord ID:** \`${userData.discordId || 'N/A'}\`\n**HWID:** \`${userData.hwid}\`\n**Último IP:** \`${userData.lastIp || 'N/A'}\`\n**Última Key Usada:** \`${userData.lastKeyUsed || 'N/A'}\`\n**Última Key Gerada:** \`${userData.lastGeneratedKey || 'Nenhuma'}\`\n**Total de Instalações:** \`${userData.totalInstalls}\`\n**Criado em:** <t:${Math.floor(userData.createdAt.getTime() / 1000)}:R>\n**Atualizado em:** <t:${Math.floor(userData.updatedAt.getTime() / 1000)}:R>`
                             }],
                             accessory: { type: 11, media: { url: serverIcon } }
                         },
@@ -454,6 +457,23 @@ module.exports = async (interaction) => {
 
         // --- BUTTONS ---
         if (interaction.isButton()) {
+            if (interaction.customId === 'search_user') {
+                const modal = new ModalBuilder()
+                    .setCustomId('modal_search_user')
+                    .setTitle('Pesquisar Usuário');
+
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder()
+                            .setCustomId('search_hwid')
+                            .setLabel('Termo de Pesquisa')
+                            .setPlaceholder('HWID, Discord ID ou Nome de Usuário...')
+                            .setStyle(TextInputStyle.Short)
+                            .setRequired(true)
+                    )
+                );
+                return await interaction.showModal(modal);
+            }
             if (interaction.customId === 'update_panel' || interaction.customId === 'back_to_main') {
                 await interaction.deferUpdate();
                 let versionData = await Version.findOne({ id: 'global' });
@@ -656,23 +676,6 @@ module.exports = async (interaction) => {
                 return await showCategoriesPanel(interaction);
             }
 
-            if (interaction.customId === 'search_user') {
-                const modal = new ModalBuilder()
-                    .setCustomId('modal_search_user')
-                    .setTitle('Pesquisar Usuário');
-
-                modal.addComponents(
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder()
-                            .setCustomId('search_hwid')
-                            .setLabel('HWID do Usuário')
-                            .setPlaceholder('Digite o HWID completo ou parcial...')
-                            .setStyle(TextInputStyle.Short)
-                            .setRequired(true)
-                    )
-                );
-                return await interaction.showModal(modal);
-            }
 
             if (interaction.customId.startsWith('toggle_ban_')) {
                 await interaction.deferUpdate();
@@ -743,7 +746,12 @@ module.exports = async (interaction) => {
 
         // --- MODALS ---
         if (interaction.isModalSubmit()) {
-            if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
+            try {
+                if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
+            } catch (err) {
+                // Ignorar erro se já foi respondida (evita crash 40060)
+                if (err.code !== 40060 && err.code !== 10062) console.error('Erro ao deferir modal:', err);
+            }
 
             if (interaction.customId === 'modal_version') {
                 const newVersion = interaction.fields.getTextInputValue('version_input');
@@ -804,6 +812,13 @@ module.exports = async (interaction) => {
                     generatedByTag: interaction.user.tag
                 });
 
+                // Atualizar lastGeneratedKey no perfil do usuário (se existir)
+                const User = require('../../database/models/User');
+                await User.findOneAndUpdate(
+                    { discordId: interaction.user.id },
+                    { lastGeneratedKey: keyCode, discordTag: interaction.user.tag }
+                );
+
                 let accessLabel = '';
                 if (type === 'standard') accessLabel = 'Padrão (Com Encurtador)';
                 else if (type === 'all') accessLabel = 'Total (Sem Encurtador)';
@@ -840,8 +855,15 @@ module.exports = async (interaction) => {
 
             if (interaction.customId === 'modal_search_user') {
                 const User = require('../../database/models/User');
-                const searchHwid = interaction.fields.getTextInputValue('search_hwid');
-                const userData = await User.findOne({ hwid: { $regex: searchHwid, $options: 'i' } });
+                const term = interaction.fields.getTextInputValue('search_hwid');
+
+                const userData = await User.findOne({
+                    $or: [
+                        { hwid: { $regex: term, $options: 'i' } },
+                        { discordId: term },
+                        { discordTag: { $regex: term, $options: 'i' } }
+                    ]
+                });
 
                 if (!userData) {
                     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
@@ -850,7 +872,7 @@ module.exports = async (interaction) => {
                         accent_color: 0xff0000,
                         components: [{
                             type: 9,
-                            components: [{ type: 10, content: `## ❌ USUÁRIO NÃO ENCONTRADO\n> Nenhum usuário encontrado com HWID contendo: \`${searchHwid}\`` }],
+                            components: [{ type: 10, content: `## ❌ USUÁRIO NÃO ENCONTRADO\n> Nenhum usuário encontrado com: \`${term}\`\n> Tente buscar por HWID, ID do Discord ou Nome de Usuário.` }],
                             accessory: { type: 11, media: { url: serverIcon } }
                         }]
                     };
@@ -867,7 +889,7 @@ module.exports = async (interaction) => {
                             type: 9,
                             components: [{
                                 type: 10,
-                                content: `## 👤 INFORMAÇÕES DO USUÁRIO\n> **Status:** ${userData.isBlacklisted ? '🚫 **BANIDO**' : '✅ Ativo'}\n\n**Discord:** ${userData.discordTag || 'Não vinculado'}\n**Discord ID:** \`${userData.discordId || 'N/A'}\`\n**HWID:** \`${userData.hwid}\`\n**Último IP:** \`${userData.lastIp || 'N/A'}\`\n**Última Key Usada:** \`${userData.lastKeyUsed || 'N/A'}\`\n**Total de Instalações:** \`${userData.totalInstalls}\`\n**Criado em:** <t:${Math.floor(userData.createdAt.getTime() / 1000)}:R>\n**Atualizado em:** <t:${Math.floor(userData.updatedAt.getTime() / 1000)}:R>`
+                                content: `## 👤 INFORMAÇÕES DO USUÁRIO\n> **Status:** ${userData.isBlacklisted ? '🚫 **BANIDO**' : '✅ Ativo'}\n\n**Discord:** ${userData.discordTag || 'Não vinculado'}\n**Discord ID:** \`${userData.discordId || 'N/A'}\`\n**HWID:** \`${userData.hwid}\`\n**Último IP:** \`${userData.lastIp || 'N/A'}\`\n**Última Key Usada:** \`${userData.lastKeyUsed || 'N/A'}\`\n**Última Key Gerada:** \`${userData.lastGeneratedKey || 'Nenhuma'}\`\n**Total de Instalações:** \`${userData.totalInstalls}\`\n**Criado em:** <t:${Math.floor(userData.createdAt.getTime() / 1000)}:R>\n**Atualizado em:** <t:${Math.floor(userData.updatedAt.getTime() / 1000)}:R>`
                             }],
                             accessory: { type: 11, media: { url: serverIcon } }
                         },

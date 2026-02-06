@@ -33,7 +33,7 @@ const createTexturePanel = (guild, textures = []) => {
                     {
                         type: 3,
                         custom_id: 'texture_manage_select',
-                        placeholder: textures.length > 0 ? 'Selecione uma textura...' : 'Nenhuma textura cadastrada',
+                        placeholder: textures.length > 0 ? 'Selecione uma textura...' : '> Nenhuma textura cadastrada',
                         disabled: textures.length === 0,
                         options: textures.length > 0 ? textures.slice(0, 25).map(t => ({
                             label: t.name,

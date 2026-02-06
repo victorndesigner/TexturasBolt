@@ -13,6 +13,10 @@ const Version = require('./database/models/Version');
 
 const app = express();
 
+// Desativar buffering global para evitar que comandos fiquem "presos" se o banco demorar
+const mongoose = require('mongoose');
+mongoose.set('bufferCommands', false);
+
 // Conectar ao Banco de Dados IMEDIATAMENTE
 connectDB();
 
@@ -164,32 +168,29 @@ app.post('/api/validate', async (req, res) => {
         if (!keyData) return res.status(404).json({ error: 'Key inválida.' });
 
         const now = new Date();
+        const permissions = keyData.permissions || { type: 'all', value: null };
 
         // Se a key já foi usada
         if (keyData.isUsed) {
-            // Se for key permanente, permite uso contínuo (opcional: travar por HWID)
-            if (keyData.duration === 'permanente') {
-                return res.json({ success: true, duration: 'permanente' });
-            }
-
-            // Verificar se expirou
-            if (keyData.expiresAt && now > keyData.expiresAt) {
-                return res.status(403).json({ error: 'Key expirada.' });
-            }
-
-            // Se ainda está no tempo mas é outro HWID (trava básica)
+            // Verificar trava de dispositivo (HWID)
             if (keyData.usedBy && keyData.usedBy !== hwid) {
-                return res.status(403).json({ error: 'Esta key já está em uso em outro dispositivo.' });
+                return res.status(403).json({ error: 'Esta key já está vinculada a outro computador.' });
+            }
+
+            // Verificar se expirou (se não for permanente)
+            if (keyData.duration !== 'permanente' && keyData.expiresAt && now > keyData.expiresAt) {
+                return res.status(403).json({ error: 'Sua licença expirou.' });
             }
 
             return res.json({
                 success: true,
                 duration: keyData.duration,
-                expiresAt: keyData.expiresAt
+                expiresAt: keyData.expiresAt,
+                permissions: permissions
             });
         }
 
-        // Primeira vez usando a key
+        // Primeira vez usando a key (Resgate)
         const { applyDuration } = require('./utils/durationParser');
         const expirationDate = applyDuration(new Date(), keyData.duration);
 
@@ -202,9 +203,10 @@ app.post('/api/validate', async (req, res) => {
             success: true,
             duration: keyData.duration,
             expiresAt: expirationDate,
-            permissions: keyData.permissions || { type: 'all', value: null }
+            permissions: permissions
         });
     } catch (error) {
+        console.error('Erro na validação:', error);
         res.status(500).json({ error: 'Erro interno no servidor.' });
     }
 });
@@ -232,20 +234,23 @@ app.post('/api/textures', async (req, res) => {
         const keyData = await Key.findOne({ key });
         if (!keyData || !keyData.isUsed) return res.status(403).json({ error: 'Acesso negado.' });
 
+        // Segurança: Verificar HWID em cada chamada de texturas
+        if (keyData.usedBy && keyData.usedBy !== hwid) {
+            return res.status(403).json({ error: 'Acesso bloqueado. Esta key pertence a outro dispositivo.' });
+        }
+
         // Validação de tempo se não for permanente
         if (keyData.duration !== 'permanente' && keyData.expiresAt && new Date() > keyData.expiresAt) {
-            return res.status(403).json({ error: 'Sessão expirada.' });
+            return res.status(403).json({ error: 'Sua licença expirou.' });
         }
 
         const permissions = keyData.permissions || { type: 'all', value: null };
         let textures;
 
-        if (permissions.type === 'all') {
-            textures = await Texture.find();
-        } else if (permissions.type === 'category') {
+        // Lógica de busca baseada no tipo de permissão
+        if (permissions.type === 'category') {
             textures = await Texture.find({ category: permissions.value });
         } else if (permissions.type === 'texture') {
-            // Tenta buscar por ID, se falhar ou não encontrar, tenta por nome (para flexibilidade)
             const mongoose = require('mongoose');
             if (mongoose.Types.ObjectId.isValid(permissions.value)) {
                 textures = await Texture.find({ _id: permissions.value });
@@ -253,6 +258,7 @@ app.post('/api/textures', async (req, res) => {
                 textures = await Texture.find({ name: permissions.value });
             }
         } else {
+            // 'all' ou 'standard' pegam tudo
             textures = await Texture.find();
         }
 
@@ -280,38 +286,47 @@ app.listen(PORT, () => {
 app.get('/', (req, res) => res.send('API Online 💜'));
 
 // --- TAREFA DE LIMPEZA AUTOMÁTICA EM SEGUNDO PLANO ---
-// Limpa keys que expiraram do prazo de resgate ou sessões que já acabaram
 setInterval(async () => {
+    const mongoose = require('mongoose');
+    if (mongoose.connection.readyState !== 1) return;
+
     try {
-        const mongoose = require('mongoose');
-        if (mongoose.connection.readyState !== 1) return;
-
         const now = new Date();
-        // 1. Deletar keys não usadas que passaram do prazo de resgate
-        const deletedUnused = await Key.deleteMany({ isUsed: false, expiresToUseAt: { $lt: now } });
-
-        // 2. Deletar keys usadas cujas sessões (ex: 4h) já expiraram
-        const deletedUsed = await Key.deleteMany({ isUsed: true, expiresAt: { $lt: now, $ne: null } });
+        // Deletar em paralelo e sem travar
+        const [deletedUnused, deletedUsed] = await Promise.all([
+            Key.deleteMany({ isUsed: false, expiresToUseAt: { $lt: now } }).catch(() => ({ deletedCount: 0 })),
+            Key.deleteMany({ isUsed: true, expiresAt: { $lt: now, $ne: null } }).catch(() => ({ deletedCount: 0 }))
+        ]);
 
         // 3. Limpar downloads pendentes há mais de 10 minutos (Evita memória cheia)
         for (const [key, value] of pendingDownloads.entries()) {
-            if (now - value.timestamp > 600000) { // 10 minutos
+            if (now - value.timestamp > 600000) {
                 pendingDownloads.delete(key);
             }
         }
 
-        const total = deletedUnused.deletedCount + deletedUsed.deletedCount;
+        const total = (deletedUnused?.deletedCount || 0) + (deletedUsed?.deletedCount || 0);
         if (total > 0) {
-            console.log(`🧹 [Limpeza] Foram removidas ${total} chaves (Resgate: ${deletedUnused.deletedCount} | Sessão: ${deletedUsed.deletedCount})`);
+            console.log(`🧹 [Limpeza] Foram removidas ${total} chaves expiradas.`);
         }
-    } catch (error) {
-        console.error('Erro na limpeza automática:', error);
+    } catch (e) {
+        // Silencioso para não poluir logs em caso de oscilação rápida de rede
     }
-}, 60000); // Executa a cada 60 segundos
+}, 60000);
 
 // Evento Ready
 client.once(Events.ClientReady, async () => {
     const mongoose = require('mongoose');
+
+    // Tentar aguardar conexão por até 10 segundos se ainda estiver conectando
+    if (mongoose.connection.readyState !== 1) {
+        const timeout = new Promise(resolve => setTimeout(resolve, 10000));
+        const connection = new Promise(resolve => {
+            if (mongoose.connection.readyState === 1) resolve();
+            else mongoose.connection.once('connected', resolve);
+        });
+        await Promise.race([timeout, connection]);
+    }
 
     console.clear();
 

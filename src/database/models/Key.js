@@ -8,7 +8,7 @@ const KeySchema = new mongoose.Schema({
     expiresAt: { type: Date, default: null }, // Definido quando a key é usada pela primeira vez
     expiresToUseAt: { type: Date, default: null }, // Prazo para usar a key (resgate)
     permissions: {
-        type: { type: String, enum: ['all', 'category', 'texture'], default: 'all' },
+        type: { type: String, enum: ['standard', 'all', 'category', 'texture'], default: 'all' },
         value: { type: String, default: null } // Nome da categoria ou ID da textura
     },
     createdAt: { type: Date, default: Date.now }

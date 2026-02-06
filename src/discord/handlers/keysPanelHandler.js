@@ -1,59 +1,78 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { REST, Routes, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const crypto = require('crypto');
 const KeyRequest = require('../../database/models/KeyRequest');
 const Version = require('../../database/models/Version');
 
-// Handler para criar o painel público
+// Handler /setup_keys
 async function setupKeysPanel(interaction) {
     if (!interaction.member.permissions.has('Administrator')) {
-        return interaction.reply({ content: '❌ Apenas administradores podem usar isso.', flags: 64 });
+        return interaction.reply({ content: '❌ Apenas administradores.', flags: 64 });
     }
 
-    const embed = new EmbedBuilder()
-        .setTitle('Key Textura')
-        .setDescription('> Para continuar, clique no botão abaixo e gere seu acesso às texturas.\n\n-# Esse processo é necessário para a chave de acesso ao sistema.')
-        .setColor('#5865F2')
-        .setThumbnail('https://cdn-icons-png.flaticon.com/512/8050/8050935.png') // Um icone de chave genérico ou do servidor
-        .setFooter({ text: 'Sistema Bolt Texturas', iconURL: interaction.guild.iconURL() });
+    const guildIcon = interaction.guild.iconURL({ extension: 'png' }) || 'https://cdn-icons-png.flaticon.com/512/8050/8050935.png';
 
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-            .setCustomId('public_gen_key') // Botão fixo
-            .setLabel('Gerar Key 🔑')
-            .setStyle(ButtonStyle.Success)
-    );
+    const messagePayload = {
+        components: [
+            {
+                type: 17, // CONTAINER
+                accent_color: 0x5865F2, // Blurple
+                components: [
+                    {
+                        type: 9, // SECTION
+                        components: [
+                            {
+                                type: 10, // TEXT DISPLAY
+                                content: `## 🔑 Key Textura\n> Para continuar, clique no botão abaixo e gere seu acesso às texturas.\n> -# Esse processo é necessário para a chave de acesso ao sistema.`
+                            }
+                        ],
+                        accessory: {
+                            type: 11, // MEDIA
+                            media: { url: guildIcon }
+                        }
+                    },
+                    { type: 14 }, // SEPARATOR
+                    {
+                        type: 1, // ACTION ROW
+                        components: [
+                            {
+                                type: 2, // BUTTON
+                                style: 3, // SUCCESS (Green)
+                                label: 'Gerar Key',
+                                emoji: { name: '🔑' },
+                                custom_id: 'public_gen_key'
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    };
 
-    await interaction.channel.send({ embeds: [embed], components: [row] });
-    return interaction.reply({ content: '✅ Painel de Keys criado com sucesso!', flags: 64 });
+    try {
+        await interaction.client.rest.post(Routes.channelMessages(interaction.channelId), { body: messagePayload });
+        return interaction.reply({ content: '✅ Painel criado no layout V2.', flags: 64 });
+    } catch (err) {
+        console.error('Erro ao enviar V2:', err);
+        return interaction.reply({ content: '❌ Erro ao criar painel. Verifique permissões ou suporte a V2.', flags: 64 });
+    }
 }
 
-// Handler para o clique no botão
+// Handler Botão Gerar Key
 async function handleKeyGeneration(interaction) {
-    // Verificação de Dispositivo (Mobile vs Desktop)
+    // Verificação Mobile
     const presence = interaction.member?.presence;
     const isMobile = presence?.clientStatus?.mobile;
     const isDesktop = presence?.clientStatus?.desktop;
 
-    // Se estiver APENAS no mobile (sem desktop logado), redireciona
     if (isMobile && !isDesktop) {
-        const rowMobile = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setLabel('Acessar Site (Mobile)')
-                .setStyle(ButtonStyle.Link)
-                .setURL('https://bolttexturas.site/')
-        );
         return interaction.reply({
-            content: `## 📱 Acesso Mobile Detectado\nEste gerador de keys é destinado para **PC**.\n\nPara baixar texturas no celular, utilize nosso site oficial clicando abaixo.`,
-            components: [rowMobile],
+            content: '📱 **Acesso Mobile:** Utilize nosso site oficial para baixar texturas no celular.',
             flags: 64
         });
     }
 
-    await interaction.deferReply({ flags: 64 }); // Ephemeral
-
     const token = crypto.randomBytes(16).toString('hex');
 
-    // Cria o request vinculado a este usuário
     await KeyRequest.create({
         token: token,
         userId: interaction.user.id,
@@ -62,48 +81,70 @@ async function handleKeyGeneration(interaction) {
 
     const config = await Version.findOne({ id: 'global' });
     let shortenerBase = config?.keyShortener || 'https://google.com';
-
-    // Montar a URL de destino (onde a key será exibida)
-    // O site deve ler ?token=XYZ, validar na API e exibir a Key
-    // Suponho que o site seja https://bolttexturas.site/resgate (precisa ser criado ou existir)
-    // Se não existir, user o endpoint da API direto? Não, user a página HTML.
     const targetUrl = `https://bolttexturas.site/redeem.html?token=${token}`;
-
-    // Combinação com Encurtador (Lógica Simples de Append)
-    // Se o encurtador for do tipo "Linkvertise Dynamic", a estrutura varia.
-    // Vamos assumir um padrão genérico: URL_ENCURTADOR + URL_DESTINO
-    // Se o admin configurou "https://encurta.net/st?api=xxxxx&url=", nós concatenamos.
-    // Se ele configurou um link FIXO, nós não conseguimos passar o parametro.
-
-    // Como fallback, se o link não parecer um encurtador de API, usamos um parametro de hash ou query
-    // Esperando que o encurtador repasse.
 
     let finalUrl;
     if (shortenerBase.includes('url=')) {
         finalUrl = `${shortenerBase}${encodeURIComponent(targetUrl)}`;
     } else {
-        // Tenta passar como query string se não tiver parametro explícito
-        // Ex: https://meusite.com/short?dest=...
-        finalUrl = shortenerBase; // Se for fixo, o sistema quebra. O usuário precisa configurar direito.
-        // Vamos avisar o usuário no botão?
-
-        // Melhor: Vamos salvar o token e pedir para o usuário COPIAR o token? Não, péssima UX.
-        // Vamos tentar anexar o token na URL do encurtador como Fallback, igual fizemos no App.
+        finalUrl = shortenerBase;
         if (finalUrl.includes('?')) finalUrl += `&token=${token}`;
         else finalUrl += `?token=${token}`;
     }
 
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-            .setLabel('Acessar Encurtador')
-            .setStyle(ButtonStyle.Link)
-            .setURL(finalUrl)
-    );
+    // Resposta V2 Limpa (Sem token visível)
+    const responseContainer = {
+        type: 17,
+        accent_color: 0x00FF88, // Verde Sucesso
+        components: [
+            {
+                type: 9,
+                components: [
+                    {
+                        type: 10,
+                        content: `## 🔐 Próxima Etapa\n> Clique no link abaixo para validar seu acesso.\n> Você será redirecionado para pegar sua Key exclusiva vinculada a **${interaction.user.tag}**.`
+                    }
+                ],
+                accessory: {
+                    type: 11,
+                    media: { url: 'https://cdn-icons-png.flaticon.com/512/10692/10692659.png' } // Ícone de Link/Cadeado
+                }
+            },
+            { type: 14 },
+            {
+                type: 1,
+                components: [
+                    {
+                        type: 2, // BUTTON
+                        style: 5, // LINK
+                        label: 'Acessar Encurtador',
+                        url: finalUrl
+                    }
+                ]
+            }
+        ]
+    };
 
-    await interaction.editReply({
-        content: `## 🔐 Próxima Etapa\nClique no link abaixo para validar seu acesso.\nVocê será redirecionado para pegar sua Key exclusiva vinculada a **@${interaction.user.username}**.\n\n-# Token: ${token.substring(0, 6)}...`,
-        components: [row]
-    });
+    // Usar reply com componentes crus
+    // Precisamos enganar o DJS ou usar API direta se ele reclamar.
+    // DJS 14.x aceita api raw em 'components'? As vezes sim.
+    // Se não, usamos REST.reply
+
+    try {
+        await interaction.client.rest.post(Routes.interactionCallback(interaction.id, interaction.token), {
+            body: {
+                type: 4, // ChannelMessageWithSource
+                data: {
+                    components: [responseContainer],
+                    flags: 64 // Ephemeral
+                }
+            }
+        });
+    } catch (e) {
+        console.error('Erro ao responder interação V2:', e);
+        // Fallback
+        await interaction.reply({ content: 'Erro ao gerar key visual. Tente novamente.', flags: 64 });
+    }
 }
 
 module.exports = { setupKeysPanel, handleKeyGeneration };

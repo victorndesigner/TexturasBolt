@@ -1,4 +1,4 @@
-const { REST, Routes, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { REST, Routes, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const crypto = require('crypto');
 const KeyRequest = require('../../database/models/KeyRequest');
 const Version = require('../../database/models/Version');
@@ -12,6 +12,7 @@ async function setupKeysPanel(interaction) {
     const guildIcon = interaction.guild.iconURL({ extension: 'png' }) || 'https://cdn-icons-png.flaticon.com/512/8050/8050935.png';
 
     const messagePayload = {
+        flags: MessageFlags.IsComponentsV2,
         components: [
             {
                 type: 17, // CONTAINER
@@ -136,7 +137,7 @@ async function handleKeyGeneration(interaction) {
                 type: 4, // ChannelMessageWithSource
                 data: {
                     components: [responseContainer],
-                    flags: 64 // Ephemeral
+                    flags: 64 | MessageFlags.IsComponentsV2 // Ephemeral + Components V2
                 }
             }
         });

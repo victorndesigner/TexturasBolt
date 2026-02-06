@@ -383,7 +383,8 @@ app.post('/api/textures', async (req, res) => {
         if (key === 'get_shortener') {
             return res.json({
                 keyShortener: config?.keyShortener,
-                version: config?.version || '1.0'
+                version: config?.version || '1.0',
+                keysChannelUrl: config?.keysChannelUrl // Novo campo para o botão do App
             });
         }
 
@@ -483,10 +484,10 @@ client.once(Events.ClientReady, async () => {
     const commands = [
         new SlashCommandBuilder()
             .setName('painel')
-            .setDescription('Abre o painel administrativo (Apenas Admins).'),
+            .setDescription('💜 Abre o painel administrativo (Apenas Admins).'),
         new SlashCommandBuilder()
-            .setName('setup_keys')
-            .setDescription('Cria o painel público de geração de keys (Apenas Admins).')
+            .setName('keys')
+            .setDescription('💜 Cria o painel público de geração de keys (Apenas Admins).')
     ].map(command => command.toJSON());
 
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
@@ -516,7 +517,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 const painelHandler = require('./discord/handlers/painelHandler');
                 return await painelHandler(interaction);
             }
-            if (interaction.commandName === 'setup_keys') {
+            if (interaction.commandName === 'keys' || interaction.commandName === 'setup_keys') {
                 const { setupKeysPanel } = require('./discord/handlers/keysPanelHandler');
                 return await setupKeysPanel(interaction);
             }

@@ -12,6 +12,7 @@ const VersionSchema = new mongoose.Schema({
     profileImage: { type: String, default: 'https://i.imgur.com/YahM0Nf.png' },
     requiredServerId: { type: String, default: '' },
     requiredServerInvite: { type: String, default: '' },
+    keysChannelUrl: { type: String, default: 'https://discord.gg/bolttexturas' },
     updatedAt: { type: Date, default: Date.now }
 });
 

@@ -190,9 +190,18 @@ module.exports = async (interaction) => {
                         .setStyle(TextInputStyle.Short)
                         .setRequired(false);
 
+                    const keysChannelInput = new TextInputBuilder()
+                        .setCustomId('keys_channel_url')
+                        .setLabel('Link do Painel de Key (Canal)')
+                        .setPlaceholder('https://discord.com/channels/...')
+                        .setValue(config?.keysChannelUrl || '')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false);
+
                     modal.addComponents(
                         new ActionRowBuilder().addComponents(serverIdInput),
-                        new ActionRowBuilder().addComponents(inviteInput)
+                        new ActionRowBuilder().addComponents(inviteInput),
+                        new ActionRowBuilder().addComponents(keysChannelInput)
                     );
                     return await interaction.showModal(modal);
                 }
@@ -809,7 +818,13 @@ module.exports = async (interaction) => {
             if (interaction.customId === 'modal_server_config') {
                 const serverId = interaction.fields.getTextInputValue('server_id');
                 const invite = interaction.fields.getTextInputValue('server_invite');
-                const data = await Version.findOneAndUpdate({ id: 'global' }, { requiredServerId: serverId, requiredServerInvite: invite }, { upsert: true, new: true });
+                const keysUrl = interaction.fields.getTextInputValue('keys_channel_url');
+
+                const data = await Version.findOneAndUpdate({ id: 'global' }, {
+                    requiredServerId: serverId,
+                    requiredServerInvite: invite,
+                    keysChannelUrl: keysUrl
+                }, { upsert: true, new: true });
 
                 const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName);
                 return await interaction.editReply({ ...panel, flags: 32768 });

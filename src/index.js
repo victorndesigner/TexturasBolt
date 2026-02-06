@@ -169,7 +169,9 @@ app.post('/api/redeem-key', async (req, res) => {
     if (!token) return res.status(400).json({ error: 'Token inválido.' });
 
     try {
-        const request = await KeyRequest.findOne({ token });
+        // ATOMICO: Busca e deleta imediatamente para evitar Replay/F5
+        const request = await KeyRequest.findOneAndDelete({ token });
+
         if (!request) return res.status(404).json({ error: 'Solicitação expirada ou inválida. Gere um novo botão no Discord.' });
 
         const crypto = require('crypto');
@@ -189,7 +191,6 @@ app.post('/api/redeem-key', async (req, res) => {
             expiresToUseAt: expiresToUseAt
         });
 
-        await KeyRequest.deleteOne({ _id: request._id });
 
         res.json({ success: true, key: newKey.key, duration: newKey.duration, user: request.userTag });
     } catch (e) {

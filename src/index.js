@@ -248,22 +248,10 @@ app.post('/api/textures', async (req, res) => {
         }
 
         const permissions = keyData.permissions || { type: 'all', value: null };
-        let textures;
 
-        // Lógica de busca baseada no tipo de permissão
-        if (permissions.type === 'category') {
-            textures = await Texture.find({ category: permissions.value });
-        } else if (permissions.type === 'texture') {
-            const mongoose = require('mongoose');
-            if (mongoose.Types.ObjectId.isValid(permissions.value)) {
-                textures = await Texture.find({ _id: permissions.value });
-            } else {
-                textures = await Texture.find({ name: permissions.value });
-            }
-        } else {
-            // 'all' ou 'standard' pegam tudo
-            textures = await Texture.find();
-        }
+        // Retornamos sempre TODAS as texturas para que o usuário veja o catálogo completo.
+        // A lógica de "Bypass" (ignorar encurtador) é tratada pelo aplicativo usando o objeto 'permissions'.
+        const textures = await Texture.find();
 
         res.json({
             textures,

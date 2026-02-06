@@ -389,8 +389,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
 });
 
 console.log('🤖 Tentando conectar ao Discord Gateway...');
-client.login(process.env.DISCORD_TOKEN).catch(err => {
-    console.error('\n❌ ERRO CRÍTICO NO LOGIN DO DISCORD:');
-    console.error(`> Motivo: ${err.message}`);
-    console.error('> Verifique se o DISCORD_TOKEN na aba Environment do Render está configurado corretamente.\n');
-});
+client.login(process.env.DISCORD_TOKEN)
+    .then(() => console.log('✅ Conexão estabelecida!'))
+    .catch(err => {
+        console.error('\n❌ ERRO CRÍTICO NO LOGIN DO DISCORD:');
+        console.error(`> Código/Mensagem: ${err.message}`);
+        console.error('> Verifique se o DISCORD_TOKEN no Render é VÁLIDO e as INTENTS estão ligadas no Portal Developer.\n');
+    });

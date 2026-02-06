@@ -21,12 +21,25 @@ function invalidateVersionCache(newData) {
 }
 
 module.exports = async (interaction) => {
-    // DEFER IMEDIATO para botões que precisam de tempo (evita Unknown interaction)
-    const deferButtons = ['update_panel', 'back_to_main', 'list_keys_back', 'delete_key_', 'manage_textures'];
-    if (interaction.isButton() && !interaction.deferred && !interaction.replied) {
-        const cid = interaction.customId || '';
-        if (deferButtons.some(d => d.endsWith('_') ? cid.startsWith(d) : cid === d)) {
-            await interaction.deferUpdate();
+    // DEFER IMEDIATO (evita Unknown interaction em cold start / latência)
+    if (!interaction.deferred && !interaction.replied) {
+        if (interaction.isButton()) {
+            const cid = interaction.customId || '';
+            const deferBtns = ['update_panel', 'back_to_main', 'list_keys_back', 'delete_key_', 'manage_textures', 'manage_categories', 'manage_users', 'toggle_ban_'];
+            if (deferBtns.some(d => d.endsWith('_') ? cid.startsWith(d) : cid === d)) {
+                await interaction.deferUpdate();
+            }
+        } else if (interaction.isStringSelectMenu() && interaction.customId === 'main_select') {
+            const val = interaction.values?.[0];
+            const deferVals = ['manage_textures', 'manage_categories', 'generate_key', 'list_keys', 'manage_users'];
+            if (deferVals.includes(val)) {
+                await interaction.deferUpdate();
+            }
+        } else if (interaction.isStringSelectMenu()) {
+            const cid = interaction.customId || '';
+            if (['manage_keys_select', 'select_user', 'texture_manage_select', 'remove_texture_select', 'remove_category_select'].includes(cid)) {
+                await interaction.deferUpdate();
+            }
         }
     }
 
@@ -211,7 +224,7 @@ module.exports = async (interaction) => {
 
                     const keysChannelInput = new TextInputBuilder()
                         .setCustomId('keys_channel_url')
-                        .setLabel('Link onde o "Pegar Key" envia (Canal do painel /keys)')
+                        .setLabel('Link canal painel /keys (Pegar Key)')
                         .setPlaceholder('https://discord.com/channels/ID_SERVIDOR/ID_CANAL')
                         .setValue(config?.keysChannelUrl || '')
                         .setStyle(TextInputStyle.Short)
@@ -297,7 +310,7 @@ module.exports = async (interaction) => {
             }
 
             if (interaction.customId === 'manage_keys_select') {
-                await interaction.deferUpdate();
+                if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 const keyId = interaction.values[0];
                 const keyData = await Key.findById(keyId);
                 if (!keyData) {
@@ -352,7 +365,7 @@ module.exports = async (interaction) => {
             }
 
             if (interaction.customId === 'select_user') {
-                await interaction.deferUpdate();
+                if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 const User = require('../../database/models/User');
                 const hwid = interaction.values[0];
                 const userData = await User.findOne({ hwid });
@@ -393,7 +406,7 @@ module.exports = async (interaction) => {
             }
 
             if (interaction.customId === 'texture_manage_select') {
-                await interaction.deferUpdate();
+                if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 const textureId = interaction.values[0];
                 const texture = await Texture.findById(textureId);
                 if (!texture) return;
@@ -422,7 +435,7 @@ module.exports = async (interaction) => {
             }
 
             if (interaction.customId === 'remove_texture_select') {
-                await interaction.deferUpdate();
+                if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 const textureId = interaction.values[0];
                 await Texture.findByIdAndDelete(textureId);
 
@@ -540,12 +553,12 @@ module.exports = async (interaction) => {
             }
 
             if (interaction.customId === 'list_keys_back') {
-                await interaction.deferUpdate();
+                if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 return await showKeysList(interaction);
             }
 
             if (interaction.customId.startsWith('delete_key_')) {
-                await interaction.deferUpdate();
+                if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 const keyId = interaction.customId.replace('delete_key_', '');
                 await Key.findByIdAndDelete(keyId);
 
@@ -577,7 +590,7 @@ module.exports = async (interaction) => {
             }
 
             if (interaction.customId === 'manage_textures') {
-                await interaction.deferUpdate();
+                if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 const textures = await Texture.find();
                 const panel = createTexturePanel(interaction.guild, textures);
                 return await interaction.editReply({ ...panel, flags: 32768 });
@@ -730,13 +743,13 @@ module.exports = async (interaction) => {
             }
 
             if (interaction.customId === 'manage_categories') {
-                await interaction.deferUpdate();
+                if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 return await showCategoriesPanel(interaction);
             }
 
 
             if (interaction.customId.startsWith('toggle_ban_')) {
-                await interaction.deferUpdate();
+                if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 const User = require('../../database/models/User');
                 const hwid = interaction.customId.replace('toggle_ban_', '');
                 const userData = await User.findOne({ hwid });
@@ -769,7 +782,7 @@ module.exports = async (interaction) => {
             }
 
             if (interaction.customId === 'manage_users') {
-                await interaction.deferUpdate();
+                if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 return await showUsersPanel(interaction);
             }
         }
@@ -777,7 +790,7 @@ module.exports = async (interaction) => {
         // --- SELECT MENUS EXTRAS ---
         if (interaction.isStringSelectMenu()) {
             if (interaction.customId === 'remove_category_select') {
-                await interaction.deferUpdate();
+                if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 const catId = interaction.values[0];
                 const category = await Category.findById(catId);
                 if (category) {

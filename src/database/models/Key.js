@@ -11,6 +11,8 @@ const KeySchema = new mongoose.Schema({
         type: { type: String, enum: ['standard', 'all', 'category', 'texture'], default: 'all' },
         value: { type: String, default: null } // Nome da categoria ou ID da textura
     },
+    generatedBy: { type: String, default: null }, // Discord ID
+    generatedByTag: { type: String, default: null }, // Discord Username/Tag
     createdAt: { type: Date, default: Date.now }
 });
 

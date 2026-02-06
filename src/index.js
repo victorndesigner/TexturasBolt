@@ -9,6 +9,7 @@ const bodyParser = require('body-parser');
 const Key = require('./database/models/Key');
 const Texture = require('./database/models/Texture');
 const Version = require('./database/models/Version');
+const User = require('./database/models/User');
 
 // Carregar Client e Banco DEPOIS do dotenv
 const client = require('./discord/client');
@@ -65,7 +66,6 @@ app.post(['/api/download/start', '/download/start'], async (req, res) => {
         timestamp: Date.now(),
         ip: clientIp
     });
-    console.log(`[API] Nova sessão iniciada. HWID: ${hwid} | IP: ${clientIp}`);
     res.json({ success: true });
 });
 
@@ -74,7 +74,7 @@ app.get(['/api/download/confirm', '/download/confirm'], async (req, res) => {
     let { hwid, textureId } = req.query;
     const clientIp = getClientIp(req);
 
-    console.log(`[API] Tentativa de confirmação. IP: ${clientIp} | Params:`, req.query);
+
 
     // MODO 1: Confirmação Direta (Params)
     if (hwid && textureId) {
@@ -89,7 +89,6 @@ app.get(['/api/download/confirm', '/download/confirm'], async (req, res) => {
         entry.timestamp = Date.now();
         pendingDownloads.set(key, entry);
 
-        console.log(`[API] Download CONFIRMADO (Via Params) para ${key}`);
         return res.json({ success: true, method: 'params' });
     }
 
@@ -111,7 +110,6 @@ app.get(['/api/download/confirm', '/download/confirm'], async (req, res) => {
         const data = pendingDownloads.get(foundKey);
         data.status = 'ready'; // Marca como pronto
         pendingDownloads.set(foundKey, data);
-        console.log(`[API] Download CONFIRMADO (Via IP Match) para ${foundKey}`);
         return res.json({ success: true, method: 'ip_match' });
     }
 
@@ -125,10 +123,8 @@ app.get(['/api/download/status', '/download/status'], async (req, res) => {
     const data = pendingDownloads.get(key);
 
     if (data?.status === 'ready') {
-        // CONSUMO ÚNICO: Deletamos a autorização assim que o App a consome.
-        // Isso impede reuso por F5 ou por novas texturas.
+        // CONSUMO ÚNICO
         pendingDownloads.delete(key);
-        console.log(`[API] Download liberado e sessão encerrada para ${key}`);
         return res.json({ status: 'ready' });
     }
 
@@ -180,7 +176,16 @@ app.post('/api/validate', async (req, res) => {
         const keyData = await Key.findOne({ key });
         if (!keyData) return res.status(404).json({ error: 'Key inválida.' });
 
+        // --- VERIFICAÇÃO DE BLACKLIST ---
+        let userData = await User.findOne({ hwid });
+        if (userData && userData.isBlacklisted) {
+            return res.status(403).json({
+                error: 'Você foi banido! Vazou textura ou fez algo proibido.'
+            });
+        }
+
         const now = new Date();
+        const clientIp = getClientIp(req);
         const permissions = keyData.permissions || { type: 'all', value: null };
 
         // Se a key já foi usada
@@ -193,6 +198,28 @@ app.post('/api/validate', async (req, res) => {
             // Verificar se expirou (se não for permanente)
             if (keyData.duration !== 'permanente' && keyData.expiresAt && now > keyData.expiresAt) {
                 return res.status(403).json({ error: 'Sua licença expirou.' });
+            }
+
+            // --- ATUALIZAÇÃO DE USUÁRIO (Keys já usadas) ---
+            if (!userData) {
+                userData = await User.create({
+                    hwid,
+                    discordId: keyData.generatedBy,
+                    discordTag: keyData.generatedByTag,
+                    lastIp: clientIp,
+                    lastKeyUsed: key,
+                    totalInstalls: 0
+                });
+                console.log(`\n🚀 [NOVO USUÁRIO]\nHWID: ${hwid}\nIP: ${clientIp}\nDiscord: ${userData.discordTag || 'Não vinculado'}\n`);
+            } else {
+                userData.lastIp = clientIp;
+                userData.lastKeyUsed = key;
+                if (!userData.discordId && keyData.generatedBy) {
+                    userData.discordId = keyData.generatedBy;
+                    userData.discordTag = keyData.generatedByTag;
+                }
+                userData.updatedAt = new Date();
+                await userData.save();
             }
 
             return res.json({
@@ -211,6 +238,28 @@ app.post('/api/validate', async (req, res) => {
         keyData.usedBy = hwid;
         keyData.expiresAt = expirationDate;
         await keyData.save();
+
+        // --- ATUALIZAÇÃO / CRIAÇÃO DE USUÁRIO (Primeiro uso) ---
+        if (!userData) {
+            userData = await User.create({
+                hwid,
+                discordId: keyData.generatedBy,
+                discordTag: keyData.generatedByTag,
+                lastIp: clientIp,
+                lastKeyUsed: key,
+                totalInstalls: 0
+            });
+            console.log(`\n🚀 [NOVO USUÁRIO]\nHWID: ${hwid}\nIP: ${clientIp}\nDiscord: ${userData.discordTag || 'Não vinculado'}\n`);
+        } else {
+            userData.lastIp = clientIp;
+            userData.lastKeyUsed = key;
+            if (!userData.discordId && keyData.generatedBy) {
+                userData.discordId = keyData.generatedBy;
+                userData.discordTag = keyData.generatedByTag;
+            }
+            userData.updatedAt = new Date();
+            await userData.save();
+        }
 
         res.json({
             success: true,

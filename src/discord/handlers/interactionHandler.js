@@ -144,6 +144,11 @@ module.exports = async (interaction) => {
                     return await showKeysList(interaction);
                 }
 
+                if (value === 'manage_users') {
+                    if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
+                    return await showUsersPanel(interaction);
+                }
+
                 if (value === 'manage_folder') {
                     const modal = new ModalBuilder()
                         .setCustomId('modal_folder_name')
@@ -277,6 +282,47 @@ module.exports = async (interaction) => {
                             components: [
                                 { type: 2, style: 2, label: 'Excluir', custom_id: `delete_key_${keyId}` },
                                 { type: 2, style: 2, label: 'Voltar', custom_id: 'list_keys_back' }
+                            ]
+                        }
+                    ]
+                };
+
+                return await interaction.editReply({ components: [container], flags: 32768 });
+            }
+
+            if (interaction.customId === 'select_user') {
+                await interaction.deferUpdate();
+                const User = require('../../database/models/User');
+                const hwid = interaction.values[0];
+                const userData = await User.findOne({ hwid });
+                if (!userData) {
+                    return await interaction.editReply({ content: '❌ Usuário não encontrado.', components: [], flags: 64 });
+                }
+
+                const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                const container = {
+                    type: 17,
+                    accent_color: userData.isBlacklisted ? 0xff0000 : 0xc773ff,
+                    components: [
+                        {
+                            type: 9,
+                            components: [{
+                                type: 10,
+                                content: `## 👤 INFORMAÇÕES DO USUÁRIO\n> **Status:** ${userData.isBlacklisted ? '🚫 **BANIDO**' : '✅ Ativo'}\n\n**Discord:** ${userData.discordTag || 'Não vinculado'}\n**Discord ID:** \`${userData.discordId || 'N/A'}\`\n**HWID:** \`${userData.hwid}\`\n**Último IP:** \`${userData.lastIp || 'N/A'}\`\n**Última Key Usada:** \`${userData.lastKeyUsed || 'N/A'}\`\n**Total de Instalações:** \`${userData.totalInstalls}\`\n**Criado em:** <t:${Math.floor(userData.createdAt.getTime() / 1000)}:R>\n**Atualizado em:** <t:${Math.floor(userData.updatedAt.getTime() / 1000)}:R>`
+                            }],
+                            accessory: { type: 11, media: { url: serverIcon } }
+                        },
+                        { type: 14 },
+                        {
+                            type: 1,
+                            components: [
+                                {
+                                    type: 2,
+                                    style: userData.isBlacklisted ? 3 : 4,
+                                    label: userData.isBlacklisted ? 'Remover Ban' : 'Banir Usuário',
+                                    custom_id: `toggle_ban_${hwid}`
+                                },
+                                { type: 2, style: 2, label: 'Voltar', custom_id: 'manage_users' }
                             ]
                         }
                     ]
@@ -609,6 +655,62 @@ module.exports = async (interaction) => {
                 await interaction.deferUpdate();
                 return await showCategoriesPanel(interaction);
             }
+
+            if (interaction.customId === 'search_user') {
+                const modal = new ModalBuilder()
+                    .setCustomId('modal_search_user')
+                    .setTitle('Pesquisar Usuário');
+
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder()
+                            .setCustomId('search_hwid')
+                            .setLabel('HWID do Usuário')
+                            .setPlaceholder('Digite o HWID completo ou parcial...')
+                            .setStyle(TextInputStyle.Short)
+                            .setRequired(true)
+                    )
+                );
+                return await interaction.showModal(modal);
+            }
+
+            if (interaction.customId.startsWith('toggle_ban_')) {
+                await interaction.deferUpdate();
+                const User = require('../../database/models/User');
+                const hwid = interaction.customId.replace('toggle_ban_', '');
+                const userData = await User.findOne({ hwid });
+
+                if (!userData) {
+                    return await interaction.editReply({ content: '❌ Usuário não encontrado.', components: [], flags: 64 });
+                }
+
+                userData.isBlacklisted = !userData.isBlacklisted;
+                userData.blacklistReason = userData.isBlacklisted ? 'Banido via painel administrativo' : null;
+                userData.updatedAt = new Date();
+                await userData.save();
+
+                const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                const successContainer = {
+                    type: 17,
+                    accent_color: userData.isBlacklisted ? 0xff0000 : 0x00ff88,
+                    components: [{
+                        type: 9,
+                        components: [{
+                            type: 10,
+                            content: `## ${userData.isBlacklisted ? '🚫 USUÁRIO BANIDO' : '✅ BAN REMOVIDO'}\n> **Discord:** ${userData.discordTag || 'Não vinculado'}\n> **HWID:** \`${userData.hwid}\`\n> **Status:** ${userData.isBlacklisted ? '**BANIDO**' : 'Ativo'}`
+                        }],
+                        accessory: { type: 11, media: { url: serverIcon } }
+                    }]
+                };
+
+                await interaction.followUp({ components: [successContainer], flags: 64 + 32768 });
+                return await showUsersPanel(interaction);
+            }
+
+            if (interaction.customId === 'manage_users') {
+                await interaction.deferUpdate();
+                return await showUsersPanel(interaction);
+            }
         }
 
         // --- SELECT MENUS EXTRAS ---
@@ -697,7 +799,9 @@ module.exports = async (interaction) => {
                     key: keyCode,
                     duration: durationStr,
                     expiresToUseAt: useDeadlineDate,
-                    permissions: { type: type, value: value } // type já vem como 'standard', 'all', 'category' ou 'texture'
+                    permissions: { type: type, value: value },
+                    generatedBy: interaction.user.id,
+                    generatedByTag: interaction.user.tag
                 });
 
                 let accessLabel = '';
@@ -732,6 +836,58 @@ module.exports = async (interaction) => {
                 const description = interaction.fields.getTextInputValue('cat_desc');
                 await Category.findOneAndUpdate({ name }, { name, description }, { upsert: true });
                 return await showCategoriesPanel(interaction);
+            }
+
+            if (interaction.customId === 'modal_search_user') {
+                const User = require('../../database/models/User');
+                const searchHwid = interaction.fields.getTextInputValue('search_hwid');
+                const userData = await User.findOne({ hwid: { $regex: searchHwid, $options: 'i' } });
+
+                if (!userData) {
+                    const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                    const errorContainer = {
+                        type: 17,
+                        accent_color: 0xff0000,
+                        components: [{
+                            type: 9,
+                            components: [{ type: 10, content: `## ❌ USUÁRIO NÃO ENCONTRADO\n> Nenhum usuário encontrado com HWID contendo: \`${searchHwid}\`` }],
+                            accessory: { type: 11, media: { url: serverIcon } }
+                        }]
+                    };
+                    await interaction.followUp({ components: [errorContainer], flags: 64 + 32768 });
+                    return await showUsersPanel(interaction);
+                }
+
+                const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                const container = {
+                    type: 17,
+                    accent_color: userData.isBlacklisted ? 0xff0000 : 0xc773ff,
+                    components: [
+                        {
+                            type: 9,
+                            components: [{
+                                type: 10,
+                                content: `## 👤 INFORMAÇÕES DO USUÁRIO\n> **Status:** ${userData.isBlacklisted ? '🚫 **BANIDO**' : '✅ Ativo'}\n\n**Discord:** ${userData.discordTag || 'Não vinculado'}\n**Discord ID:** \`${userData.discordId || 'N/A'}\`\n**HWID:** \`${userData.hwid}\`\n**Último IP:** \`${userData.lastIp || 'N/A'}\`\n**Última Key Usada:** \`${userData.lastKeyUsed || 'N/A'}\`\n**Total de Instalações:** \`${userData.totalInstalls}\`\n**Criado em:** <t:${Math.floor(userData.createdAt.getTime() / 1000)}:R>\n**Atualizado em:** <t:${Math.floor(userData.updatedAt.getTime() / 1000)}:R>`
+                            }],
+                            accessory: { type: 11, media: { url: serverIcon } }
+                        },
+                        { type: 14 },
+                        {
+                            type: 1,
+                            components: [
+                                {
+                                    type: 2,
+                                    style: userData.isBlacklisted ? 3 : 4,
+                                    label: userData.isBlacklisted ? 'Remover Ban' : 'Banir Usuário',
+                                    custom_id: `toggle_ban_${userData.hwid}`
+                                },
+                                { type: 2, style: 2, label: 'Voltar', custom_id: 'manage_users' }
+                            ]
+                        }
+                    ]
+                };
+
+                return await interaction.editReply({ components: [container], flags: 32768 });
             }
 
             if (interaction.customId === 'modal_create_texture') {
@@ -925,4 +1081,57 @@ async function showCategoriesPanel(interaction) {
     } else {
         return await interaction.reply({ components: [container], flags: 32768 });
     }
+}
+
+async function showUsersPanel(interaction) {
+    const User = require('../../database/models/User');
+    const users = await User.find().sort({ createdAt: -1 }).limit(25);
+    const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+
+    const container = {
+        type: 17,
+        accent_color: 0xc773ff,
+        components: [
+            {
+                type: 9,
+                components: [{ type: 10, content: `## 👥 GESTÃO DE USUÁRIOS\n> Gerencie usuários, visualize informações e controle a blacklist.` }],
+                accessory: { type: 11, media: { url: serverIcon } }
+            },
+            { type: 14 },
+            {
+                type: 10,
+                content: users.length > 0
+                    ? `### 📊 Total de usuários: **${users.length}**\n> Selecione um usuário abaixo ou use a pesquisa.`
+                    : `### 📊 Nenhum usuário registrado ainda.`
+            },
+            { type: 14 }
+        ]
+    };
+
+    if (users.length > 0) {
+        container.components.push({
+            type: 1,
+            components: [{
+                type: 3,
+                custom_id: 'select_user',
+                placeholder: 'Selecione um usuário...',
+                options: users.map(u => ({
+                    label: u.discordTag || `HWID: ${u.hwid.substring(0, 12)}...`,
+                    description: `IP: ${u.lastIp || 'N/A'} | Installs: ${u.totalInstalls}`,
+                    value: u.hwid,
+                    emoji: { name: u.isBlacklisted ? '🚫' : '✅' }
+                }))
+            }]
+        });
+    }
+
+    container.components.push({
+        type: 1,
+        components: [
+            { type: 2, style: 2, label: 'Pesquisar', custom_id: 'search_user' },
+            { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }
+        ]
+    });
+
+    return await interaction.editReply({ components: [container], flags: 32768 });
 }

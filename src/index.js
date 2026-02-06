@@ -148,7 +148,8 @@ app.get('/api/generate-key', async (req, res) => {
         const newKey = await Key.create({
             key: keyCode,
             duration: duration,
-            expiresToUseAt: useDeadlineDate
+            expiresToUseAt: useDeadlineDate,
+            permissions: { type: 'standard', value: null } // Garante que keys do site NÃO pulem encurtador
         });
 
         res.json({ success: true, key: newKey.key, duration: newKey.duration });

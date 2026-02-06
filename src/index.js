@@ -251,20 +251,24 @@ app.post('/api/validate', async (req, res) => {
             const config = await Version.findOne({ id: 'global' });
             if (config && config.requiredServerId) {
                 let isMember = false;
-                const guild = client.guilds.cache.get(config.requiredServerId);
-
                 const discordIdToCheck = (userData?.discordId) || keyData.generatedBy;
-                if (discordIdToCheck && guild) {
+                const guildId = config.requiredServerId.trim();
+
+                if (discordIdToCheck && guildId) {
                     try {
-                        await guild.members.fetch(discordIdToCheck);
+                        // Usa REST API direta (mais confiável que cache)
+                        await client.rest.get(Routes.guildMember(guildId, discordIdToCheck));
                         isMember = true;
                     } catch (memberErr) {
+                        if (memberErr?.code === 10007) {
+                            console.log(`[SERVER_CHECK] Usuário ${discordIdToCheck} não está no servidor ${guildId}`);
+                        }
                         isMember = false;
                     }
                 }
-                // Se não tiver ID (key anônima) ou guild não achada, isMember continua false
 
                 if (!isMember) {
+                    const guild = client.guilds.cache.get(guildId);
                     return res.status(403).json({
                         error: 'SERVER_REQUIRED',
                         serverName: guild ? guild.name : 'Servidor Oficial',
@@ -274,8 +278,6 @@ app.post('/api/validate', async (req, res) => {
             }
         } catch (serverCheckErr) {
             console.error('Erro na verificação de servidor:', serverCheckErr);
-            // Em caso de erro CRÍTICO (banco off etc), deixamos passar ou bloqueamos?
-            // Por segurança do fluxo, melhor bloquear se a config diz que é obrigatório.
         }
 
         const now = new Date();

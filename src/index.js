@@ -12,8 +12,21 @@ const Key = require('./database/models/Key');
 const Texture = require('./database/models/Texture');
 const Version = require('./database/models/Version');
 
+
 const app = express();
-app.use(cors());
+
+// Configuração CORS para permitir acesso dos sites externos
+app.use(cors({
+    origin: [
+        'https://referrer.bolttexturas.site',
+        'https://bolttexturas.site',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000'
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true
+}));
+
 app.use(bodyParser.json());
 app.set('trust proxy', 1); // Confiar no proxy (Discloud/Heroku) para pegar IP real
 

@@ -33,8 +33,6 @@ module.exports = async (interaction) => {
     }
 
     try {
-        // --- LIMPEZA AUTOMÁTICA DE KEYS EXPIRADAS (Resgate) ---
-        Key.deleteMany({ isUsed: false, expiresToUseAt: { $lt: new Date() } }).catch(() => { });
         if (interaction.isStringSelectMenu()) {
             if (interaction.customId === 'main_select') {
                 const value = interaction.values[0];
@@ -104,7 +102,7 @@ module.exports = async (interaction) => {
                 }
 
                 if (value === 'generate_key') {
-                    await interaction.deferUpdate();
+                    if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                     const container = {
                         type: 17,
@@ -142,7 +140,7 @@ module.exports = async (interaction) => {
                 }
 
                 if (value === 'list_keys') {
-                    await interaction.deferUpdate();
+                    if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                     return await showKeysList(interaction);
                 }
 
@@ -220,12 +218,12 @@ module.exports = async (interaction) => {
                 }
 
                 if (value === 'manage_categories') {
-                    await interaction.deferUpdate();
+                    if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                     return await showCategoriesPanel(interaction);
                 }
 
                 if (value === 'manage_textures') {
-                    await interaction.deferUpdate();
+                    if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                     const textures = await Texture.find();
                     const panel = createTexturePanel(interaction.guild, textures);
                     return await interaction.editReply({ ...panel, flags: 32768 });
@@ -355,7 +353,7 @@ module.exports = async (interaction) => {
                     return await interaction.showModal(modal);
                 }
 
-                await interaction.deferUpdate();
+                if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
 
                 if (type === 'category') {
                     const categories = await Category.find();
@@ -643,7 +641,7 @@ module.exports = async (interaction) => {
 
         // --- MODALS ---
         if (interaction.isModalSubmit()) {
-            await interaction.deferUpdate();
+            if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
 
             if (interaction.customId === 'modal_version') {
                 const newVersion = interaction.fields.getTextInputValue('version_input');

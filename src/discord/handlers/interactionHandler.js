@@ -7,9 +7,28 @@ const { createMainPanel } = require('../components/mainPanel');
 const { createTexturePanel } = require('../components/texturePanel');
 const crypto = require('crypto');
 
+// Cache de Version para modais (evita Unknown interaction por latência do DB)
+let _versionCache = { data: null, ts: 0 };
+const CACHE_TTL = 15000;
+async function getVersionCached() {
+    if (_versionCache.data && Date.now() - _versionCache.ts < CACHE_TTL) return _versionCache.data;
+    const data = await Version.findOne({ id: 'global' });
+    _versionCache = { data, ts: Date.now() };
+    return data;
+}
+function invalidateVersionCache(newData) {
+    _versionCache = newData ? { data: newData, ts: Date.now() } : { data: null, ts: 0 };
+}
+
 module.exports = async (interaction) => {
-    // DEBUG: Verificar estado da interação
-    // console.log(`[Interaction] ID: ${interaction.customId} | Type: ${interaction.type} | Deferred: ${interaction.deferred} | Replied: ${interaction.replied}`);
+    // DEFER IMEDIATO para botões que precisam de tempo (evita Unknown interaction)
+    const deferButtons = ['update_panel', 'back_to_main', 'list_keys_back', 'delete_key_', 'manage_textures'];
+    if (interaction.isButton() && !interaction.deferred && !interaction.replied) {
+        const cid = interaction.customId || '';
+        if (deferButtons.some(d => d.endsWith('_') ? cid.startsWith(d) : cid === d)) {
+            await interaction.deferUpdate();
+        }
+    }
 
     // --- VERIFICAÇÃO DE CONEXÃO COM O BANCO ---
     const mongoose = require('mongoose');
@@ -169,7 +188,7 @@ module.exports = async (interaction) => {
                 }
 
                 if (value === 'manage_server_lock') {
-                    const config = await Version.findOne({ id: 'global' });
+                    const config = await getVersionCached();
                     const modal = new ModalBuilder()
                         .setCustomId('modal_server_config')
                         .setTitle('Configurar Trava de Servidor');
@@ -192,8 +211,8 @@ module.exports = async (interaction) => {
 
                     const keysChannelInput = new TextInputBuilder()
                         .setCustomId('keys_channel_url')
-                        .setLabel('Link do Painel de Key (Canal)')
-                        .setPlaceholder('https://discord.com/channels/...')
+                        .setLabel('Link onde o "Pegar Key" envia (Canal do painel /keys)')
+                        .setPlaceholder('https://discord.com/channels/ID_SERVIDOR/ID_CANAL')
                         .setValue(config?.keysChannelUrl || '')
                         .setStyle(TextInputStyle.Short)
                         .setRequired(false);
@@ -236,6 +255,7 @@ module.exports = async (interaction) => {
                         if (!url.startsWith('http')) return;
 
                         await Version.findOneAndUpdate({ id: 'global' }, { profileImage: url }, { upsert: true });
+                        invalidateVersionCache();
 
                         const successContainer = {
                             type: 17,
@@ -513,7 +533,7 @@ module.exports = async (interaction) => {
                 return await interaction.showModal(modal);
             }
             if (interaction.customId === 'update_panel' || interaction.customId === 'back_to_main') {
-                await interaction.deferUpdate();
+                if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 let versionData = await Version.findOne({ id: 'global' });
                 const panel = createMainPanel(interaction.guild, versionData?.version || '1.0', versionData?.keyShortener, versionData?.defaultAccessTime, versionData?.keyUseDeadline, versionData?.targetFolderName);
                 return await interaction.editReply({ ...panel, flags: 32768 });
@@ -794,6 +814,7 @@ module.exports = async (interaction) => {
             if (interaction.customId === 'modal_version') {
                 const newVersion = interaction.fields.getTextInputValue('version_input');
                 const data = await Version.findOneAndUpdate({ id: 'global' }, { version: newVersion }, { upsert: true, new: true });
+                invalidateVersionCache(data);
 
                 const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName);
                 return await interaction.editReply({ ...panel, flags: 32768 });
@@ -802,6 +823,7 @@ module.exports = async (interaction) => {
             if (interaction.customId === 'modal_shortener') {
                 const newShortener = interaction.fields.getTextInputValue('shortener_input');
                 const data = await Version.findOneAndUpdate({ id: 'global' }, { keyShortener: newShortener }, { upsert: true, new: true });
+                invalidateVersionCache(data);
 
                 const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName);
                 return await interaction.editReply({ ...panel, flags: 32768 });
@@ -810,6 +832,7 @@ module.exports = async (interaction) => {
             if (interaction.customId === 'modal_time') {
                 const newTime = interaction.fields.getTextInputValue('time_input');
                 const data = await Version.findOneAndUpdate({ id: 'global' }, { defaultAccessTime: newTime }, { upsert: true, new: true });
+                invalidateVersionCache(data);
 
                 const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName);
                 return await interaction.editReply({ ...panel, flags: 32768 });
@@ -825,6 +848,7 @@ module.exports = async (interaction) => {
                     requiredServerInvite: invite,
                     keysChannelUrl: keysUrl
                 }, { upsert: true, new: true });
+                invalidateVersionCache(data);
 
                 const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName);
                 return await interaction.editReply({ ...panel, flags: 32768 });
@@ -833,6 +857,7 @@ module.exports = async (interaction) => {
             if (interaction.customId === 'modal_use_deadline') {
                 const newDeadline = interaction.fields.getTextInputValue('deadline_input');
                 const data = await Version.findOneAndUpdate({ id: 'global' }, { keyUseDeadline: newDeadline }, { upsert: true, new: true });
+                invalidateVersionCache(data);
 
                 const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName);
                 return await interaction.editReply({ ...panel, flags: 32768 });
@@ -1001,6 +1026,7 @@ module.exports = async (interaction) => {
                 const p1 = interaction.fields.getTextInputValue('orig_p1');
                 const p2 = interaction.fields.getTextInputValue('orig_p2');
                 await Version.findOneAndUpdate({ id: 'global' }, { removeUrlPart1: p1, removeUrlPart2: p2 }, { upsert: true });
+                invalidateVersionCache();
 
                 let versionData = await Version.findOne({ id: 'global' });
                 const panel = createMainPanel(interaction.guild, versionData?.version, versionData?.keyShortener, versionData?.defaultAccessTime, versionData?.keyUseDeadline, versionData?.targetFolderName);

@@ -37,9 +37,8 @@ async function setupKeysPanel(interaction) {
                         components: [
                             {
                                 type: 2, // BUTTON
-                                style: 3, // SUCCESS (Green)
+                                style: 2, // SECONDARY (Cinza)
                                 label: 'Gerar Key',
-                                emoji: { name: '🔑' },
                                 custom_id: 'public_gen_key'
                             }
                         ]
@@ -60,15 +59,16 @@ async function setupKeysPanel(interaction) {
 
 // Handler Botão Gerar Key
 async function handleKeyGeneration(interaction) {
+    await interaction.deferReply({ ephemeral: true });
+
     // Verificação Mobile
     const presence = interaction.member?.presence;
     const isMobile = presence?.clientStatus?.mobile;
     const isDesktop = presence?.clientStatus?.desktop;
 
     if (isMobile && !isDesktop) {
-        return interaction.reply({
-            content: '📱 **Acesso Mobile:** Utilize nosso site oficial para baixar texturas no celular.',
-            flags: 64
+        return interaction.editReply({
+            content: '📱 **Acesso Mobile:** Utilize nosso site oficial para baixar texturas no celular.'
         });
     }
 
@@ -93,7 +93,9 @@ async function handleKeyGeneration(interaction) {
         else finalUrl += `?token=${token}`;
     }
 
-    // Resposta V2 Limpa (Sem token visível)
+    const guildIcon = interaction.guild.iconURL({ extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+
+    // Resposta V2 Limpa (Sem token visível) - ícone do servidor como no painel principal
     const responseContainer = {
         type: 17,
         accent_color: 0x00FF88, // Verde Sucesso
@@ -108,7 +110,7 @@ async function handleKeyGeneration(interaction) {
                 ],
                 accessory: {
                     type: 11,
-                    media: { url: 'https://cdn-icons-png.flaticon.com/512/10692/10692659.png' } // Ícone de Link/Cadeado
+                    media: { url: guildIcon }
                 }
             },
             { type: 14 },
@@ -126,26 +128,10 @@ async function handleKeyGeneration(interaction) {
         ]
     };
 
-    // Usar reply com componentes crus
-    // Precisamos enganar o DJS ou usar API direta se ele reclamar.
-    // DJS 14.x aceita api raw em 'components'? As vezes sim.
-    // Se não, usamos REST.reply
-
-    try {
-        await interaction.client.rest.post(Routes.interactionCallback(interaction.id, interaction.token), {
-            body: {
-                type: 4, // ChannelMessageWithSource
-                data: {
-                    components: [responseContainer],
-                    flags: 64 | MessageFlags.IsComponentsV2 // Ephemeral + Components V2
-                }
-            }
-        });
-    } catch (e) {
-        console.error('Erro ao responder interação V2:', e);
-        // Fallback
-        await interaction.reply({ content: 'Erro ao gerar key visual. Tente novamente.', flags: 64 });
-    }
+    await interaction.editReply({
+        components: [responseContainer],
+        flags: 64 | MessageFlags.IsComponentsV2
+    });
 }
 
 module.exports = { setupKeysPanel, handleKeyGeneration };

@@ -247,16 +247,16 @@ app.post('/api/validate', async (req, res) => {
         }
 
         // --- TRAVA DE SERVIDOR (STRICT) ---
+        // Só exige servidor quando a key tem generatedBy (foi gerada pelo bot no Discord). Keys do site (/api/generate-key) não têm e podem ser usadas sem checagem.
         try {
             const config = await Version.findOne({ id: 'global' });
-            if (config && config.requiredServerId) {
+            if (config && config.requiredServerId && (keyData.generatedBy || userData?.discordId)) {
                 let isMember = false;
                 const discordIdToCheck = (userData?.discordId) || keyData.generatedBy;
                 const guildId = config.requiredServerId.trim();
 
                 if (discordIdToCheck && guildId) {
                     try {
-                        // Usa REST API direta (mais confiável que cache)
                         await client.rest.get(Routes.guildMember(guildId, discordIdToCheck));
                         isMember = true;
                     } catch (memberErr) {

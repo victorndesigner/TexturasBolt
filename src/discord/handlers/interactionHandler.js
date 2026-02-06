@@ -168,6 +168,35 @@ module.exports = async (interaction) => {
                     return await interaction.showModal(modal);
                 }
 
+                if (value === 'manage_server_lock') {
+                    const config = await Version.findOne({ id: 'global' });
+                    const modal = new ModalBuilder()
+                        .setCustomId('modal_server_config')
+                        .setTitle('Configurar Trava de Servidor');
+
+                    const serverIdInput = new TextInputBuilder()
+                        .setCustomId('server_id')
+                        .setLabel('ID do Servidor (Obrigatório)')
+                        .setPlaceholder('Ex: 1042897210406338672')
+                        .setValue(config?.requiredServerId || '')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false); // Pode deixar vazio para desativar
+
+                    const inviteInput = new TextInputBuilder()
+                        .setCustomId('server_invite')
+                        .setLabel('Link do Convite (https://discord.gg/...)')
+                        .setPlaceholder('Link para o botão do App')
+                        .setValue(config?.requiredServerInvite || '')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false);
+
+                    modal.addComponents(
+                        new ActionRowBuilder().addComponents(serverIdInput),
+                        new ActionRowBuilder().addComponents(inviteInput)
+                    );
+                    return await interaction.showModal(modal);
+                }
+
                 if (value === 'manage_profile_global') {
                     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                     const container = {
@@ -772,6 +801,15 @@ module.exports = async (interaction) => {
             if (interaction.customId === 'modal_time') {
                 const newTime = interaction.fields.getTextInputValue('time_input');
                 const data = await Version.findOneAndUpdate({ id: 'global' }, { defaultAccessTime: newTime }, { upsert: true, new: true });
+
+                const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName);
+                return await interaction.editReply({ ...panel, flags: 32768 });
+            }
+
+            if (interaction.customId === 'modal_server_config') {
+                const serverId = interaction.fields.getTextInputValue('server_id');
+                const invite = interaction.fields.getTextInputValue('server_invite');
+                const data = await Version.findOneAndUpdate({ id: 'global' }, { requiredServerId: serverId, requiredServerInvite: invite }, { upsert: true, new: true });
 
                 const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName);
                 return await interaction.editReply({ ...panel, flags: 32768 });

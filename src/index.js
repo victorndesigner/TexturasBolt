@@ -184,6 +184,27 @@ app.post('/api/validate', async (req, res) => {
             });
         }
 
+        // --- TRAVA DE SERVIDOR ---
+        try {
+            const config = await Version.findOne({ id: 'global' });
+            if (config && config.requiredServerId && userData && userData.discordId) {
+                const guild = client.guilds.cache.get(config.requiredServerId);
+                if (guild) {
+                    try {
+                        await guild.members.fetch(userData.discordId);
+                    } catch (memberErr) {
+                        return res.status(403).json({
+                            error: 'SERVER_REQUIRED',
+                            serverName: guild.name,
+                            inviteUrl: config.requiredServerInvite || ''
+                        });
+                    }
+                }
+            }
+        } catch (serverCheckErr) {
+            console.error('Erro na verificação de servidor:', serverCheckErr);
+        }
+
         const now = new Date();
         const clientIp = getClientIp(req);
         const permissions = keyData.permissions || { type: 'all', value: null };

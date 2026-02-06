@@ -10,6 +10,8 @@ const VersionSchema = new mongoose.Schema({
     removeUrlPart1: { type: String, default: '' },
     removeUrlPart2: { type: String, default: '' },
     profileImage: { type: String, default: 'https://i.imgur.com/YahM0Nf.png' },
+    requiredServerId: { type: String, default: '' },
+    requiredServerInvite: { type: String, default: '' },
     updatedAt: { type: Date, default: Date.now }
 });
 

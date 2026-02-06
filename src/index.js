@@ -292,33 +292,29 @@ setInterval(async () => {
 
     try {
         const now = new Date();
-        // Deletar em paralelo e sem travar
         const [deletedUnused, deletedUsed] = await Promise.all([
             Key.deleteMany({ isUsed: false, expiresToUseAt: { $lt: now } }).catch(() => ({ deletedCount: 0 })),
             Key.deleteMany({ isUsed: true, expiresAt: { $lt: now, $ne: null } }).catch(() => ({ deletedCount: 0 }))
         ]);
 
-        // 3. Limpar downloads pendentes há mais de 10 minutos (Evita memória cheia)
         for (const [key, value] of pendingDownloads.entries()) {
             if (now - value.timestamp > 600000) {
                 pendingDownloads.delete(key);
             }
         }
 
-        const total = (deletedUnused?.deletedCount || 0) + (deletedUsed?.deletedCount || 0);
-        if (total > 0) {
-            console.log(`🧹 [Limpeza] Foram removidas ${total} chaves expiradas.`);
+        const u = deletedUnused?.deletedCount || 0;
+        const s = deletedUsed?.deletedCount || 0;
+        if (u + s > 0) {
+            console.log(`🧹 [Limpeza] Foram removidas ${u + s} chaves (Resgate: ${u} | Sessão: ${s})`);
         }
-    } catch (e) {
-        // Silencioso para não poluir logs em caso de oscilação rápida de rede
-    }
+    } catch (e) { }
 }, 60000);
 
 // Evento Ready
 client.once(Events.ClientReady, async () => {
     const mongoose = require('mongoose');
 
-    // Tentar aguardar conexão por até 10 segundos se ainda estiver conectando
     if (mongoose.connection.readyState !== 1) {
         const timeout = new Promise(resolve => setTimeout(resolve, 10000));
         const connection = new Promise(resolve => {
@@ -328,13 +324,12 @@ client.once(Events.ClientReady, async () => {
         await Promise.race([timeout, connection]);
     }
 
-    console.clear();
-
     const guild = client.guilds.cache.first();
     const serverName = guild ? guild.name : 'Nenhum servidor encontrado';
     const memberCount = guild ? guild.memberCount : 0;
     const mongoStatus = mongoose.connection.readyState === 1 ? 'Sim' : 'Não';
 
+    console.log(`\n💜 ########## STATUS DO BOT ##########`);
     console.log(`💜 Servidor: ${serverName}`);
     console.log(`   💜 Quantas pessoas no servidor: ${memberCount}`);
     console.log(`      💜 MongoDB conectado: ${mongoStatus}`);
@@ -350,17 +345,20 @@ client.once(Events.ClientReady, async () => {
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
     try {
+        console.log('⏳ Registrando comandos globais...');
         await rest.put(
             Routes.applicationCommands(client.user.id),
             { body: commands },
         );
+        console.log('✅ Comandos registrados com sucesso!');
     } catch (error) {
-        // Silencioso se der erro no registro
+        console.error('❌ Erro ao registrar comandos:', error);
     }
 });
 
 // Interaction Create (Router para o Painel)
 client.on(Events.InteractionCreate, async (interaction) => {
+    console.log(`[Interaction] Tipo: ${interaction.type} | Usuário: ${interaction.user.tag} | ID: ${interaction.customId || interaction.commandName}`);
     try {
         if (interaction.isChatInputCommand()) {
             if (interaction.commandName === 'painel') {
@@ -375,19 +373,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
     } catch (error) {
         logger.error(`Erro na interação: ${error.message}`);
-
-        // Tentar avisar o usuário se algo deu muito errado e a interação ainda for válida
         try {
             if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
                 await interaction.reply({
                     content: '❌ Ocorreu um erro interno ao processar esta ação.',
-                    flags: [MessageFlags.Ephemeral]
+                    flags: 64
                 });
             }
-        } catch (e) {
-            // Ignora erro ao tentar avisar
-        }
+        } catch (e) { }
     }
 });
 
+console.log('🤖 Tentando conectar ao Discord Gateway...');
 client.login(process.env.DISCORD_TOKEN);

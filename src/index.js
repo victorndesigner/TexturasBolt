@@ -1,15 +1,12 @@
-const client = require('./discord/client');
-const connectDB = require('./database/connect');
 const logger = require('./utils/logger');
-require('dotenv').config();
+require('dotenv').config({ quiet: true }); // Carrega uma única vez e sem poluir o log
 
 const { REST, Routes, SlashCommandBuilder, Events, MessageFlags } = require('discord.js');
 const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const Key = require('./database/models/Key');
-const Texture = require('./database/models/Texture');
-const Version = require('./database/models/Version');
+
+// Carregar Client e Banco DEPOIS do dotenv
+const client = require('./discord/client');
+const connectDB = require('./database/connect');
 
 const app = express();
 
@@ -358,7 +355,11 @@ client.once(Events.ClientReady, async () => {
 
 // Interaction Create (Router para o Painel)
 client.on(Events.InteractionCreate, async (interaction) => {
-    console.log(`[Interaction] Tipo: ${interaction.type} | Usuário: ${interaction.user.tag} | ID: ${interaction.customId || interaction.commandName}`);
+    // Log apenas de comandos principais para não poluir
+    if (interaction.isChatInputCommand()) {
+        console.log(`[Interaction] Comando: /${interaction.commandName} | Usuário: ${interaction.user.tag}`);
+    }
+
     try {
         if (interaction.isChatInputCommand()) {
             if (interaction.commandName === 'painel') {
@@ -375,14 +376,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
         logger.error(`Erro na interação: ${error.message}`);
         try {
             if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
-                await interaction.reply({
-                    content: '❌ Ocorreu um erro interno ao processar esta ação.',
-                    flags: 64
-                });
+                await interaction.reply({ content: '❌ Erro interno ao processar ação.', flags: 64 });
             }
         } catch (e) { }
     }
 });
 
 console.log('🤖 Tentando conectar ao Discord Gateway...');
-client.login(process.env.DISCORD_TOKEN);
+client.login(process.env.DISCORD_TOKEN).catch(err => {
+    console.error('\n❌ ERRO CRÍTICO NO LOGIN DO DISCORD:');
+    console.error(`> Motivo: ${err.message}`);
+    console.error('> Verifique se o DISCORD_TOKEN na aba Environment do Render está configurado corretamente.\n');
+});

@@ -253,10 +253,10 @@ app.post('/api/validate', async (req, res) => {
                 let isMember = false;
                 const guild = client.guilds.cache.get(config.requiredServerId);
 
-                // Se tiver ID vinculado, checa se está no servidor
-                if (userData && userData.discordId && guild) {
+                const discordIdToCheck = (userData?.discordId) || keyData.generatedBy;
+                if (discordIdToCheck && guild) {
                     try {
-                        await guild.members.fetch(userData.discordId);
+                        await guild.members.fetch(discordIdToCheck);
                         isMember = true;
                     } catch (memberErr) {
                         isMember = false;

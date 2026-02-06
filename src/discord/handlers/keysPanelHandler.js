@@ -16,7 +16,7 @@ async function setupKeysPanel(interaction) {
         components: [
             {
                 type: 17, // CONTAINER
-                accent_color: 0x5865F2, // Blurple
+                accent_color: 0xc773ff, // BOT_COLOR
                 components: [
                     {
                         type: 9, // SECTION
@@ -50,7 +50,16 @@ async function setupKeysPanel(interaction) {
 
     try {
         await interaction.client.rest.post(Routes.channelMessages(interaction.channelId), { body: messagePayload });
-        return interaction.reply({ content: '✅ Painel criado no layout V2.', flags: 64 });
+        const confirmContainer = {
+            type: 17,
+            accent_color: 0xc773ff,
+            components: [{
+                type: 9,
+                components: [{ type: 10, content: `## ✅ Painel de Key criado.\n> O painel foi configurado neste canal com sucesso.` }],
+                accessory: { type: 11, media: { url: guildIcon } }
+            }]
+        };
+        return interaction.reply({ components: [confirmContainer], flags: 64 | MessageFlags.IsComponentsV2 });
     } catch (err) {
         console.error('Erro ao enviar V2:', err);
         return interaction.reply({ content: '❌ Erro ao criar painel. Verifique permissões ou suporte a V2.', flags: 64 });
@@ -59,7 +68,7 @@ async function setupKeysPanel(interaction) {
 
 // Handler Botão Gerar Key
 async function handleKeyGeneration(interaction) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
 
     // Verificação Mobile
     const presence = interaction.member?.presence;

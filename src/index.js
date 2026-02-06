@@ -54,13 +54,18 @@ app.post(['/api/download/start', '/download/start'], async (req, res) => {
 
     const clientIp = getClientIp(req);
 
+    // SEGURANÇA: Limpa qualquer outra sessão pendente deste HWID para garantir que cada download seja único
+    for (const k of pendingDownloads.keys()) {
+        if (k.startsWith(`${hwid}_`)) pendingDownloads.delete(k);
+    }
+
     // Salva na memória que este HWID (e IP) está autorizado
     pendingDownloads.set(`${hwid}_${textureId}`, {
         status: 'pending',
         timestamp: Date.now(),
         ip: clientIp
     });
-    console.log(`[API] Download iniciado. HWID: ${hwid} | IP: ${clientIp} | Tex: ${textureId}`);
+    console.log(`[API] Nova sessão iniciada. HWID: ${hwid} | IP: ${clientIp}`);
     res.json({ success: true });
 });
 
@@ -76,12 +81,14 @@ app.get(['/api/download/confirm', '/download/confirm'], async (req, res) => {
         const key = `${hwid}_${textureId}`;
         const entry = pendingDownloads.get(key);
 
-        // Atualiza ou cria (fallback forçado)
-        pendingDownloads.set(key, {
-            status: 'ready',
-            timestamp: Date.now(),
-            ip: entry?.ip || clientIp
-        });
+        if (!entry) {
+            return res.status(410).json({ error: 'Sessão expirada ou já utilizada. Reinicie o download no App.' });
+        }
+
+        entry.status = 'ready';
+        entry.timestamp = Date.now();
+        pendingDownloads.set(key, entry);
+
         console.log(`[API] Download CONFIRMADO (Via Params) para ${key}`);
         return res.json({ success: true, method: 'params' });
     }
@@ -118,9 +125,10 @@ app.get(['/api/download/status', '/download/status'], async (req, res) => {
     const data = pendingDownloads.get(key);
 
     if (data?.status === 'ready') {
-        // NÃO deleta imediatamente, espera o App baixar de fato ou deleta no timeout
-        // Se deletar agora, o próximo poll pode falhar se houver delay
-        // Vamos manter como ready
+        // CONSUMO ÚNICO: Deletamos a autorização assim que o App a consome.
+        // Isso impede reuso por F5 ou por novas texturas.
+        pendingDownloads.delete(key);
+        console.log(`[API] Download liberado e sessão encerrada para ${key}`);
         return res.json({ status: 'ready' });
     }
 

@@ -224,7 +224,7 @@ module.exports = async (interaction) => {
 
                     const keysChannelInput = new TextInputBuilder()
                         .setCustomId('keys_channel_url')
-                        .setLabel('Link canal painel /keys (Pegar Key)')
+                        .setLabel('Link canal painel (Pegar Key)')
                         .setPlaceholder('https://discord.com/channels/ID_SERVIDOR/ID_CANAL')
                         .setValue(config?.keysChannelUrl || '')
                         .setStyle(TextInputStyle.Short)

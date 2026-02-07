@@ -91,26 +91,22 @@ async function handleKeyGeneration(interaction) {
 
     const config = await Version.findOne({ id: 'global' });
     let shortenerBase = (config?.keyShortener || '').trim() || 'https://referrer.bolttexturas.site';
-    // Redeem está em referrer.bolttexturas.site (KeysSite no GitHub)
-    const targetUrl = `https://referrer.bolttexturas.site/redeem.html?token=${token}`;
+    // Site de keys (index recebe token e chama redeem-key; destino deve ser o index)
+    const keysSiteUrl = 'https://referrer.bolttexturas.site';
 
     let finalUrl;
-    let useShortener = false;
     if (shortenerBase.includes('url=')) {
-        // Encurtador com suporte a URL dinâmica: destino = redeem com token
-        finalUrl = `${shortenerBase}${encodeURIComponent(targetUrl)}`;
-        useShortener = true;
-    } else if (shortenerBase.includes('referrer.bolttexturas.site')) {
-        // Shortener é o próprio site de keys: link direto para redeem
-        finalUrl = targetUrl;
+        // Encurtador com url=: destino completo inclui token. Usuário passa pelo encurtador E token chega.
+        const targetWithToken = `${keysSiteUrl}/?token=${token}`;
+        finalUrl = `${shortenerBase}${encodeURIComponent(targetWithToken)}`;
     } else {
-        // Encurtadores fixos (ex: sannerurl) geralmente NÃO repassam ?token= no redirect.
-        // Usar link direto para garantir que discordId/userTag seja vinculado.
-        finalUrl = targetUrl;
+        // Encurtador padrão: shortener?token=XXX. Usuário passa pelo encurtador.
+        finalUrl = shortenerBase;
+        if (finalUrl.includes('?')) finalUrl += `&token=${token}`;
+        else finalUrl += `?token=${token}`;
     }
 
     const guildIcon = interaction.guild.iconURL({ extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
-    const btnLabel = useShortener ? 'Acessar Encurtador' : 'Pegar Key';
 
     // Resposta V2 Limpa (Sem token visível) - ícone do servidor como no painel principal
     const responseContainer = {
@@ -137,7 +133,7 @@ async function handleKeyGeneration(interaction) {
                     {
                         type: 2, // BUTTON
                         style: 5, // LINK
-                        label: btnLabel,
+                        label: 'Acessar Encurtador',
                         url: finalUrl
                     }
                 ]

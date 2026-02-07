@@ -195,7 +195,8 @@ app.post('/api/redeem-key', async (req, res) => {
             generatedBy: request.userId,
             generatedByTag: request.userTag || null,
             createdAt: new Date(),
-            expiresToUseAt: expiresToUseAt
+            expiresToUseAt: expiresToUseAt,
+            permissions: { type: 'standard', value: null } // Keys do bot devem ser 'standard', não 'all'
         });
 
 
@@ -276,9 +277,10 @@ app.post('/api/validate', async (req, res) => {
 
                 if (!isMember) {
                     const guild = client.guilds.cache.get(guildId);
+                    const serverName = guild ? guild.name : 'Servidor Oficial';
                     return res.status(403).json({
-                        error: 'SERVER_REQUIRED',
-                        serverName: guild ? guild.name : 'Servidor Oficial',
+                        error: `Você precisa estar no servidor ${serverName} para usar!`,
+                        serverName: serverName,
                         inviteUrl: config.requiredServerInvite || ''
                     });
                 }
@@ -560,6 +562,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             }
         }
 
+        // Botões e interações de componentes (processados apenas uma vez)
         if (interaction.isButton() && interaction.customId === 'public_gen_key') {
             const { handleKeyGeneration } = require('./discord/handlers/keysPanelHandler');
             return await handleKeyGeneration(interaction);

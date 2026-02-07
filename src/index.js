@@ -14,6 +14,9 @@ const User = require('./database/models/User');
 // Carregar Client e Banco DEPOIS do dotenv
 const client = require('./discord/client');
 const connectDB = require('./database/connect');
+const painelHandler = require('./discord/handlers/painelHandler');
+const interactionHandler = require('./discord/handlers/interactionHandler');
+const keysPanelHandler = require('./discord/handlers/keysPanelHandler');
 
 const app = express();
 
@@ -24,8 +27,7 @@ mongoose.set('bufferCommands', false);
 // Conectar ao Banco e pré-aquecer cache (evita Unknown interaction em cold start)
 connectDB().then(async () => {
     try {
-        const { warmVersionCache } = require('./discord/handlers/interactionHandler');
-        await warmVersionCache();
+        await interactionHandler.warmVersionCache();
         console.log('📦 Cache Version pré-aquecido.');
     } catch (_) {}
 }).catch(() => {});
@@ -289,7 +291,7 @@ app.post('/api/validate', async (req, res) => {
                     }
 
                     return res.status(403).json({
-                        error: `Você precisa estar no servidor ${serverName} acessar!`,
+                        error: 'SERVER_REQUIRED',
                         serverName: serverName,
                         inviteUrl: config.requiredServerInvite || ''
                     });
@@ -561,7 +563,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     try {
         if (interaction.isChatInputCommand()) {
             if (interaction.commandName === 'painel') {
-                const painelHandler = require('./discord/handlers/painelHandler');
                 return await painelHandler(interaction);
             }
             if (interaction.commandName === 'keys' || interaction.commandName === 'setup_keys') {
@@ -571,19 +572,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
                     return interaction.reply({ content: '⏳ Aguarde alguns segundos antes de usar novamente.', flags: 64 });
                 }
                 keysCommandCooldown.set(uid, now);
-                const { setupKeysPanel } = require('./discord/handlers/keysPanelHandler');
-                return await setupKeysPanel(interaction);
+                return await keysPanelHandler.setupKeysPanel(interaction);
             }
         }
 
         // Botões e interações de componentes (processados apenas uma vez)
         if (interaction.isButton() && interaction.customId === 'public_gen_key') {
-            const { handleKeyGeneration } = require('./discord/handlers/keysPanelHandler');
-            return await handleKeyGeneration(interaction);
+            return await keysPanelHandler.handleKeyGeneration(interaction);
         }
 
         if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) {
-            const interactionHandler = require('./discord/handlers/interactionHandler');
             return await interactionHandler(interaction);
         }
     } catch (error) {

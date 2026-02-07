@@ -276,26 +276,20 @@ app.post('/api/validate', async (req, res) => {
                 }
 
                 if (!isMember) {
-                    let serverName = 'Servidor Oficial';
-                    
-                    // Tentar obter nome do servidor se o bot estiver nele
+                    let serverName = (config.requiredServerName || '').trim() || 'Servidor Oficial';
+
+                    // Se o bot estiver no servidor, conseguimos pegar o nome real
                     try {
-                        const guild = client.guilds.cache.get(guildId);
-                        if (guild) {
-                            serverName = guild.name;
-                        } else {
-                            // Se o bot não estiver no servidor, tentar buscar via API
-                            const guildData = await client.fetchGuild(guildId).catch(() => null);
-                            if (guildData) {
-                                serverName = guildData.name;
-                            }
+                        const cachedGuild = client.guilds.cache.get(guildId);
+                        if (cachedGuild) {
+                            serverName = cachedGuild.name;
                         }
                     } catch (err) {
-                        console.log(`[SERVER_CHECK] Não foi possível obter nome do servidor ${guildId}:`, err.message);
+                        console.log(`[SERVER_CHECK] Não foi possível ler cache do servidor ${guildId}:`, err.message);
                     }
-                    
+
                     return res.status(403).json({
-                        error: `Você precisa estar no servidor ${serverName} para usar!`,
+                        error: `Você precisa estar no servidor ${serverName} acessar!`,
                         serverName: serverName,
                         inviteUrl: config.requiredServerInvite || ''
                     });
@@ -545,11 +539,6 @@ const KEYS_COOLDOWN_MS = 5000;
 
 // Interaction Create (Router para o Painel)
 client.on(Events.InteractionCreate, async (interaction) => {
-    // Log apenas de comandos principais para não poluir
-    if (interaction.isChatInputCommand()) {
-        console.log(`[Interaction] Comando: /${interaction.commandName} | Usuário: ${interaction.user.tag}`);
-    }
-
     const iid = interaction.id;
     if (processedInteractions.has(iid)) {
         return; // Já processado (duplicata)
@@ -558,6 +547,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (processedInteractions.size > PROCESSED_MAX || Date.now() - lastCleanup > PROCESSED_TTL) {
         processedInteractions.clear();
         lastCleanup = Date.now();
+    }
+
+    // Log apenas de comandos principais para não poluir (após dedupe)
+    if (interaction.isChatInputCommand()) {
+        console.log(`[Interaction] Comando: /${interaction.commandName} | Usuário: ${interaction.user.tag}`);
     }
 
     try {

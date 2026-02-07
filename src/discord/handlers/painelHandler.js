@@ -5,10 +5,17 @@ const { MessageFlags } = require('discord.js');
 module.exports = async (interaction) => {
     // --- VERIFICAÇÃO DE PERMISSÃO ---
     if (!interaction.member?.permissions.has('Administrator')) {
-        return interaction.reply({
-            content: '❌ **Acesso Negado.** Apenas administradores podem acessar o Painel de Controle.',
-            flags: 64
-        });
+        const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+        const noPermissionContainer = {
+            type: 17,
+            accent_color: 0xff0000,
+            components: [{
+                type: 9,
+                components: [{ type: 10, content: `## 🚫 ACESSO NEGADO\n> Apenas administradores podem acessar o Painel de Controle.\n> -# Se você precisa de acesso, contate o dono do servidor.` }],
+                accessory: { type: 11, media: { url: serverIcon } }
+            }]
+        };
+        return interaction.reply({ components: [noPermissionContainer], flags: 64 | MessageFlags.IsComponentsV2 });
     }
 
     // --- VERIFICAÇÃO DE CONEXÃO COM O BANCO ---

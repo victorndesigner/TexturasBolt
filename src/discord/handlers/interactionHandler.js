@@ -20,10 +20,23 @@ function invalidateVersionCache(newData) {
     _versionCache = newData ? { data: newData, ts: Date.now() } : { data: null, ts: 0 };
 }
 
+ // Dedupe de componentes: evita processar cliques duplicados (Discord às vezes reenvia)
+ const _recentComponentActions = new Map();
+ const COMPONENT_DEDUPE_MS = 2500;
+ function componentFingerprint(interaction) {
+     const type = interaction.type;
+     const cid = interaction.customId || '';
+     const mid = interaction.message?.id || '';
+     const uid = interaction.user?.id || '';
+     const vals = Array.isArray(interaction.values) ? interaction.values.join(',') : '';
+     return `${type}:${cid}:${mid}:${uid}:${vals}`;
+ }
+
 async function interactionHandler(interaction) {
-    // --- VERIFICAÇÃO DE PERMISSÕES (APENAS DONO) ---
+    // --- VERIFICAÇÃO DE PERMISSÕES (APENAS DONO/ADM) ---
     const OWNER_ID = '971163830887514132'; // ID do dono bolttexturas
-    if (!interaction.member.permissions.has('Administrator') && interaction.user.id !== OWNER_ID) {
+    const isAdmin = !!interaction.member?.permissions?.has?.('Administrator');
+    if (!isAdmin && interaction.user?.id !== OWNER_ID) {
         const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
         const noPermissionContainer = {
             type: 17,
@@ -46,6 +59,23 @@ async function interactionHandler(interaction) {
             }
         }
         return;
+    }
+
+    // --- DEDUPE DE COMPONENTES (evita double-ack / unknown interaction por duplicata) ---
+    if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) {
+        const fp = componentFingerprint(interaction);
+        const last = _recentComponentActions.get(fp) || 0;
+        const now = Date.now();
+        if (now - last < COMPONENT_DEDUPE_MS) {
+            return;
+        }
+        _recentComponentActions.set(fp, now);
+        // limpeza leve
+        if (_recentComponentActions.size > 1500) {
+            for (const [k, ts] of _recentComponentActions.entries()) {
+                if (now - ts > COMPONENT_DEDUPE_MS) _recentComponentActions.delete(k);
+            }
+        }
     }
 
     // DEFER IMEDIATO (evita Unknown interaction em cold start / latência)
@@ -251,6 +281,14 @@ async function interactionHandler(interaction) {
                         .setStyle(TextInputStyle.Short)
                         .setRequired(false);
 
+                    const serverNameInput = new TextInputBuilder()
+                        .setCustomId('server_name')
+                        .setLabel('Nome do Servidor (para mensagem)')
+                        .setPlaceholder('Ex: Bolt Texturas Oficial')
+                        .setValue(config?.requiredServerName || '')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false);
+
                     const keysChannelInput = new TextInputBuilder()
                         .setCustomId('keys_channel_url')
                         .setLabel('Link canal painel (Pegar Key)')
@@ -261,6 +299,7 @@ async function interactionHandler(interaction) {
 
                     modal.addComponents(
                         new ActionRowBuilder().addComponents(serverIdInput),
+                        new ActionRowBuilder().addComponents(serverNameInput),
                         new ActionRowBuilder().addComponents(inviteInput),
                         new ActionRowBuilder().addComponents(keysChannelInput)
                     );
@@ -873,11 +912,13 @@ async function interactionHandler(interaction) {
 
             if (interaction.customId === 'modal_time') {
                 const newTime = interaction.fields.getTextInputValue('time_input');
+                const serverName = interaction.fields.getTextInputValue('server_name');
                 const data = await Version.findOneAndUpdate({ id: 'global' }, { defaultAccessTime: newTime }, { upsert: true, new: true });
                 invalidateVersionCache(data);
 
                 const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName);
-                return await interaction.editReply({ ...panel, flags: 32768 });
+                return await interaction.editR,
+                    requiredServerName: serverNameeply({ ...panel, flags: 32768 });
             }
 
             if (interaction.customId === 'modal_server_config') {

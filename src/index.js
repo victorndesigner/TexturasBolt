@@ -186,7 +186,8 @@ app.post('/api/redeem-key', async (req, res) => {
         const newKey = await Key.create({
             key: newKeyCode,
             duration: duration,
-            generatedBy: request.userId, // VINCULAÇÃO IMPORTANTE
+            generatedBy: request.userId,
+            generatedByTag: request.userTag || null,
             createdAt: new Date(),
             expiresToUseAt: expiresToUseAt
         });
@@ -224,21 +225,21 @@ app.post('/api/validate', async (req, res) => {
         // --- VINCULAÇÃO/ATUALIZAÇÃO DE USUÁRIO (Multi-Conta Support) ---
         if (keyData.generatedBy) {
             try {
-                // Se user não existe, cria agora para garantir vinculo antes do check
+                const resolvedTag = keyData.generatedByTag || (await client.users.fetch(keyData.generatedBy).catch(() => null))?.tag || null;
                 if (!userData) {
-                    const userObj = await client.users.fetch(keyData.generatedBy).catch(() => null);
                     userData = new User({
                         hwid,
                         discordId: keyData.generatedBy,
-                        discordTag: userObj ? userObj.tag : 'Unknown',
+                        discordTag: resolvedTag || 'Unknown',
                         lastIp: req.headers['x-forwarded-for'] || req.socket.remoteAddress
                     });
                     await userData.save();
                 } else if (userData.discordId !== keyData.generatedBy) {
-                    // ATUALIZA SE A KEY PERTENCE A OUTRO DISCORD (Troca de conta no mesmo PC)
-                    const userObj = await client.users.fetch(keyData.generatedBy).catch(() => null);
                     userData.discordId = keyData.generatedBy;
-                    userData.discordTag = userObj ? userObj.tag : 'Unknown';
+                    userData.discordTag = resolvedTag || userData.discordTag || 'Unknown';
+                    await userData.save();
+                } else if (!userData.discordTag && resolvedTag) {
+                    userData.discordTag = resolvedTag;
                     await userData.save();
                 }
             } catch (updateErr) {
@@ -298,21 +299,22 @@ app.post('/api/validate', async (req, res) => {
 
             // --- ATUALIZAÇÃO DE USUÁRIO (Keys já usadas) ---
             if (!userData) {
+                const tag = keyData.generatedByTag || (keyData.generatedBy && (await client.users.fetch(keyData.generatedBy).catch(() => null))?.tag) || null;
                 userData = await User.create({
                     hwid,
-                    discordId: keyData.generatedBy,
-                    discordTag: keyData.generatedByTag,
+                    discordId: keyData.generatedBy || null,
+                    discordTag: tag || null,
                     lastIp: clientIp,
                     lastKeyUsed: key,
                     totalInstalls: 0
                 });
-                console.log(`\n🚀 [NOVO USUÁRIO]\nHWID: ${hwid}\nIP: ${clientIp}\nDiscord: ${userData.discordTag || 'Não vinculado'}\n`);
+                console.log(`\n🚀 [NOVO USUÁRIO]\nHWID: ${hwid}\nIP: ${clientIp}\nDiscord: ${userData.discordTag || userData.discordId || 'Não vinculado'}\n`);
             } else {
                 userData.lastIp = clientIp;
                 userData.lastKeyUsed = key;
                 if (!userData.discordId && keyData.generatedBy) {
                     userData.discordId = keyData.generatedBy;
-                    userData.discordTag = keyData.generatedByTag;
+                    userData.discordTag = keyData.generatedByTag || (await client.users.fetch(keyData.generatedBy).catch(() => null))?.tag || null;
                 }
                 userData.updatedAt = new Date();
                 await userData.save();
@@ -337,21 +339,22 @@ app.post('/api/validate', async (req, res) => {
 
         // --- ATUALIZAÇÃO / CRIAÇÃO DE USUÁRIO (Primeiro uso) ---
         if (!userData) {
+            const tag = keyData.generatedByTag || (keyData.generatedBy && (await client.users.fetch(keyData.generatedBy).catch(() => null))?.tag) || null;
             userData = await User.create({
                 hwid,
-                discordId: keyData.generatedBy,
-                discordTag: keyData.generatedByTag,
+                discordId: keyData.generatedBy || null,
+                discordTag: tag || null,
                 lastIp: clientIp,
                 lastKeyUsed: key,
                 totalInstalls: 0
             });
-            console.log(`\n🚀 [NOVO USUÁRIO]\nHWID: ${hwid}\nIP: ${clientIp}\nDiscord: ${userData.discordTag || 'Não vinculado'}\n`);
+            console.log(`\n🚀 [NOVO USUÁRIO]\nHWID: ${hwid}\nIP: ${clientIp}\nDiscord: ${userData.discordTag || userData.discordId || 'Não vinculado'}\n`);
         } else {
             userData.lastIp = clientIp;
             userData.lastKeyUsed = key;
             if (!userData.discordId && keyData.generatedBy) {
                 userData.discordId = keyData.generatedBy;
-                userData.discordTag = keyData.generatedByTag;
+                userData.discordTag = keyData.generatedByTag || (await client.users.fetch(keyData.generatedBy).catch(() => null))?.tag || null;
             }
             userData.updatedAt = new Date();
             await userData.save();

@@ -9,6 +9,8 @@ const VersionSchema = new mongoose.Schema({
     targetFolderName: { type: String, default: 'StumbleCups' },
     removeUrlPart1: { type: String, default: '' },
     removeUrlPart2: { type: String, default: '' },
+    stumbleGuysVersion: { type: String, default: '1.0' },
+    stumbleCupsVersion: { type: String, default: '1.0' },
     profileImage: { type: String, default: 'https://i.imgur.com/YahM0Nf.png' },
     requiredServerId: { type: String, default: '' },
     requiredServerName: { type: String, default: '' },

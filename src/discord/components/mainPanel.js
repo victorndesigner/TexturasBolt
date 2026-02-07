@@ -1,4 +1,4 @@
-const createMainPanel = (guild, version = '1.0', keyShortener = 'Não definido', accessTime = '4h', useDeadline = '24h', targetFolderName = 'StumbleCups') => {
+const createMainPanel = (guild, version = '1.0', keyShortener = 'Não definido', accessTime = '4h', useDeadline = '24h', targetFolderName = 'StumbleCups', sgVersion = '1.0', scVersion = '1.0') => {
     const serverIcon = guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
 
     // Construção do Container Principal (Estilo V2 Nativo)
@@ -31,7 +31,7 @@ const createMainPanel = (guild, version = '1.0', keyShortener = 'Não definido',
             // Informações (Text Display direto no container, pois Section exige accessory)
             {
                 type: 10,
-                content: `> **Servidor:** ${guild.name}\n> **Versão Atual:** \`${version}\`\n> **Encurtador Key:** \`${keyShortener}\`\n> **Pasta Alvo:** \`${targetFolderName}\`\n> **Tempo de Acesso:** \`${accessTime}\`\n> **Prazo de Uso:** \`${useDeadline}\`\n> -# Selecione uma categoria abaixo para iniciar o gerenciamento.`
+                content: `> **Servidor:** ${guild.name}\n> **Versão Atual:** \`${version}\`\n> **Versão SG/Reviver:** \`${sgVersion}\` | **Versão Cups:** \`${scVersion}\`\n> **Encurtador Key:** \`${keyShortener}\`\n> **Pasta Alvo:** \`${targetFolderName}\`\n> **Tempo de Acesso:** \`${accessTime}\`\n> **Prazo de Uso:** \`${useDeadline}\`\n> -# Selecione uma categoria abaixo para iniciar o gerenciamento.`
             },
             { type: 14 }, // SEPARATOR
             // Menu de Seleção (Action Row = Type 1)
@@ -43,7 +43,8 @@ const createMainPanel = (guild, version = '1.0', keyShortener = 'Não definido',
                         custom_id: 'main_select',
                         placeholder: 'Selecione uma categoria...',
                         options: [
-                            { label: 'Versão', description: 'Alterar versão do sistema', value: 'manage_version', emoji: { name: '🚀' } },
+                            { label: 'Versão App', description: 'Alterar versão do aplicativo', value: 'manage_version', emoji: { name: '🚀' } },
+                            { label: 'Versão Texturas', description: 'Alterar versão das categorias', value: 'manage_textures_version', emoji: { name: '🏷️' } },
                             { label: 'Tempo', description: 'Tempo de acesso do App', value: 'manage_time', emoji: { name: '⏳' } },
                             { label: 'Prazo Uso', description: 'Tempo para usar a key', value: 'manage_use_deadline', emoji: { name: '⌛' } },
                             { label: 'Gerar Key', description: 'Criar nova key de acesso', value: 'generate_key', emoji: { name: '🔑' } },

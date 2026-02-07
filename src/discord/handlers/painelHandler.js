@@ -34,7 +34,7 @@ module.exports = async (interaction) => {
             versionData = await Version.create({ id: 'global', version: '1.0' });
         }
 
-        const panel = createMainPanel(interaction.guild, versionData.version, versionData.keyShortener, versionData.defaultAccessTime, versionData.keyUseDeadline);
+        const panel = createMainPanel(interaction.guild, versionData.version, versionData.keyShortener, versionData.defaultAccessTime, versionData.keyUseDeadline, versionData.targetFolderName, versionData.stumbleGuysVersion, versionData.stumbleCupsVersion);
 
         // Painel PRINCIPAL deve ser comum (não efêmero) com flag de Components V2 (32768)
         await interaction.reply({ ...panel, flags: 32768 });

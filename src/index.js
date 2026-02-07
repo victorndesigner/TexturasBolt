@@ -407,6 +407,8 @@ app.post('/api/textures', async (req, res) => {
             return res.json({
                 keyShortener: config?.keyShortener,
                 version: config?.version || '1.0',
+                stumbleGuysVersion: config?.stumbleGuysVersion || '1.0',
+                stumbleCupsVersion: config?.stumbleCupsVersion || '1.0',
                 keysChannelUrl: config?.keysChannelUrl // Novo campo para o botão do App
             });
         }
@@ -434,6 +436,8 @@ app.post('/api/textures', async (req, res) => {
             textures,
             permissions,
             version: config?.version || '1.0',
+            stumbleGuysVersion: config?.stumbleGuysVersion || '1.0',
+            stumbleCupsVersion: config?.stumbleCupsVersion || '1.0',
             keyShortener: config?.keyShortener,
             profileImage: config?.profileImage || 'https://i.imgur.com/YahM0Nf.png',
             targetFolderName: config?.targetFolderName || 'StumbleCups',

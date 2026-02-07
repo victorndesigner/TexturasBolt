@@ -50,6 +50,12 @@ const createTexturePanel = (guild, textures = []) => {
                 components: [
                     {
                         type: 2,
+                        style: 3, // Green
+                        label: 'Atualização',
+                        custom_id: 'update_textures_btn',
+                    },
+                    {
+                        type: 2,
                         style: 2,
                         label: 'Criar',
                         custom_id: 'create_texture',

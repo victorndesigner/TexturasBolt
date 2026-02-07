@@ -9,6 +9,8 @@ const TextureSchema = new mongoose.Schema({
     shortenerUrl: { type: String, default: '' },
     removeUrlPart1: { type: String, default: '' },
     removeUrlPart2: { type: String, default: '' },
+    version: { type: String, default: '1.0' },
+    isUpdated: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now }
 });
 

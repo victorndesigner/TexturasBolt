@@ -147,6 +147,35 @@ async function interactionHandler(interaction) {
                     return await interaction.showModal(modal);
                 }
 
+                if (value === 'manage_textures_version') {
+                    const config = await getVersionCached();
+                    const modal = new ModalBuilder()
+                        .setCustomId('modal_textures_version')
+                        .setTitle('Versão das Texturas');
+
+                    const sgVersionInput = new TextInputBuilder()
+                        .setCustomId('sg_version_input')
+                        .setLabel('Versão StumbleGuys/Reviver')
+                        .setPlaceholder('Ex: 1.5')
+                        .setValue(config?.stumbleGuysVersion || '1.0')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true);
+
+                    const scVersionInput = new TextInputBuilder()
+                        .setCustomId('sc_version_input')
+                        .setLabel('Versão Stumble Cups')
+                        .setPlaceholder('Ex: 1.2')
+                        .setValue(config?.stumbleCupsVersion || '1.0')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true);
+
+                    modal.addComponents(
+                        new ActionRowBuilder().addComponents(sgVersionInput),
+                        new ActionRowBuilder().addComponents(scVersionInput)
+                    );
+                    return await interaction.showModal(modal);
+                }
+
                 if (value === 'manage_shortener') {
                     const modal = new ModalBuilder()
                         .setCustomId('modal_shortener')
@@ -486,7 +515,10 @@ async function interactionHandler(interaction) {
                     components: [
                         {
                             type: 9,
-                            components: [{ type: 10, content: `## ⚙️ GERENCIAR: ${texture.name}\n> **Categoria:** \`${texture.category}\`\n> **Status:** \`Cadastrada\`\n\nEscolha o que deseja configurar abaixo:` }],
+                            components: [{ 
+                                type: 10, 
+                                content: `## ⚙️ GERENCIAR: ${texture.name}\n> **Categoria:** \`${texture.category}\`\n> **Versão:** \`${texture.version || '1.0'}\`\n> **Status:** ${texture.isUpdated ? '✅ Atualizada' : '❌ Desatualizada'}\n\nEscolha o que deseja configurar abaixo:` 
+                            }],
                             accessory: { type: 11, media: { url: texture.profileImage || serverIcon } }
                         },
                         {
@@ -494,6 +526,12 @@ async function interactionHandler(interaction) {
                             components: [
                                 { type: 2, style: 2, label: 'Editar', custom_id: `manage_edit_data_${textureId}` },
                                 { type: 2, style: 2, label: 'Links', custom_id: `manage_removal_${textureId}` },
+                                { 
+                                    type: 2, 
+                                    style: texture.isUpdated ? 4 : 3, 
+                                    label: texture.isUpdated ? 'Desatualizar' : 'Atualizar', 
+                                    custom_id: `toggle_texture_status_${textureId}` 
+                                },
                                 { type: 2, style: 2, label: 'Voltar', custom_id: 'manage_textures' }
                             ]
                         }
@@ -613,10 +651,82 @@ async function interactionHandler(interaction) {
                 );
                 return await interaction.showModal(modal);
             }
+            if (interaction.customId === 'update_textures_btn') {
+                const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                const container = {
+                    type: 17,
+                    accent_color: 0xc773ff,
+                    components: [
+                        {
+                            type: 9,
+                            components: [{ type: 10, content: `## 🔄 ATUALIZAÇÃO EM MASSA\n> Escolha uma opção para gerenciar o status de todas as texturas.` }],
+                            accessory: { type: 11, media: { url: serverIcon } }
+                        },
+                        {
+                            type: 1,
+                            components: [
+                                {
+                                    type: 3,
+                                    custom_id: 'bulk_update_select',
+                                    placeholder: 'Selecione uma ação...',
+                                    options: [
+                                        { label: 'Atualizar Tudo', description: 'Marca todas as texturas como atualizadas', value: 'update_all', emoji: { name: '✅' } },
+                                        { label: 'Desatualizar Tudo', description: 'Marca todas as texturas como desatualizadas', value: 'desat_all', emoji: { name: '❌' } },
+                                        { label: 'Desatualizar Categoria', description: 'Escolha uma ou mais categorias para desatualizar', value: 'desat_category', emoji: { name: '🏷️' } }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                };
+                return await interaction.reply({ components: [container], flags: 64 + 32768 });
+            }
+
+            if (interaction.customId.startsWith('toggle_texture_status_')) {
+                if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
+                const textureId = interaction.customId.replace('toggle_texture_status_', '');
+                const texture = await Texture.findById(textureId);
+                if (texture) {
+                    texture.isUpdated = !texture.isUpdated;
+                    await texture.save();
+                    
+                    const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                    const container = {
+                        type: 17,
+                        accent_color: 0xc773ff,
+                        components: [
+                            {
+                                type: 9,
+                                components: [{ 
+                                    type: 10, 
+                                    content: `## ⚙️ GERENCIAR: ${texture.name}\n> **Categoria:** \`${texture.category}\`\n> **Versão:** \`${texture.version || '1.0'}\`\n> **Status:** ${texture.isUpdated ? '✅ Atualizada' : '❌ Desatualizada'}\n\nEscolha o que deseja configurar abaixo:` 
+                                }],
+                                accessory: { type: 11, media: { url: texture.profileImage || serverIcon } }
+                            },
+                            {
+                                type: 1,
+                                components: [
+                                    { type: 2, style: 2, label: 'Editar', custom_id: `manage_edit_data_${textureId}` },
+                                    { type: 2, style: 2, label: 'Links', custom_id: `manage_removal_${textureId}` },
+                                    { 
+                                        type: 2, 
+                                        style: texture.isUpdated ? 4 : 3, 
+                                        label: texture.isUpdated ? 'Desatualizar' : 'Atualizar', 
+                                        custom_id: `toggle_texture_status_${textureId}` 
+                                    },
+                                    { type: 2, style: 2, label: 'Voltar', custom_id: 'manage_textures' }
+                                ]
+                            }
+                        ]
+                    };
+                    return await interaction.editReply({ components: [container], flags: 32768 });
+                }
+            }
+
             if (interaction.customId === 'update_panel' || interaction.customId === 'back_to_main') {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 let versionData = await Version.findOne({ id: 'global' });
-                const panel = createMainPanel(interaction.guild, versionData?.version || '1.0', versionData?.keyShortener, versionData?.defaultAccessTime, versionData?.keyUseDeadline, versionData?.targetFolderName);
+                const panel = createMainPanel(interaction.guild, versionData?.version || '1.0', versionData?.keyShortener, versionData?.defaultAccessTime, versionData?.keyUseDeadline, versionData?.targetFolderName, versionData?.stumbleGuysVersion, versionData?.stumbleCupsVersion);
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
@@ -648,7 +758,7 @@ async function interactionHandler(interaction) {
                     ]
                 };
 
-                const panel = createMainPanel(interaction.guild, versionData?.version || '1.0', versionData?.keyShortener, versionData?.defaultAccessTime, versionData?.keyUseDeadline, versionData?.targetFolderName);
+                const panel = createMainPanel(interaction.guild, versionData?.version || '1.0', versionData?.keyShortener, versionData?.defaultAccessTime, versionData?.keyUseDeadline, versionData?.targetFolderName, versionData?.stumbleGuysVersion, versionData?.stumbleCupsVersion);
                 await interaction.followUp({ components: [successContainer], flags: 32768 + 64 });
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
@@ -672,9 +782,9 @@ async function interactionHandler(interaction) {
                 modal.addComponents(
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texture_name').setLabel('Nome').setStyle(TextInputStyle.Short).setRequired(true)),
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texture_category').setLabel('Categoria (StumbleGuys, StumbleCups, Reviver)').setStyle(TextInputStyle.Short).setRequired(true)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texture_version').setLabel('Versão da Textura').setPlaceholder('Ex: 1.0').setStyle(TextInputStyle.Short).setRequired(true)),
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texture_p1').setLabel('Link Part 1 (Textura)').setStyle(TextInputStyle.Short).setRequired(true)),
-                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texture_p2').setLabel('Link Part 2 (Opcional - AppData)').setStyle(TextInputStyle.Short).setRequired(false)),
-                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texture_profile').setLabel('Link Foto de Perfil').setStyle(TextInputStyle.Short).setRequired(false))
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texture_p2').setLabel('Link Part 2 (Opcional - AppData)').setStyle(TextInputStyle.Short).setRequired(false))
                 );
                 return await interaction.showModal(modal);
             }
@@ -686,6 +796,7 @@ async function interactionHandler(interaction) {
                 modal.addComponents(
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_name').setLabel('Nome').setValue(texture.name).setStyle(TextInputStyle.Short)),
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_category').setLabel('Categoria').setValue(texture.category).setStyle(TextInputStyle.Short)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_version').setLabel('Versão Atual').setValue(texture.version || '1.0').setStyle(TextInputStyle.Short)),
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_shortener').setLabel('Link Encurtador (Opcional)').setValue(texture.shortenerUrl || '').setStyle(TextInputStyle.Short).setRequired(false)),
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_profile').setLabel('Foto Perfil').setValue(texture.profileImage).setStyle(TextInputStyle.Short))
                 );
@@ -881,6 +992,43 @@ async function interactionHandler(interaction) {
                 }
                 return await showCategoriesPanel(interaction);
             }
+
+            if (interaction.customId === 'bulk_update_select') {
+                const value = interaction.values[0];
+                if (value === 'update_all') {
+                    await Texture.updateMany({}, { isUpdated: true });
+                    return await interaction.update({ content: '✅ Todas as texturas foram marcadas como **Atualizadas**.', components: [], flags: 64 + 32768 });
+                }
+                if (value === 'desat_all') {
+                    await Texture.updateMany({}, { isUpdated: false });
+                    return await interaction.update({ content: '❌ Todas as texturas foram marcadas como **Desatualizadas**.', components: [], flags: 64 + 32768 });
+                }
+                if (value === 'desat_category') {
+                    const categories = await Texture.distinct('category');
+                    if (!categories.length) return await interaction.update({ content: 'Nenhuma categoria encontrada.', components: [], flags: 64 + 32768 });
+
+                    const container = {
+                        type: 1,
+                        components: [
+                            {
+                                type: 3,
+                                custom_id: 'bulk_desat_cat_select',
+                                placeholder: 'Escolha as categorias para desatualizar...',
+                                min_values: 1,
+                                max_values: categories.length,
+                                options: categories.map(cat => ({ label: cat, value: cat }))
+                            }
+                        ]
+                    };
+                    return await interaction.update({ content: 'Escolha quais categorias deseja marcar como **Desatualizadas**:', components: [container], flags: 64 + 32768 });
+                }
+            }
+
+            if (interaction.customId === 'bulk_desat_cat_select') {
+                const selected = interaction.values;
+                await Texture.updateMany({ category: { $in: selected } }, { isUpdated: false });
+                return await interaction.update({ content: `❌ Texturas das categorias **${selected.join(', ')}** foram marcadas como **Desatualizadas**.`, components: [], flags: 64 + 32768 });
+            }
         }
 
         // --- MODALS ---
@@ -892,12 +1040,25 @@ async function interactionHandler(interaction) {
                 if (err.code !== 40060 && err.code !== 10062) console.error('Erro ao deferir modal:', err);
             }
 
+            if (interaction.customId === 'modal_textures_version') {
+                const sgVersion = interaction.fields.getTextInputValue('sg_version_input');
+                const scVersion = interaction.fields.getTextInputValue('sc_version_input');
+                const data = await Version.findOneAndUpdate({ id: 'global' }, { 
+                    stumbleGuysVersion: sgVersion, 
+                    stumbleCupsVersion: scVersion 
+                }, { upsert: true, new: true });
+                invalidateVersionCache(data);
+
+                const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName, data.stumbleGuysVersion, data.stumbleCupsVersion);
+                return await interaction.editReply({ ...panel, flags: 32768 });
+            }
+
             if (interaction.customId === 'modal_version') {
                 const newVersion = interaction.fields.getTextInputValue('version_input');
                 const data = await Version.findOneAndUpdate({ id: 'global' }, { version: newVersion }, { upsert: true, new: true });
                 invalidateVersionCache(data);
 
-                const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName);
+                const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName, data.stumbleGuysVersion, data.stumbleCupsVersion);
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
@@ -906,7 +1067,7 @@ async function interactionHandler(interaction) {
                 const data = await Version.findOneAndUpdate({ id: 'global' }, { keyShortener: newShortener }, { upsert: true, new: true });
                 invalidateVersionCache(data);
 
-                const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName);
+                const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName, data.stumbleGuysVersion, data.stumbleCupsVersion);
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
@@ -915,7 +1076,7 @@ async function interactionHandler(interaction) {
                 const data = await Version.findOneAndUpdate({ id: 'global' }, { defaultAccessTime: newTime }, { upsert: true, new: true });
                 invalidateVersionCache(data);
 
-                const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName);
+                const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName, data.stumbleGuysVersion, data.stumbleCupsVersion);
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
@@ -933,7 +1094,7 @@ async function interactionHandler(interaction) {
                 }, { upsert: true, new: true });
                 invalidateVersionCache(data);
 
-                const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName);
+                const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName, data.stumbleGuysVersion, data.stumbleCupsVersion);
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
@@ -942,7 +1103,7 @@ async function interactionHandler(interaction) {
                 const data = await Version.findOneAndUpdate({ id: 'global' }, { keyUseDeadline: newDeadline }, { upsert: true, new: true });
                 invalidateVersionCache(data);
 
-                const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName);
+                const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName, data.stumbleGuysVersion, data.stumbleCupsVersion);
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
@@ -1002,7 +1163,7 @@ async function interactionHandler(interaction) {
                     ]
                 };
 
-                const panel = createMainPanel(interaction.guild, versionData?.version || '1.0', versionData?.keyShortener, versionData?.defaultAccessTime, versionData?.keyUseDeadline, versionData?.targetFolderName);
+                const panel = createMainPanel(interaction.guild, versionData?.version || '1.0', versionData?.keyShortener, versionData?.defaultAccessTime, versionData?.keyUseDeadline, versionData?.targetFolderName, versionData?.stumbleGuysVersion, versionData?.stumbleCupsVersion);
                 await interaction.followUp({ components: [successContainer], flags: 32768 + 64 });
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
@@ -1076,16 +1237,17 @@ async function interactionHandler(interaction) {
             if (interaction.customId === 'modal_create_texture') {
                 const name = interaction.fields.getTextInputValue('texture_name');
                 const category = interaction.fields.getTextInputValue('texture_category');
+                const version = interaction.fields.getTextInputValue('texture_version');
                 const p1 = interaction.fields.getTextInputValue('texture_p1');
                 const p2 = interaction.fields.getTextInputValue('texture_p2') || '';
-                const profile = interaction.fields.getTextInputValue('texture_profile');
 
                 await Texture.create({
                     name,
                     category,
+                    version,
                     downloadUrl: p1,
                     downloadUrlPart2: p2,
-                    profileImage: profile || undefined
+                    isUpdated: true
                 });
 
                 const textures = await Texture.find();
@@ -1098,6 +1260,7 @@ async function interactionHandler(interaction) {
                 await Texture.findByIdAndUpdate(textureId, {
                     name: interaction.fields.getTextInputValue('edit_name'),
                     category: interaction.fields.getTextInputValue('edit_category'),
+                    version: interaction.fields.getTextInputValue('edit_version'),
                     shortenerUrl: interaction.fields.getTextInputValue('edit_shortener') || undefined,
                     profileImage: interaction.fields.getTextInputValue('edit_profile')
                 });
@@ -1112,7 +1275,7 @@ async function interactionHandler(interaction) {
                 invalidateVersionCache();
 
                 let versionData = await Version.findOne({ id: 'global' });
-                const panel = createMainPanel(interaction.guild, versionData?.version, versionData?.keyShortener, versionData?.defaultAccessTime, versionData?.keyUseDeadline, versionData?.targetFolderName);
+                const panel = createMainPanel(interaction.guild, versionData?.version, versionData?.keyShortener, versionData?.defaultAccessTime, versionData?.keyUseDeadline, versionData?.targetFolderName, versionData?.stumbleGuysVersion, versionData?.stumbleCupsVersion);
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 

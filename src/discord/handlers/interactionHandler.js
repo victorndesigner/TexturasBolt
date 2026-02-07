@@ -524,14 +524,14 @@ async function interactionHandler(interaction) {
                         {
                             type: 1,
                             components: [
+                                { 
+                                type: 2, 
+                                style: texture.isUpdated ? 4 : 3, 
+                                label: texture.isUpdated ? 'Desatualizar' : 'Atualizar', 
+                                custom_id: `toggle_texture_status_${textureId}`
+                                },
                                 { type: 2, style: 2, label: 'Editar', custom_id: `manage_edit_data_${textureId}` },
                                 { type: 2, style: 2, label: 'Links', custom_id: `manage_removal_${textureId}` },
-                                { 
-                                    type: 2, 
-                                    style: texture.isUpdated ? 4 : 3, 
-                                    label: texture.isUpdated ? 'Desatualizar' : 'Atualizar', 
-                                    custom_id: `toggle_texture_status_${textureId}` 
-                                },
                                 { type: 2, style: 2, label: 'Voltar', custom_id: 'manage_textures' }
                             ]
                         }
@@ -672,6 +672,7 @@ async function interactionHandler(interaction) {
                                     options: [
                                         { label: 'Atualizar Tudo', description: 'Marca todas as texturas como atualizadas', value: 'update_all', emoji: { name: '✅' } },
                                         { label: 'Desatualizar Tudo', description: 'Marca todas as texturas como desatualizadas', value: 'desat_all', emoji: { name: '❌' } },
+                                        { label: 'Atualizar Categoria', description: 'Escolha uma ou mais categorias para atualizar', value: 'att_category', emoji: { name: '🏷️' } },
                                         { label: 'Desatualizar Categoria', description: 'Escolha uma ou mais categorias para desatualizar', value: 'desat_category', emoji: { name: '🏷️' } }
                                     ]
                                 }
@@ -706,14 +707,14 @@ async function interactionHandler(interaction) {
                             {
                                 type: 1,
                                 components: [
-                                    { type: 2, style: 2, label: 'Editar', custom_id: `manage_edit_data_${textureId}` },
-                                    { type: 2, style: 2, label: 'Links', custom_id: `manage_removal_${textureId}` },
                                     { 
                                         type: 2, 
                                         style: texture.isUpdated ? 4 : 3, 
                                         label: texture.isUpdated ? 'Desatualizar' : 'Atualizar', 
                                         custom_id: `toggle_texture_status_${textureId}` 
                                     },
+                                    { type: 2, style: 2, label: 'Editar', custom_id: `manage_edit_data_${textureId}` },
+                                    { type: 2, style: 2, label: 'Links', custom_id: `manage_removal_${textureId}` },
                                     { type: 2, style: 2, label: 'Voltar', custom_id: 'manage_textures' }
                                 ]
                             }
@@ -997,37 +998,148 @@ async function interactionHandler(interaction) {
                 const value = interaction.values[0];
                 if (value === 'update_all') {
                     await Texture.updateMany({}, { isUpdated: true });
-                    return await interaction.update({ content: '✅ Todas as texturas foram marcadas como **Atualizadas**.', components: [], flags: 64 + 32768 });
+                    const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                    const ok = {
+                        type: 17,
+                        accent_color: 0x00ff88,
+                        components: [{
+                            type: 9,
+                            components: [{ type: 10, content: '## ✅ ATUALIZADO\n> Todas as texturas foram marcadas como **Atualizadas**.' }],
+                            accessory: { type: 11, media: { url: serverIcon } }
+                        }]
+                    };
+                    return await interaction.update({ components: [ok], flags: 64 + 32768 });
                 }
                 if (value === 'desat_all') {
                     await Texture.updateMany({}, { isUpdated: false });
-                    return await interaction.update({ content: '❌ Todas as texturas foram marcadas como **Desatualizadas**.', components: [], flags: 64 + 32768 });
+                    const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                    const ok = {
+                        type: 17,
+                        accent_color: 0xff0000,
+                        components: [{
+                            type: 9,
+                            components: [{ type: 10, content: '## ❌ DESATUALIZADO\n> Todas as texturas foram marcadas como **Desatualizadas**.' }],
+                            accessory: { type: 11, media: { url: serverIcon } }
+                        }]
+                    };
+                    return await interaction.update({ components: [ok], flags: 64 + 32768 });
                 }
-                if (value === 'desat_category') {
+                if (value === 'att_category') {
                     const categories = await Texture.distinct('category');
-                    if (!categories.length) return await interaction.update({ content: 'Nenhuma categoria encontrada.', components: [], flags: 64 + 32768 });
+                    const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                    if (!categories.length) {
+                        const err = {
+                            type: 17,
+                            accent_color: 0xff0000,
+                            components: [{
+                                type: 9,
+                                components: [{ type: 10, content: '## ❌ ERRO\n> Nenhuma categoria encontrada.' }],
+                                accessory: { type: 11, media: { url: serverIcon } }
+                            }]
+                        };
+                        return await interaction.update({ components: [err], flags: 64 + 32768 });
+                    }
 
-                    const container = {
-                        type: 1,
+                    const root = {
+                        type: 17,
+                        accent_color: 0xc773ff,
                         components: [
                             {
-                                type: 3,
-                                custom_id: 'bulk_desat_cat_select',
-                                placeholder: 'Escolha as categorias para desatualizar...',
-                                min_values: 1,
-                                max_values: categories.length,
-                                options: categories.map(cat => ({ label: cat, value: cat }))
+                                type: 9,
+                                components: [{ type: 10, content: '## ✅ ATUALIZAR CATEGORIA\n> Escolha uma ou mais categorias para marcar como **Atualizadas**.' }],
+                                accessory: { type: 11, media: { url: serverIcon } }
+                            },
+                            {
+                                type: 1,
+                                components: [
+                                    {
+                                        type: 3,
+                                        custom_id: 'bulk_att_cat_select',
+                                        placeholder: 'Selecione categorias...',
+                                        min_values: 1,
+                                        max_values: Math.min(25, categories.length),
+                                        options: categories.slice(0, 25).map(cat => ({ label: cat, value: cat }))
+                                    }
+                                ]
                             }
                         ]
                     };
-                    return await interaction.update({ content: 'Escolha quais categorias deseja marcar como **Desatualizadas**:', components: [container], flags: 64 + 32768 });
+                    return await interaction.update({ components: [root], flags: 64 + 32768 });
                 }
+                if (value === 'desat_category') {
+                    const categories = await Texture.distinct('category');
+                    const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                    if (!categories.length) {
+                        const err = {
+                            type: 17,
+                            accent_color: 0xff0000,
+                            components: [{
+                                type: 9,
+                                components: [{ type: 10, content: '## ❌ ERRO\n> Nenhuma categoria encontrada.' }],
+                                accessory: { type: 11, media: { url: serverIcon } }
+                            }]
+                        };
+                        return await interaction.update({ components: [err], flags: 64 + 32768 });
+                    }
+
+                    const root = {
+                        type: 17,
+                        accent_color: 0xc773ff,
+                        components: [
+                            {
+                                type: 9,
+                                components: [{ type: 10, content: '## ❌ DESATUALIZAR CATEGORIA\n> Escolha uma ou mais categorias para marcar como **Desatualizadas**.' }],
+                                accessory: { type: 11, media: { url: serverIcon } }
+                            },
+                            {
+                                type: 1,
+                                components: [
+                                    {
+                                        type: 3,
+                                        custom_id: 'bulk_desat_cat_select',
+                                        placeholder: 'Selecione categorias...',
+                                        min_values: 1,
+                                        max_values: Math.min(25, categories.length),
+                                        options: categories.slice(0, 25).map(cat => ({ label: cat, value: cat }))
+                                    }
+                                ]
+                            }
+                        ]
+                    };
+                    return await interaction.update({ components: [root], flags: 64 + 32768 });
+                }
+            }
+
+            if (interaction.customId === 'bulk_att_cat_select') {
+                const selected = interaction.values;
+                await Texture.updateMany({ category: { $in: selected } }, { isUpdated: true });
+                const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                const ok = {
+                    type: 17,
+                    accent_color: 0x00ff88,
+                    components: [{
+                        type: 9,
+                        components: [{ type: 10, content: `## ✅ ATUALIZADO\n> Categorias marcadas como **Atualizadas**:\n\n${selected.map(c => `> - ${c}`).join('\n')}` }],
+                        accessory: { type: 11, media: { url: serverIcon } }
+                    }]
+                };
+                return await interaction.update({ components: [ok], flags: 64 + 32768 });
             }
 
             if (interaction.customId === 'bulk_desat_cat_select') {
                 const selected = interaction.values;
                 await Texture.updateMany({ category: { $in: selected } }, { isUpdated: false });
-                return await interaction.update({ content: `❌ Texturas das categorias **${selected.join(', ')}** foram marcadas como **Desatualizadas**.`, components: [], flags: 64 + 32768 });
+                const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                const ok = {
+                    type: 17,
+                    accent_color: 0xff0000,
+                    components: [{
+                        type: 9,
+                        components: [{ type: 10, content: `## ❌ DESATUALIZADO\n> Categorias marcadas como **Desatualizadas**:\n\n${selected.map(c => `> - ${c}`).join('\n')}` }],
+                        accessory: { type: 11, media: { url: serverIcon } }
+                    }]
+                };
+                return await interaction.update({ components: [ok], flags: 64 + 32768 });
             }
         }
 

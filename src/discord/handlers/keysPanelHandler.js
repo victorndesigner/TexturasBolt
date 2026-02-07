@@ -90,19 +90,27 @@ async function handleKeyGeneration(interaction) {
     });
 
     const config = await Version.findOne({ id: 'global' });
-    let shortenerBase = config?.keyShortener || 'https://google.com';
-    const targetUrl = `https://bolttexturas.site/redeem.html?token=${token}`;
+    let shortenerBase = (config?.keyShortener || '').trim() || 'https://referrer.bolttexturas.site';
+    // Redeem está em referrer.bolttexturas.site (KeysSite no GitHub)
+    const targetUrl = `https://referrer.bolttexturas.site/redeem.html?token=${token}`;
 
     let finalUrl;
+    let useShortener = false;
     if (shortenerBase.includes('url=')) {
+        // Encurtador com suporte a URL dinâmica: destino = redeem com token
         finalUrl = `${shortenerBase}${encodeURIComponent(targetUrl)}`;
+        useShortener = true;
+    } else if (shortenerBase.includes('referrer.bolttexturas.site')) {
+        // Shortener é o próprio site de keys: link direto para redeem
+        finalUrl = targetUrl;
     } else {
-        finalUrl = shortenerBase;
-        if (finalUrl.includes('?')) finalUrl += `&token=${token}`;
-        else finalUrl += `?token=${token}`;
+        // Encurtadores fixos (ex: sannerurl) geralmente NÃO repassam ?token= no redirect.
+        // Usar link direto para garantir que discordId/userTag seja vinculado.
+        finalUrl = targetUrl;
     }
 
     const guildIcon = interaction.guild.iconURL({ extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+    const btnLabel = useShortener ? 'Acessar Encurtador' : 'Pegar Key';
 
     // Resposta V2 Limpa (Sem token visível) - ícone do servidor como no painel principal
     const responseContainer = {
@@ -129,7 +137,7 @@ async function handleKeyGeneration(interaction) {
                     {
                         type: 2, // BUTTON
                         style: 5, // LINK
-                        label: 'Acessar Encurtador',
+                        label: btnLabel,
                         url: finalUrl
                     }
                 ]

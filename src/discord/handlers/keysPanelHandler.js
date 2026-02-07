@@ -3,11 +3,13 @@ const crypto = require('crypto');
 const KeyRequest = require('../../database/models/KeyRequest');
 const Version = require('../../database/models/Version');
 
-// Handler /setup_keys
+// Handler /setup_keys e /keys
 async function setupKeysPanel(interaction) {
     if (!interaction.member.permissions.has('Administrator')) {
         return interaction.reply({ content: '❌ Apenas administradores.', flags: 64 });
     }
+
+    await interaction.deferReply({ flags: 64 });
 
     const guildIcon = interaction.guild.iconURL({ extension: 'png' }) || 'https://cdn-icons-png.flaticon.com/512/8050/8050935.png';
 
@@ -59,10 +61,10 @@ async function setupKeysPanel(interaction) {
                 accessory: { type: 11, media: { url: guildIcon } }
             }]
         };
-        return interaction.reply({ components: [confirmContainer], flags: 64 | MessageFlags.IsComponentsV2 });
+        return interaction.editReply({ components: [confirmContainer], flags: 64 | MessageFlags.IsComponentsV2 });
     } catch (err) {
         console.error('Erro ao enviar V2:', err);
-        return interaction.reply({ content: '❌ Erro ao criar painel. Verifique permissões ou suporte a V2.', flags: 64 });
+        return interaction.editReply({ content: '❌ Erro ao criar painel. Verifique permissões ou suporte a V2.', flags: 64 });
     }
 }
 
@@ -91,19 +93,15 @@ async function handleKeyGeneration(interaction) {
 
     const config = await Version.findOne({ id: 'global' });
     let shortenerBase = (config?.keyShortener || '').trim() || 'https://referrer.bolttexturas.site';
-    // Site de keys (index recebe token e chama redeem-key; destino deve ser o index)
     const keysSiteUrl = 'https://referrer.bolttexturas.site';
+    const targetWithToken = `${keysSiteUrl}/?token=${token}`;
 
+    // SEMPRE usar url=: cadeias (sannerurl->caminhodesperto) perdem ?token=. Com url=, o destino JÁ inclui o token.
     let finalUrl;
     if (shortenerBase.includes('url=')) {
-        // Encurtador com url=: destino completo inclui token. Usuário passa pelo encurtador E token chega.
-        const targetWithToken = `${keysSiteUrl}/?token=${token}`;
         finalUrl = `${shortenerBase}${encodeURIComponent(targetWithToken)}`;
     } else {
-        // Encurtador padrão: shortener?token=XXX. Usuário passa pelo encurtador.
-        finalUrl = shortenerBase;
-        if (finalUrl.includes('?')) finalUrl += `&token=${token}`;
-        else finalUrl += `?token=${token}`;
+        finalUrl = shortenerBase + (shortenerBase.includes('?') ? '&' : '?') + 'url=' + encodeURIComponent(targetWithToken);
     }
 
     const guildIcon = interaction.guild.iconURL({ extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';

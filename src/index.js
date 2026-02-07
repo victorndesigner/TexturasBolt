@@ -509,11 +509,27 @@ client.once(Events.ClientReady, async () => {
     }
 });
 
+// Evita processar a mesma interação duas vezes (Discord às vezes envia duplicata)
+const processedInteractions = new Set();
+const PROCESSED_MAX = 500;
+const PROCESSED_TTL = 60 * 60 * 1000; // 1h
+let lastCleanup = Date.now();
+
 // Interaction Create (Router para o Painel)
 client.on(Events.InteractionCreate, async (interaction) => {
     // Log apenas de comandos principais para não poluir
     if (interaction.isChatInputCommand()) {
         console.log(`[Interaction] Comando: /${interaction.commandName} | Usuário: ${interaction.user.tag}`);
+    }
+
+    const iid = interaction.id;
+    if (processedInteractions.has(iid)) {
+        return; // Já processado (duplicata)
+    }
+    processedInteractions.add(iid);
+    if (processedInteractions.size > PROCESSED_MAX || Date.now() - lastCleanup > PROCESSED_TTL) {
+        processedInteractions.clear();
+        lastCleanup = Date.now();
     }
 
     try {

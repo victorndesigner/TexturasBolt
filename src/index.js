@@ -584,9 +584,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
     } catch (error) {
         logger.error(`Erro na interação: ${error.message}`);
+        if (error?.stack) {
+            console.error(error.stack);
+        }
         try {
             if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
-                await interaction.reply({ content: '❌ Erro interno ao processar ação.', flags: 64 });
+                const guildIcon = interaction.guild?.iconURL({ extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                const errorContainer = {
+                    type: 17,
+                    accent_color: 0xff0000,
+                    components: [{
+                        type: 9,
+                        components: [{ type: 10, content: '## ❌ ERRO INTERNO\n> Ocorreu um erro ao processar esta ação.\n> -# Tente novamente em alguns segundos.' }],
+                        accessory: { type: 11, media: { url: guildIcon } }
+                    }]
+                };
+                await interaction.reply({ components: [errorContainer], flags: 64 | MessageFlags.IsComponentsV2 });
             }
         } catch (e) { }
     }

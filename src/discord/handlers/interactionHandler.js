@@ -912,22 +912,22 @@ async function interactionHandler(interaction) {
 
             if (interaction.customId === 'modal_time') {
                 const newTime = interaction.fields.getTextInputValue('time_input');
-                const serverName = interaction.fields.getTextInputValue('server_name');
                 const data = await Version.findOneAndUpdate({ id: 'global' }, { defaultAccessTime: newTime }, { upsert: true, new: true });
                 invalidateVersionCache(data);
 
                 const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName);
-                return await interaction.editR,
-                    requiredServerName: serverNameeply({ ...panel, flags: 32768 });
+                return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
             if (interaction.customId === 'modal_server_config') {
                 const serverId = interaction.fields.getTextInputValue('server_id');
+                const serverName = interaction.fields.getTextInputValue('server_name');
                 const invite = interaction.fields.getTextInputValue('server_invite');
                 const keysUrl = interaction.fields.getTextInputValue('keys_channel_url');
 
                 const data = await Version.findOneAndUpdate({ id: 'global' }, {
                     requiredServerId: serverId,
+                    requiredServerName: serverName,
                     requiredServerInvite: invite,
                     keysChannelUrl: keysUrl
                 }, { upsert: true, new: true });

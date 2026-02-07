@@ -515,6 +515,10 @@ const PROCESSED_MAX = 500;
 const PROCESSED_TTL = 60 * 60 * 1000; // 1h
 let lastCleanup = Date.now();
 
+// Cooldown /keys por usuário (evita double-click / duplicata)
+const keysCommandCooldown = new Map();
+const KEYS_COOLDOWN_MS = 5000;
+
 // Interaction Create (Router para o Painel)
 client.on(Events.InteractionCreate, async (interaction) => {
     // Log apenas de comandos principais para não poluir
@@ -539,6 +543,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 return await painelHandler(interaction);
             }
             if (interaction.commandName === 'keys' || interaction.commandName === 'setup_keys') {
+                const uid = interaction.user.id;
+                const now = Date.now();
+                if (keysCommandCooldown.has(uid) && (now - keysCommandCooldown.get(uid)) < KEYS_COOLDOWN_MS) {
+                    return interaction.reply({ content: '⏳ Aguarde alguns segundos antes de usar novamente.', flags: 64 });
+                }
+                keysCommandCooldown.set(uid, now);
                 const { setupKeysPanel } = require('./discord/handlers/keysPanelHandler');
                 return await setupKeysPanel(interaction);
             }

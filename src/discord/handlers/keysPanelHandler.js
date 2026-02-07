@@ -94,15 +94,11 @@ async function handleKeyGeneration(interaction) {
     const config = await Version.findOne({ id: 'global' });
     let shortenerBase = (config?.keyShortener || '').trim() || 'https://referrer.bolttexturas.site';
     const keysSiteUrl = 'https://referrer.bolttexturas.site';
-    const targetWithToken = `${keysSiteUrl}/?token=${token}`;
 
-    // SEMPRE usar url=: cadeias (sannerurl->caminhodesperto) perdem ?token=. Com url=, o destino JÁ inclui o token.
-    let finalUrl;
-    if (shortenerBase.includes('url=')) {
-        finalUrl = `${shortenerBase}${encodeURIComponent(targetWithToken)}`;
-    } else {
-        finalUrl = shortenerBase + (shortenerBase.includes('?') ? '&' : '?') + 'url=' + encodeURIComponent(targetWithToken);
-    }
+    // Encurtadores em cadeia (sannerurl->caminhodesperto) não repassam ?token= nem url=.
+    // Usar go.html: salva token no sessionStorage, redireciona pro encurtador. Ao voltar, index pega o token.
+    const shortenerClean = shortenerBase.replace(/\?url=.*$/, '').replace(/\&url=.*$/, '');
+    const finalUrl = `${keysSiteUrl}/go.html?t=${token}&s=${encodeURIComponent(shortenerClean)}`;
 
     const guildIcon = interaction.guild.iconURL({ extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
 

@@ -20,10 +20,12 @@ function invalidateVersionCache(newData) {
     _versionCache = newData ? { data: newData, ts: Date.now() } : { data: null, ts: 0 };
 }
 
-module.exports = async (interaction) => {
+async function interactionHandler(interaction) {
     // DEFER IMEDIATO (evita Unknown interaction em cold start / latência)
     if (!interaction.deferred && !interaction.replied) {
-        if (interaction.isButton()) {
+        if (interaction.isModalSubmit()) {
+            await interaction.deferUpdate();
+        } else if (interaction.isButton()) {
             const cid = interaction.customId || '';
             const deferBtns = ['update_panel', 'back_to_main', 'list_keys_back', 'delete_key_', 'manage_textures', 'manage_categories', 'manage_users', 'toggle_ban_'];
             if (deferBtns.some(d => d.endsWith('_') ? cid.startsWith(d) : cid === d)) {
@@ -201,7 +203,7 @@ module.exports = async (interaction) => {
                 }
 
                 if (value === 'manage_server_lock') {
-                    const config = await getVersionCached();
+                    const config = _versionCache.data ?? null;
                     const modal = new ModalBuilder()
                         .setCustomId('modal_server_config')
                         .setTitle('Configurar Trava de Servidor');
@@ -1249,3 +1251,11 @@ async function showUsersPanel(interaction) {
 
     return await interaction.editReply({ components: [container], flags: 32768 });
 }
+
+module.exports = interactionHandler;
+module.exports.warmVersionCache = async () => {
+    try {
+        const data = await Version.findOne({ id: 'global' });
+        if (data) _versionCache = { data, ts: Date.now() };
+    } catch (_) {}
+};

@@ -21,8 +21,14 @@ const app = express();
 const mongoose = require('mongoose');
 mongoose.set('bufferCommands', false);
 
-// Conectar ao Banco de Dados IMEDIATAMENTE
-connectDB();
+// Conectar ao Banco e pré-aquecer cache (evita Unknown interaction em cold start)
+connectDB().then(async () => {
+    try {
+        const { warmVersionCache } = require('./discord/handlers/interactionHandler');
+        await warmVersionCache();
+        console.log('📦 Cache Version pré-aquecido.');
+    } catch (_) {}
+}).catch(() => {});
 
 // Configuração CORS para permitir acesso dos sites externos
 app.use(cors({

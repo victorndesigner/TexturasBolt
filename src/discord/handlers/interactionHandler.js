@@ -21,6 +21,33 @@ function invalidateVersionCache(newData) {
 }
 
 async function interactionHandler(interaction) {
+    // --- VERIFICAÇÃO DE PERMISSÕES (APENAS DONO) ---
+    const OWNER_ID = '971163830887514132'; // ID do dono bolttexturas
+    if (!interaction.member.permissions.has('Administrator') && interaction.user.id !== OWNER_ID) {
+        const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+        const noPermissionContainer = {
+            type: 17,
+            accent_color: 0xff0000,
+            components: [{
+                type: 9,
+                components: [{ 
+                    type: 10, 
+                    content: `## 🚫 ACESSO NEGADO\n> Apenas administradores podem interagir com o painel.\n> -# Se você precisa de acesso, contate o dono do servidor.` 
+                }],
+                accessory: { type: 11, media: { url: serverIcon } }
+            }]
+        };
+
+        if (interaction.isRepliable()) {
+            if (interaction.deferred || interaction.replied) {
+                return await interaction.followUp({ components: [noPermissionContainer], flags: 64 + 32768 });
+            } else {
+                return await interaction.reply({ components: [noPermissionContainer], flags: 64 + 32768 });
+            }
+        }
+        return;
+    }
+
     // DEFER IMEDIATO (evita Unknown interaction em cold start / latência)
     if (!interaction.deferred && !interaction.replied) {
         if (interaction.isModalSubmit()) {

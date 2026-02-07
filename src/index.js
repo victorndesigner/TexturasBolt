@@ -276,8 +276,24 @@ app.post('/api/validate', async (req, res) => {
                 }
 
                 if (!isMember) {
-                    const guild = client.guilds.cache.get(guildId);
-                    const serverName = guild ? guild.name : 'Servidor Oficial';
+                    let serverName = 'Servidor Oficial';
+                    
+                    // Tentar obter nome do servidor se o bot estiver nele
+                    try {
+                        const guild = client.guilds.cache.get(guildId);
+                        if (guild) {
+                            serverName = guild.name;
+                        } else {
+                            // Se o bot não estiver no servidor, tentar buscar via API
+                            const guildData = await client.fetchGuild(guildId).catch(() => null);
+                            if (guildData) {
+                                serverName = guildData.name;
+                            }
+                        }
+                    } catch (err) {
+                        console.log(`[SERVER_CHECK] Não foi possível obter nome do servidor ${guildId}:`, err.message);
+                    }
+                    
                     return res.status(403).json({
                         error: `Você precisa estar no servidor ${serverName} para usar!`,
                         serverName: serverName,

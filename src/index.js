@@ -4,7 +4,6 @@ require('dotenv').config({ quiet: true }); // Carrega uma única vez e sem polui
 const { REST, Routes, SlashCommandBuilder, Events, MessageFlags } = require('discord.js');
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
 
 const Key = require('./database/models/Key');
 const Texture = require('./database/models/Texture');
@@ -45,7 +44,7 @@ app.use(cors({
     credentials: true
 }));
 
-app.use(bodyParser.json());
+app.use(express.json());
 app.set('trust proxy', 1); // Confiar no proxy (Discloud/Heroku) para pegar IP real
 
 // --- CONTROLE DE DOWNLOADS MONETIZADOS (Memory Store) ---
@@ -487,41 +486,43 @@ setInterval(async () => {
 
 // Evento Ready
 client.once(Events.ClientReady, async () => {
-    const mongoose = require('mongoose');
-
-    if (mongoose.connection.readyState !== 1) {
-        const timeout = new Promise(resolve => setTimeout(resolve, 10000));
-        const connection = new Promise(resolve => {
-            if (mongoose.connection.readyState === 1) resolve();
-            else mongoose.connection.once('connected', resolve);
-        });
-        await Promise.race([timeout, connection]);
-    }
-
-    const guild = client.guilds.cache.first();
-    const serverName = guild ? guild.name : 'Nenhum servidor encontrado';
-    const memberCount = guild ? guild.memberCount : 0;
-    const mongoStatus = mongoose.connection.readyState === 1 ? 'Sim' : 'Não';
-
-    console.log(`\n💜 ########## STATUS DO BOT ##########`);
-    console.log(`💜 Servidor: ${serverName}`);
-    console.log(`   💜 Quantas pessoas no servidor: ${memberCount}`);
-    console.log(`      💜 MongoDB conectado: ${mongoStatus}`);
-    console.log(`          💜 Criador By: bolttexturas\n`);
-
-    // Registrar comandos
-    const commands = [
-        new SlashCommandBuilder()
-            .setName('painel')
-            .setDescription('💜 Abre o painel administrativo (Apenas Admins).'),
-        new SlashCommandBuilder()
-            .setName('keys')
-            .setDescription('💜 Cria o painel público de geração de keys (Apenas Admins).')
-    ].map(command => command.toJSON());
-
-    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-
     try {
+        console.log('🔄 Evento ClientReady disparado, iniciando setup...');
+        const mongoose = require('mongoose');
+
+        if (mongoose.connection.readyState !== 1) {
+            console.log('⏳ Aguardando conexão MongoDB...');
+            const timeout = new Promise(resolve => setTimeout(resolve, 10000));
+            const connection = new Promise(resolve => {
+                if (mongoose.connection.readyState === 1) resolve();
+                else mongoose.connection.once('connected', resolve);
+            });
+            await Promise.race([timeout, connection]);
+        }
+
+        const guild = client.guilds.cache.first();
+        const serverName = guild ? guild.name : 'Nenhum servidor encontrado';
+        const memberCount = guild ? guild.memberCount : 0;
+        const mongoStatus = mongoose.connection.readyState === 1 ? 'Sim' : 'Não';
+
+        console.log(`\n💜 ########## STATUS DO BOT ##########`);
+        console.log(`💜 Servidor: ${serverName}`);
+        console.log(`   💜 Quantas pessoas no servidor: ${memberCount}`);
+        console.log(`      💜 MongoDB conectado: ${mongoStatus}`);
+        console.log(`          💜 Criador By: bolttexturas\n`);
+
+        // Registrar comandos
+        const commands = [
+            new SlashCommandBuilder()
+                .setName('painel')
+                .setDescription('💜 Abre o painel administrativo (Apenas Admins).'),
+            new SlashCommandBuilder()
+                .setName('keys')
+                .setDescription('💜 Cria o painel público de geração de keys (Apenas Admins).')
+        ].map(command => command.toJSON());
+
+        const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+
         console.log('⏳ Registrando comandos globais...');
         await rest.put(
             Routes.applicationCommands(client.user.id),
@@ -529,7 +530,7 @@ client.once(Events.ClientReady, async () => {
         );
         console.log('✅ Comandos registrados com sucesso!');
     } catch (error) {
-        console.error('❌ Erro ao registrar comandos:', error);
+        console.error('❌ ERRO CRÍTICO no ClientReady:', error);
     }
 });
 

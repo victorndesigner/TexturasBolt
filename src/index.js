@@ -627,24 +627,26 @@ client.on('debug', console.log);
 client.on('warn', console.warn);
 client.on('error', console.error);
 
-console.log('🤖 Realizando pré-teste de conexão com o Discord (fetch puro)...');
-const ac = new AbortController();
-setTimeout(() => ac.abort(), 10000);
-fetch('https://discord.com/api/v10/gateway/bot', {
-    headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` },
-    signal: ac.signal
-}).then(res => {
-    console.log('✅ Status do Discord:', res.status, res.statusText);
-    return res.json().catch(() => null);
-}).then(data => {
-    console.log('✅ Dados do Gateway:', data ? JSON.stringify(data) : 'Nenhum');
-    console.log('🤖 Tentando conectar ao Discord Gateway via Client...');
-    return client.login(process.env.DISCORD_TOKEN);
-}).then(() => {
-    console.log('✅ Conexão estabelecida pelo Client.login!');
-}).catch(err => {
-    console.error('\n❌ Falha na conexão (Pré-teste ou Client.login):');
-    console.error(`> ${err.name}: ${err.message}`);
-    if (err.cause) console.error('> Causa interna:', err.cause);
-});
+if (RUN_MODE === 'BOT' || RUN_MODE === 'ALL') {
+    console.log('🤖 Realizando pré-teste de conexão com o Discord (fetch puro)...');
+    const ac = new AbortController();
+    setTimeout(() => ac.abort(), 10000);
+    fetch('https://discord.com/api/v10/gateway/bot', {
+        headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` },
+        signal: ac.signal
+    }).then(res => {
+        console.log('✅ Status do Discord:', res.status, res.statusText);
+        return res.json().catch(() => null);
+    }).then(data => {
+        console.log('✅ Dados do Gateway:', data ? JSON.stringify(data) : 'Nenhum');
+        console.log('🤖 Tentando conectar ao Discord Gateway via Client...');
+        return client.login(process.env.DISCORD_TOKEN);
+    }).then(() => {
+        console.log('✅ Conexão estabelecida pelo Client.login!');
+    }).catch(err => {
+        console.error('\n❌ Falha na conexão (Pré-teste ou Client.login):');
+        console.error(`> ${err.name}: ${err.message}`);
+        if (err.cause) console.error('> Causa interna:', err.cause);
+    });
+}
 

@@ -3,6 +3,8 @@ const supabase = require('../../database/supabase');
 const { createMainPanel } = require('../components/mainPanel');
 const { createTexturePanel } = require('../components/texturePanel');
 const crypto = require('crypto');
+const { parseDuration, applyDuration } = require('../../utils/durationParser');
+
 
 // Cache de Version para modais (evita Unknown interaction por latência do DB)
 let _versionCache = { data: null, ts: 0 };

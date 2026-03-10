@@ -1,5 +1,5 @@
 const { createMainPanel } = require('../components/mainPanel');
-const Version = require('../../database/models/Version');
+const supabase = require('../../database/supabase');
 const { MessageFlags } = require('discord.js');
 
 module.exports = async (interaction) => {
@@ -18,23 +18,25 @@ module.exports = async (interaction) => {
         return interaction.reply({ components: [noPermissionContainer], flags: 64 | MessageFlags.IsComponentsV2 });
     }
 
-    // --- VERIFICAÇÃO DE CONEXÃO COM O BANCO ---
-    const mongoose = require('mongoose');
-    if (mongoose.connection.readyState !== 1) {
-        return interaction.reply({
-            content: '## ⏳ BANCO DE DADOS CONECTANDO...\n> O sistema ainda está ligando a conexão com o banco de dados.\n> Tente usar este comando novamente em 5 segundos.',
-            flags: 64
-        });
-    }
-
     try {
         // Buscar versão no banco
-        let versionData = await Version.findOne({ id: 'global' });
+        let { data: versionData } = await supabase.from('versions').select('*').eq('global_id', 'global').maybeSingle();
+        
         if (!versionData) {
-            versionData = await Version.create({ id: 'global', version: '1.0' });
+            const { data: newData } = await supabase.from('versions').insert({ global_id: 'global', version: '1.0' }).select().single();
+            versionData = newData;
         }
 
-        const panel = createMainPanel(interaction.guild, versionData.version, versionData.keyShortener, versionData.defaultAccessTime, versionData.keyUseDeadline, versionData.targetFolderName, versionData.stumbleGuysVersion, versionData.stumbleCupsVersion);
+        const panel = createMainPanel(
+            interaction.guild, 
+            versionData.version, 
+            versionData.key_shortener, 
+            versionData.default_access_time, 
+            versionData.key_use_deadline, 
+            versionData.target_folder_name, 
+            versionData.stumble_guys_version, 
+            versionData.stumble_cups_version
+        );
 
         // Painel PRINCIPAL deve ser comum (não efêmero) com flag de Components V2 (32768)
         await interaction.reply({ ...panel, flags: 32768 });

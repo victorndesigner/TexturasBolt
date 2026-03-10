@@ -1,7 +1,6 @@
 const { REST, Routes, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const crypto = require('crypto');
-const KeyRequest = require('../../database/models/KeyRequest');
-const Version = require('../../database/models/Version');
+const supabase = require('../../database/supabase');
 
 // Handler /setup_keys e /keys
 async function setupKeysPanel(interaction) {
@@ -85,14 +84,19 @@ async function handleKeyGeneration(interaction) {
 
     const token = crypto.randomBytes(16).toString('hex');
 
-    await KeyRequest.create({
+    const { error: requestError } = await supabase.from('key_requests').insert({
         token: token,
-        userId: interaction.user.id,
-        userTag: interaction.user.tag
+        user_id: interaction.user.id,
+        user_tag: interaction.user.tag
     });
 
-    const config = await Version.findOne({ id: 'global' });
-    let shortenerBase = (config?.keyShortener || '').trim() || 'https://referrer.bolttexturas.site';
+    if (requestError) {
+        console.error('Erro ao salvar KeyRequest:', requestError);
+        return interaction.editReply({ content: '❌ Erro ao solicitar key. Tente novamente.', flags: 64 });
+    }
+
+    const { data: config } = await supabase.from('versions').select('*').eq('global_id', 'global').maybeSingle();
+    let shortenerBase = (config?.key_shortener || '').trim() || 'https://referrer.bolttexturas.site';
     const keysSiteUrl = 'https://referrer.bolttexturas.site';
 
     // Encurtadores em cadeia (sannerurl->caminhodesperto) não repassam ?token= nem url=.

@@ -1,8 +1,5 @@
 const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, StringSelectMenuBuilder, MessageFlags } = require('discord.js');
-const Version = require('../../database/models/Version');
-const Texture = require('../../database/models/Texture');
-const Key = require('../../database/models/Key');
-const Category = require('../../database/models/Category');
+const supabase = require('../../database/supabase');
 const { createMainPanel } = require('../components/mainPanel');
 const { createTexturePanel } = require('../components/texturePanel');
 const crypto = require('crypto');
@@ -12,7 +9,7 @@ let _versionCache = { data: null, ts: 0 };
 const CACHE_TTL = 15000;
 async function getVersionCached() {
     if (_versionCache.data && Date.now() - _versionCache.ts < CACHE_TTL) return _versionCache.data;
-    const data = await Version.findOne({ id: 'global' });
+    const { data } = await supabase.from('versions').select('*').eq('global_id', 'global').maybeSingle();
     _versionCache = { data, ts: Date.now() };
     return data;
 }
@@ -102,30 +99,6 @@ async function interactionHandler(interaction) {
         }
     }
 
-    // --- VERIFICAÇÃO DE CONEXÃO COM O BANCO ---
-    const mongoose = require('mongoose');
-    if (mongoose.connection.readyState !== 1) {
-        const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
-        const errorContainer = {
-            type: 17,
-            accent_color: 0xffaa00,
-            components: [{
-                type: 9,
-                components: [{ type: 10, content: `## ⏳ BANCO DE DADOS CONECTANDO...\n> O sistema está estabelecendo conexão com o MongoDB.\n> Por favor, aguarde alguns segundos e tente novamente.` }],
-                accessory: { type: 11, media: { url: serverIcon } }
-            }]
-        };
-
-        if (interaction.isRepliable()) {
-            if (interaction.deferred || interaction.replied) {
-                return await interaction.followUp({ components: [errorContainer], flags: 64 + 32768 });
-            } else {
-                return await interaction.reply({ components: [errorContainer], flags: 64 + 32768 });
-            }
-        }
-        return;
-    }
-
     try {
         if (interaction.isStringSelectMenu()) {
             if (interaction.customId === 'main_select') {
@@ -157,7 +130,7 @@ async function interactionHandler(interaction) {
                         .setCustomId('sg_version_input')
                         .setLabel('Versão StumbleGuys/Reviver')
                         .setPlaceholder('Ex: 1.5')
-                        .setValue(config?.stumbleGuysVersion || '1.0')
+                        .setValue(config?.stumble_guys_version || '1.0')
                         .setStyle(TextInputStyle.Short)
                         .setRequired(true);
 
@@ -165,7 +138,7 @@ async function interactionHandler(interaction) {
                         .setCustomId('sc_version_input')
                         .setLabel('Versão Stumble Cups')
                         .setPlaceholder('Ex: 1.2')
-                        .setValue(config?.stumbleCupsVersion || '1.0')
+                        .setValue(config?.stumble_cups_version || '1.0')
                         .setStyle(TextInputStyle.Short)
                         .setRequired(true);
 
@@ -318,7 +291,7 @@ async function interactionHandler(interaction) {
                         const url = m.attachments.first()?.url || m.content;
                         if (!url.startsWith('http')) return;
 
-                        await Version.findOneAndUpdate({ id: 'global' }, { profileImage: url }, { upsert: true });
+                        await supabase.from('versions').upsert({ global_id: 'global', profile_image: url });
                         invalidateVersionCache();
 
                         const successContainer = {
@@ -338,11 +311,11 @@ async function interactionHandler(interaction) {
                 }
 
                 if (value === 'manage_original_links') {
-                    const config = await Version.findOne({ id: 'global' });
+                    const config = await getVersionCached();
                     const modal = new ModalBuilder().setCustomId('modal_original_links').setTitle('Arquivos Originais (StumbleCups)');
                     modal.addComponents(
-                        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('orig_p1').setLabel('Original P1 (Jogo)').setValue(config?.removeUrlPart1 || '').setStyle(TextInputStyle.Short).setRequired(false)),
-                        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('orig_p2').setLabel('Original P2 (AppData)').setValue(config?.removeUrlPart2 || '').setStyle(TextInputStyle.Short).setRequired(false))
+                        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('orig_p1').setLabel('Original P1 (Jogo)').setValue(config?.remove_url_part1 || '').setStyle(TextInputStyle.Short).setRequired(false)),
+                        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('orig_p2').setLabel('Original P2 (AppData)').setValue(config?.remove_url_part2 || '').setStyle(TextInputStyle.Short).setRequired(false))
                     );
                     return await interaction.showModal(modal);
                 }
@@ -354,8 +327,8 @@ async function interactionHandler(interaction) {
 
                 if (value === 'manage_textures') {
                     if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
-                    const textures = await Texture.find();
-                    const panel = createTexturePanel(interaction.guild, textures);
+                    const { data: textures } = await supabase.from('textures').select('*');
+                    const panel = createTexturePanel(interaction.guild, textures || []);
                     return await interaction.editReply({ ...panel, flags: 32768 });
                 }
             }
@@ -363,7 +336,7 @@ async function interactionHandler(interaction) {
             if (interaction.customId === 'manage_keys_select') {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 const keyId = interaction.values[0];
-                const keyData = await Key.findById(keyId);
+                const { data: keyData } = await supabase.from('keys').select('*').eq('id', keyId).maybeSingle();
                 if (!keyData) {
                     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                     const errContainer = {
@@ -380,12 +353,12 @@ async function interactionHandler(interaction) {
 
                 const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
 
-                let timeContent = `> **Código:** \`${keyData.key}\`\n> **Duração:** \`${keyData.duration}\`\n> **Status:** \`${keyData.isUsed ? 'Utilizada' : 'Disponível'}\`\n> **Criada em:** <t:${Math.floor(keyData.createdAt.getTime() / 1000)}:R>`;
+                let timeContent = `> **Código:** \`${keyData.key}\`\n> **Duração:** \`${keyData.duration}\`\n> **Status:** \`${keyData.is_used ? 'Utilizada' : 'Disponível'}\`\n> **Criada em:** <t:${Math.floor(new Date(keyData.created_at).getTime() / 1000)}:R>`;
 
-                if (!keyData.isUsed && keyData.expiresToUseAt) {
-                    timeContent += `\n> **Expira para uso em:** <t:${Math.floor(keyData.expiresToUseAt.getTime() / 1000)}:R>`;
-                } else if (keyData.isUsed && keyData.expiresAt) {
-                    timeContent += `\n> **Expira acesso em:** <t:${Math.floor(keyData.expiresAt.getTime() / 1000)}:R>`;
+                if (!keyData.is_used && keyData.expires_to_use_at) {
+                    timeContent += `\n> **Expira para uso em:** <t:${Math.floor(new Date(keyData.expires_to_use_at).getTime() / 1000)}:R>`;
+                } else if (keyData.is_used && keyData.expires_at) {
+                    timeContent += `\n> **Expira acesso em:** <t:${Math.floor(new Date(keyData.expires_at).getTime() / 1000)}:R>`;
                 }
 
                 const permissionText = keyData.permissions?.type === 'all' ? 'Acesso Total' : (keyData.permissions?.type === 'category' ? `Categoria: ${keyData.permissions.value}` : `Textura: ${keyData.permissions.value}`);
@@ -417,9 +390,8 @@ async function interactionHandler(interaction) {
 
             if (interaction.customId === 'select_user') {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
-                const User = require('../../database/models/User');
                 const hwid = interaction.values[0];
-                const userData = await User.findOne({ hwid });
+                const { data: userData } = await supabase.from('users').select('*').eq('hwid', hwid).maybeSingle();
                 if (!userData) {
                     return await interaction.editReply({ content: '❌ Usuário não encontrado.', components: [], flags: 64 });
                 }
@@ -427,13 +399,13 @@ async function interactionHandler(interaction) {
                 const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                 const container = {
                     type: 17,
-                    accent_color: userData.isBlacklisted ? 0xff0000 : 0xc773ff,
+                    accent_color: userData.is_blacklisted ? 0xff0000 : 0xc773ff,
                     components: [
                         {
                             type: 9,
                             components: [{
                                 type: 10,
-                                content: `## 👤 INFORMAÇÕES DO USUÁRIO\n> **Status:** ${userData.isBlacklisted ? '🚫 **BANIDO**' : '✅ Ativo'}\n\n**Discord:** ${userData.discordTag || 'Não vinculado'}\n**Discord ID:** \`${userData.discordId || 'N/A'}\`\n**HWID:** \`${userData.hwid}\`\n**Último IP:** \`${userData.lastIp || 'N/A'}\`\n**Última Key Usada:** \`${userData.lastKeyUsed || 'N/A'}\`\n**Última Key Gerada:** \`${userData.lastGeneratedKey || 'Nenhuma'}\`\n**Total de Instalações:** \`${userData.totalInstalls}\`\n**Criado em:** <t:${Math.floor(userData.createdAt.getTime() / 1000)}:R>\n**Atualizado em:** <t:${Math.floor(userData.updatedAt.getTime() / 1000)}:R>`
+                                content: `## 👤 INFORMAÇÕES DO USUÁRIO\n> **Status:** ${userData.is_blacklisted ? '🚫 **BANIDO**' : '✅ Ativo'}\n\n**Discord:** ${userData.discord_tag || 'Não vinculado'}\n**Discord ID:** \`${userData.discord_id || 'N/A'}\`\n**HWID:** \`${userData.hwid}\`\n**Último IP:** \`${userData.last_ip || 'N/A'}\`\n**Última Key Usada:** \`${userData.last_key_used || 'N/A'}\`\n**Última Key Gerada:** \`${userData.last_generated_key || 'Nenhuma'}\`\n**Total de Instalações:** \`${userData.total_installs}\`\n**Criado em:** <t:${Math.floor(new Date(userData.created_at).getTime() / 1000)}:R>\n**Atualizado em:** <t:${Math.floor(new Date(userData.updated_at).getTime() / 1000)}:R>`
                             }],
                             accessory: { type: 11, media: { url: serverIcon } }
                         },
@@ -443,8 +415,8 @@ async function interactionHandler(interaction) {
                             components: [
                                 {
                                     type: 2,
-                                    style: userData.isBlacklisted ? 3 : 4,
-                                    label: userData.isBlacklisted ? 'Remover Ban' : 'Banir Usuário',
+                                    style: userData.is_blacklisted ? 3 : 4,
+                                    label: userData.is_blacklisted ? 'Remover Ban' : 'Banir Usuário',
                                     custom_id: `toggle_ban_${hwid}`
                                 },
                                 { type: 2, style: 2, label: 'Voltar', custom_id: 'manage_users' }
@@ -459,7 +431,7 @@ async function interactionHandler(interaction) {
             if (interaction.customId === 'texture_manage_select') {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 const textureId = interaction.values[0];
-                const texture = await Texture.findById(textureId);
+                const { data: texture } = await supabase.from('textures').select('*').eq('id', textureId).maybeSingle();
                 if (!texture) return;
 
                 const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
@@ -471,17 +443,17 @@ async function interactionHandler(interaction) {
                             type: 9,
                             components: [{ 
                                 type: 10, 
-                                content: `## ⚙️ GERENCIAR: ${texture.name}\n> **Categoria:** \`${texture.category}\`\n> **Versão:** \`${texture.version || '1.0'}\`\n> **Status:** ${texture.isUpdated ? '✅ Atualizada' : '❌ Desatualizada'}\n\nEscolha o que deseja configurar abaixo:` 
+                                content: `## ⚙️ GERENCIAR: ${texture.name}\n> **Categoria:** \`${texture.category}\`\n> **Versão:** \`${texture.version || '1.0'}\`\n> **Status:** ${texture.is_updated ? '✅ Atualizada' : '❌ Desatualizada'}\n\nEscolha o que deseja configurar abaixo:` 
                             }],
-                            accessory: { type: 11, media: { url: texture.profileImage || serverIcon } }
+                            accessory: { type: 11, media: { url: texture.profile_image || serverIcon } }
                         },
                         {
                             type: 1,
                             components: [
                                 { 
                                 type: 2, 
-                                style: texture.isUpdated ? 4 : 3, 
-                                label: texture.isUpdated ? 'Desatualizar' : 'Atualizar', 
+                                style: texture.is_updated ? 4 : 3, 
+                                label: texture.is_updated ? 'Desatualizar' : 'Atualizar', 
                                 custom_id: `toggle_texture_status_${textureId}`
                                 },
                                 { type: 2, style: 2, label: 'Editar', custom_id: `manage_edit_data_${textureId}` },
@@ -497,7 +469,7 @@ async function interactionHandler(interaction) {
             if (interaction.customId === 'remove_texture_select') {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 const textureId = interaction.values[0];
-                await Texture.findByIdAndDelete(textureId);
+                await supabase.from('textures').delete().eq('id', textureId);
 
                 // Mensagem de Sucesso (Efêmera)
                 const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
@@ -513,8 +485,8 @@ async function interactionHandler(interaction) {
                 await interaction.followUp({ components: [successContainer], flags: 64 + 32768 });
 
                 // Atualizar o painel principal
-                const textures = await Texture.find();
-                const panel = createTexturePanel(interaction.guild, textures);
+                const { data: textures } = await supabase.from('textures').select('*');
+                const panel = createTexturePanel(interaction.guild, textures || []);
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
@@ -536,7 +508,7 @@ async function interactionHandler(interaction) {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
 
                 if (type === 'category') {
-                    const categories = await Category.find();
+                    const { data: categories } = await supabase.from('categories').select('*');
                     const container = {
                         type: 17, accent_color: 0xc773ff,
                         components: [
@@ -544,7 +516,7 @@ async function interactionHandler(interaction) {
                             {
                                 type: 1, components: [{
                                     type: 3, custom_id: 'gen_key_value_cat_select', placeholder: 'Selecione a categoria...',
-                                    options: categories.map(c => ({ label: c.name, value: c.name }))
+                                    options: (categories || []).map(c => ({ label: c.name, value: c.name }))
                                 }]
                             }
                         ]
@@ -553,7 +525,7 @@ async function interactionHandler(interaction) {
                 }
 
                 if (type === 'texture') {
-                    const textures = await Texture.find();
+                    const { data: textures } = await supabase.from('textures').select('*');
                     const container = {
                         type: 17, accent_color: 0xc773ff,
                         components: [
@@ -561,7 +533,7 @@ async function interactionHandler(interaction) {
                             {
                                 type: 1, components: [{
                                     type: 3, custom_id: 'gen_key_value_tex_select', placeholder: 'Selecione a textura...',
-                                    options: textures.slice(0, 25).map(t => ({ label: t.name, value: t._id.toString() }))
+                                    options: (textures || []).slice(0, 25).map(t => ({ label: t.name, value: t.id.toString() }))
                                 }]
                             }
                         ]
@@ -579,8 +551,8 @@ async function interactionHandler(interaction) {
 
             if (interaction.customId === 'gen_key_value_tex_select') {
                 const value = interaction.values[0];
-                const texture = await Texture.findById(value);
-                const modal = new ModalBuilder().setCustomId(`modal_gen_key_final_texture_${value}`).setTitle(`Gerar Key: ${texture.name}`);
+                const { data: texture } = await supabase.from('textures').select('*').eq('id', value).maybeSingle();
+                const modal = new ModalBuilder().setCustomId(`modal_gen_key_final_texture_${value}`).setTitle(`Gerar Key: ${texture?.name || 'N/A'}`);
                 modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('key_time').setLabel('Duração (ex: 7d, 1d30m, permanente)').setPlaceholder('Vazio = Padrão').setStyle(TextInputStyle.Short).setRequired(false)));
                 return await interaction.showModal(modal);
             }
@@ -640,10 +612,12 @@ async function interactionHandler(interaction) {
             if (interaction.customId.startsWith('toggle_texture_status_')) {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 const textureId = interaction.customId.replace('toggle_texture_status_', '');
-                const texture = await Texture.findById(textureId);
+                const { data: texture } = await supabase.from('textures').select('*').eq('id', textureId).maybeSingle();
+                
                 if (texture) {
-                    texture.isUpdated = !texture.isUpdated;
-                    await texture.save();
+                    const newStatus = !texture.is_updated;
+                    await supabase.from('textures').update({ is_updated: newStatus }).eq('id', textureId);
+                    texture.is_updated = newStatus; // Local update for the panel rebuild
                     
                     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                     const container = {
@@ -654,17 +628,17 @@ async function interactionHandler(interaction) {
                                 type: 9,
                                 components: [{ 
                                     type: 10, 
-                                    content: `## ⚙️ GERENCIAR: ${texture.name}\n> **Categoria:** \`${texture.category}\`\n> **Versão:** \`${texture.version || '1.0'}\`\n> **Status:** ${texture.isUpdated ? '✅ Atualizada' : '❌ Desatualizada'}\n\nEscolha o que deseja configurar abaixo:` 
+                                    content: `## ⚙️ GERENCIAR: ${texture.name}\n> **Categoria:** \`${texture.category}\`\n> **Versão:** \`${texture.version || '1.0'}\`\n> **Status:** ${texture.is_updated ? '✅ Atualizada' : '❌ Desatualizada'}\n\nEscolha o que deseja configurar abaixo:` 
                                 }],
-                                accessory: { type: 11, media: { url: texture.profileImage || serverIcon } }
+                                accessory: { type: 11, media: { url: texture.profile_image || serverIcon } }
                             },
                             {
                                 type: 1,
                                 components: [
                                     { 
                                         type: 2, 
-                                        style: texture.isUpdated ? 4 : 3, 
-                                        label: texture.isUpdated ? 'Desatualizar' : 'Atualizar', 
+                                        style: texture.is_updated ? 4 : 3, 
+                                        label: texture.is_updated ? 'Desatualizar' : 'Atualizar', 
                                         custom_id: `toggle_texture_status_${textureId}` 
                                     },
                                     { type: 2, style: 2, label: 'Editar', custom_id: `manage_edit_data_${textureId}` },
@@ -680,8 +654,8 @@ async function interactionHandler(interaction) {
 
             if (interaction.customId === 'update_panel' || interaction.customId === 'back_to_main') {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
-                let versionData = await Version.findOne({ id: 'global' });
-                const panel = createMainPanel(interaction.guild, versionData?.version || '1.0', versionData?.keyShortener, versionData?.defaultAccessTime, versionData?.keyUseDeadline, versionData?.targetFolderName, versionData?.stumbleGuysVersion, versionData?.stumbleCupsVersion);
+                const versionData = await getVersionCached();
+                const panel = createMainPanel(interaction.guild, versionData?.version || '1.0', versionData?.key_shortener, versionData?.default_access_time, versionData?.key_use_deadline, versionData?.target_folder_name, versionData?.stumble_guys_version, versionData?.stumble_cups_version);
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
@@ -693,9 +667,9 @@ async function interactionHandler(interaction) {
             if (interaction.customId.startsWith('delete_key_')) {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 const keyId = interaction.customId.replace('delete_key_', '');
-                await Key.findByIdAndDelete(keyId);
+                await supabase.from('keys').delete().eq('id', keyId);
 
-                let versionData = await Version.findOne({ id: 'global' });
+                const versionData = await getVersionCached();
 
                 const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                 const successContainer = {
@@ -713,7 +687,7 @@ async function interactionHandler(interaction) {
                     ]
                 };
 
-                const panel = createMainPanel(interaction.guild, versionData?.version || '1.0', versionData?.keyShortener, versionData?.defaultAccessTime, versionData?.keyUseDeadline, versionData?.targetFolderName, versionData?.stumbleGuysVersion, versionData?.stumbleCupsVersion);
+                const panel = createMainPanel(interaction.guild, versionData?.version || '1.0', versionData?.key_shortener, versionData?.default_access_time, versionData?.key_use_deadline, versionData?.target_folder_name, versionData?.stumble_guys_version, versionData?.stumble_cups_version);
                 await interaction.followUp({ components: [successContainer], flags: 32768 + 64 });
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
@@ -724,8 +698,8 @@ async function interactionHandler(interaction) {
 
             if (interaction.customId === 'manage_textures') {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
-                const textures = await Texture.find();
-                const panel = createTexturePanel(interaction.guild, textures);
+                const { data: textures } = await supabase.from('textures').select('*');
+                const panel = createTexturePanel(interaction.guild, textures || []);
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
@@ -746,32 +720,32 @@ async function interactionHandler(interaction) {
 
             if (interaction.customId.startsWith('manage_edit_data_')) {
                 const textureId = interaction.customId.replace('manage_edit_data_', '');
-                const texture = await Texture.findById(textureId);
+                const { data: texture } = await supabase.from('textures').select('*').eq('id', textureId).maybeSingle();
                 const modal = new ModalBuilder().setCustomId(`modal_edit_texture_${textureId}`).setTitle('Editar Dados Básicos');
                 modal.addComponents(
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_name').setLabel('Nome').setValue(texture.name).setStyle(TextInputStyle.Short)),
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_category').setLabel('Categoria').setValue(texture.category).setStyle(TextInputStyle.Short)),
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_version').setLabel('Versão Atual').setValue(texture.version || '1.0').setStyle(TextInputStyle.Short)),
-                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_shortener').setLabel('Link Encurtador (Opcional)').setValue(texture.shortenerUrl || '').setStyle(TextInputStyle.Short).setRequired(false)),
-                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_profile').setLabel('Foto Perfil').setValue(texture.profileImage).setStyle(TextInputStyle.Short))
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_shortener').setLabel('Link Encurtador (Opcional)').setValue(texture.shortener_url || '').setStyle(TextInputStyle.Short).setRequired(false)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_profile').setLabel('Foto Perfil').setValue(texture.profile_image).setStyle(TextInputStyle.Short))
                 );
                 return await interaction.showModal(modal);
             }
 
             if (interaction.customId.startsWith('manage_removal_')) {
                 const textureId = interaction.customId.replace('manage_removal_', '');
-                const texture = await Texture.findById(textureId);
+                const { data: texture } = await supabase.from('textures').select('*').eq('id', textureId).maybeSingle();
                 const modal = new ModalBuilder().setCustomId(`modal_removal_links_${textureId}`).setTitle('Gerenciar Arquivos (Download)');
                 modal.addComponents(
-                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('file_p1').setLabel('Textura P1 (Jogo)').setValue(texture.downloadUrl).setStyle(TextInputStyle.Short)),
-                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('file_p2').setLabel('Textura P2 (AppData)').setValue(texture.downloadUrlPart2 || '').setStyle(TextInputStyle.Short).setRequired(false))
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('file_p1').setLabel('Textura P1 (Jogo)').setValue(texture.download_url).setStyle(TextInputStyle.Short)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('file_p2').setLabel('Textura P2 (AppData)').setValue(texture.download_url_part2 || '').setStyle(TextInputStyle.Short).setRequired(false))
                 );
                 return await interaction.showModal(modal);
             }
 
             if (interaction.customId === 'remove_texture_btn') {
-                const textures = await Texture.find();
-                if (textures.length === 0) {
+                const { data: textures } = await supabase.from('textures').select('*');
+                if (!textures || textures.length === 0) {
                     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                     const errorContainer = {
                         type: 17,
@@ -811,7 +785,7 @@ async function interactionHandler(interaction) {
                                     type: 3,
                                     custom_id: 'remove_texture_select',
                                     placeholder: 'Selecione uma textura para remover...',
-                                    options: textures.slice(0, 25).map(t => ({ label: t.name, value: t._id.toString() }))
+                                    options: textures.slice(0, 25).map(t => ({ label: t.name, value: t.id }))
                                 }
                             ]
                         },
@@ -839,8 +813,8 @@ async function interactionHandler(interaction) {
             }
 
             if (interaction.customId === 'remove_category_btn') {
-                const categories = await Category.find();
-                if (categories.length === 0) {
+                const { data: categories } = await supabase.from('categories').select('*');
+                if (!categories || categories.length === 0) {
                     return await interaction.reply({ content: '❌ Nenhuma categoria para remover.', flags: 64 });
                 }
 
@@ -861,7 +835,7 @@ async function interactionHandler(interaction) {
                                     type: 3,
                                     custom_id: 'remove_category_select',
                                     placeholder: 'Selecione uma categoria...',
-                                    options: categories.slice(0, 25).map(c => ({ label: c.name, value: c._id.toString() }))
+                                    options: categories.slice(0, 25).map(c => ({ label: c.name, value: c.id }))
                                 }
                             ]
                         },
@@ -884,28 +858,31 @@ async function interactionHandler(interaction) {
 
             if (interaction.customId.startsWith('toggle_ban_')) {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
-                const User = require('../../database/models/User');
                 const hwid = interaction.customId.replace('toggle_ban_', '');
-                const userData = await User.findOne({ hwid });
+                const { data: userData } = await supabase.from('users').select('*').eq('hwid', hwid).maybeSingle();
 
                 if (!userData) {
                     return await interaction.editReply({ content: '❌ Usuário não encontrado.', components: [], flags: 64 });
                 }
 
-                userData.isBlacklisted = !userData.isBlacklisted;
-                userData.blacklistReason = userData.isBlacklisted ? 'Banido via painel administrativo' : null;
-                userData.updatedAt = new Date();
-                await userData.save();
+                const newBanStatus = !userData.is_blacklisted;
+                await supabase.from('users').update({ 
+                    is_blacklisted: newBanStatus,
+                    blacklist_reason: newBanStatus ? 'Banido via painel administrativo' : null,
+                    updated_at: new Date().toISOString()
+                }).eq('hwid', hwid);
+                
+                userData.is_blacklisted = newBanStatus; // Local sync for success msg
 
                 const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                 const successContainer = {
                     type: 17,
-                    accent_color: userData.isBlacklisted ? 0xff0000 : 0x00ff88,
+                    accent_color: userData.is_blacklisted ? 0xff0000 : 0x00ff88,
                     components: [{
                         type: 9,
                         components: [{
                             type: 10,
-                            content: `## ${userData.isBlacklisted ? '🚫 USUÁRIO BANIDO' : '✅ BAN REMOVIDO'}\n> **Discord:** ${userData.discordTag || 'Não vinculado'}\n> **HWID:** \`${userData.hwid}\`\n> **Status:** ${userData.isBlacklisted ? '**BANIDO**' : 'Ativo'}`
+                            content: `## ${userData.is_blacklisted ? '🚫 USUÁRIO BANIDO' : '✅ BAN REMOVIDO'}\n> **Discord:** ${userData.discord_tag || 'Não vinculado'}\n> **HWID:** \`${userData.hwid}\`\n> **Status:** ${userData.is_blacklisted ? '**BANIDO**' : 'Ativo'}`
                         }],
                         accessory: { type: 11, media: { url: serverIcon } }
                     }]
@@ -926,11 +903,11 @@ async function interactionHandler(interaction) {
             if (interaction.customId === 'remove_category_select') {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 const catId = interaction.values[0];
-                const category = await Category.findById(catId);
+                const { data: category } = await supabase.from('categories').select('*').eq('id', catId).maybeSingle();
                 if (category) {
                     const catName = category.name;
-                    await Texture.updateMany({ category: catName }, { category: 'Geral' });
-                    await Category.findByIdAndDelete(catId);
+                    await supabase.from('textures').update({ category: 'Geral' }).eq('category', catName);
+                    await supabase.from('categories').delete().eq('id', catId);
 
                     // Mensagem Efêmera de Sucesso V2
                     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
@@ -951,7 +928,7 @@ async function interactionHandler(interaction) {
             if (interaction.customId === 'bulk_update_select') {
                 const value = interaction.values[0];
                 if (value === 'update_all') {
-                    await Texture.updateMany({}, { isUpdated: true });
+                    await supabase.from('textures').update({ is_updated: true }).not('id', 'is', null);
                     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                     const ok = {
                         type: 17,
@@ -965,7 +942,7 @@ async function interactionHandler(interaction) {
                     return await interaction.update({ components: [ok], flags: 64 + 32768 });
                 }
                 if (value === 'desat_all') {
-                    await Texture.updateMany({}, { isUpdated: false });
+                    await supabase.from('textures').update({ is_updated: false }).not('id', 'is', null);
                     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                     const ok = {
                         type: 17,
@@ -979,7 +956,8 @@ async function interactionHandler(interaction) {
                     return await interaction.update({ components: [ok], flags: 64 + 32768 });
                 }
                 if (value === 'att_category') {
-                    const categories = await Texture.distinct('category');
+                    const { data: textures } = await supabase.from('textures').select('category');
+                    const categories = [...new Set((textures || []).map(t => t.category))];
                     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                     if (!categories.length) {
                         const err = {
@@ -1021,7 +999,8 @@ async function interactionHandler(interaction) {
                     return await interaction.update({ components: [root], flags: 64 + 32768 });
                 }
                 if (value === 'desat_category') {
-                    const categories = await Texture.distinct('category');
+                    const { data: textures } = await supabase.from('textures').select('category');
+                    const categories = [...new Set((textures || []).map(t => t.category))];
                     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                     if (!categories.length) {
                         const err = {
@@ -1066,7 +1045,7 @@ async function interactionHandler(interaction) {
 
             if (interaction.customId === 'bulk_att_cat_select') {
                 const selected = interaction.values;
-                await Texture.updateMany({ category: { $in: selected } }, { isUpdated: true });
+                await supabase.from('textures').update({ is_updated: true }).in('category', selected);
                 const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                 const ok = {
                     type: 17,
@@ -1082,7 +1061,7 @@ async function interactionHandler(interaction) {
 
             if (interaction.customId === 'bulk_desat_cat_select') {
                 const selected = interaction.values;
-                await Texture.updateMany({ category: { $in: selected } }, { isUpdated: false });
+                await supabase.from('textures').update({ is_updated: false }).in('category', selected);
                 const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                 const ok = {
                     type: 17,
@@ -1109,178 +1088,77 @@ async function interactionHandler(interaction) {
             if (interaction.customId === 'modal_textures_version') {
                 const sgVersion = interaction.fields.getTextInputValue('sg_version_input');
                 const scVersion = interaction.fields.getTextInputValue('sc_version_input');
-                const data = await Version.findOneAndUpdate({ id: 'global' }, { 
-                    stumbleGuysVersion: sgVersion, 
-                    stumbleCupsVersion: scVersion 
-                }, { upsert: true, new: true });
-                invalidateVersionCache(data);
+                await supabase.from('versions').upsert({ 
+                    global_id: 'global',
+                    stumble_guys_version: sgVersion, 
+                    stumble_cups_version: scVersion 
+                });
+                invalidateVersionCache();
+                const data = await getVersionCached();
 
-                const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName, data.stumbleGuysVersion, data.stumbleCupsVersion);
+                const panel = createMainPanel(interaction.guild, data?.version || '1.0', data?.key_shortener, data?.default_access_time, data?.key_use_deadline, data?.target_folder_name, data?.stumble_guys_version, data?.stumble_cups_version);
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
             if (interaction.customId === 'modal_version') {
                 const newVersion = interaction.fields.getTextInputValue('version_input');
-                const data = await Version.findOneAndUpdate({ id: 'global' }, { version: newVersion }, { upsert: true, new: true });
-                invalidateVersionCache(data);
+                await supabase.from('versions').upsert({ global_id: 'global', version: newVersion });
+                invalidateVersionCache();
+                const data = await getVersionCached();
 
-                const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName, data.stumbleGuysVersion, data.stumbleCupsVersion);
+                const panel = createMainPanel(interaction.guild, data?.version || '1.0', data?.key_shortener, data?.default_access_time, data?.key_use_deadline, data?.target_folder_name, data?.stumble_guys_version, data?.stumble_cups_version);
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
             if (interaction.customId === 'modal_shortener') {
                 const newShortener = interaction.fields.getTextInputValue('shortener_input');
-                const data = await Version.findOneAndUpdate({ id: 'global' }, { keyShortener: newShortener }, { upsert: true, new: true });
-                invalidateVersionCache(data);
+                await supabase.from('versions').upsert({ global_id: 'global', key_shortener: newShortener });
+                invalidateVersionCache();
+                const data = await getVersionCached();
 
-                const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName, data.stumbleGuysVersion, data.stumbleCupsVersion);
+                const panel = createMainPanel(interaction.guild, data?.version || '1.0', data?.key_shortener, data?.default_access_time, data?.key_use_deadline, data?.target_folder_name, data?.stumble_guys_version, data?.stumble_cups_version);
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
             if (interaction.customId === 'modal_time') {
                 const newTime = interaction.fields.getTextInputValue('time_input');
-                const data = await Version.findOneAndUpdate({ id: 'global' }, { defaultAccessTime: newTime }, { upsert: true, new: true });
-                invalidateVersionCache(data);
+                await supabase.from('versions').upsert({ global_id: 'global', default_access_time: newTime });
+                invalidateVersionCache();
+                const data = await getVersionCached();
 
-                const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName, data.stumbleGuysVersion, data.stumbleCupsVersion);
+                const panel = createMainPanel(interaction.guild, data?.version || '1.0', data?.key_shortener, data?.default_access_time, data?.key_use_deadline, data?.target_folder_name, data?.stumble_guys_version, data?.stumble_cups_version);
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
-
 
             if (interaction.customId === 'modal_use_deadline') {
                 const newDeadline = interaction.fields.getTextInputValue('deadline_input');
-                const data = await Version.findOneAndUpdate({ id: 'global' }, { keyUseDeadline: newDeadline }, { upsert: true, new: true });
-                invalidateVersionCache(data);
+                await supabase.from('versions').upsert({ global_id: 'global', key_use_deadline: newDeadline });
+                invalidateVersionCache();
+                const data = await getVersionCached();
 
-                const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName, data.stumbleGuysVersion, data.stumbleCupsVersion);
+                const panel = createMainPanel(interaction.guild, data?.version || '1.0', data?.key_shortener, data?.default_access_time, data?.key_use_deadline, data?.target_folder_name, data?.stumble_guys_version, data?.stumble_cups_version);
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
-            if (interaction.customId.startsWith('modal_gen_key_final_')) {
-                const parts = interaction.customId.replace('modal_gen_key_final_', '').split('_');
-                const type = parts[0]; // all, category, texture
-                const value = parts.slice(1).join('_') || null;
+            if (interaction.customId === 'modal_folder_name') {
+                const newFolderName = interaction.fields.getTextInputValue('folder_input');
+                await supabase.from('versions').upsert({ global_id: 'global', target_folder_name: newFolderName });
+                invalidateVersionCache();
+                const data = await getVersionCached();
 
-                let durationStr = interaction.fields.getTextInputValue('key_time');
-                let versionData = await Version.findOne({ id: 'global' });
-                if (!durationStr) durationStr = versionData?.defaultAccessTime || '4h';
-
-                const keyCode = `TEXTURE-B-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
-
-                // Calcular Prazo para Usar
-                let useDeadlineDate = null;
-                const deadlineStr = versionData?.keyUseDeadline || '24h';
-                const { parseDuration } = require('../../utils/durationParser');
-                const deadlineMs = parseDuration(deadlineStr) || (24 * 60 * 60 * 1000);
-                useDeadlineDate = new Date(Date.now() + deadlineMs);
-
-                await Key.create({
-                    key: keyCode,
-                    duration: durationStr,
-                    expiresToUseAt: useDeadlineDate,
-                    permissions: { type: type, value: value },
-                    generatedBy: interaction.user.id,
-                    generatedByTag: interaction.user.tag
-                });
-
-                // Atualizar lastGeneratedKey no perfil do usuário (se existir)
-                const User = require('../../database/models/User');
-                await User.findOneAndUpdate(
-                    { discordId: interaction.user.id },
-                    { lastGeneratedKey: keyCode, discordTag: interaction.user.tag }
-                );
-
-                let accessLabel = '';
-                if (type === 'standard') accessLabel = 'Padrão (Com Encurtador)';
-                else if (type === 'all') accessLabel = 'Total (Sem Encurtador)';
-                else if (type === 'category') accessLabel = `Categoria: ${value}`;
-                else if (type === 'texture') accessLabel = `Textura: ${value}`;
-
-                const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
-                const successContainer = {
-                    type: 17,
-                    accent_color: 0xc773ff,
-                    components: [
-                        {
-                            type: 9,
-                            components: [{
-                                type: 10,
-                                content: `## ✅ KEY GERADA COM SUCESSO!\n> **Cod:** \`${keyCode}\`\n> **Duração:** \`${durationStr}\`\n> **Acesso:** \`${accessLabel}\`\n> **Expira resgate em:** <t:${Math.floor(useDeadlineDate.getTime() / 1000)}:R>\n> -# Chave disponível no banco.`
-                            }],
-                            accessory: { type: 11, media: { url: serverIcon } }
-                        }
-                    ]
-                };
-
-                const panel = createMainPanel(interaction.guild, versionData?.version || '1.0', versionData?.keyShortener, versionData?.defaultAccessTime, versionData?.keyUseDeadline, versionData?.targetFolderName, versionData?.stumbleGuysVersion, versionData?.stumbleCupsVersion);
-                await interaction.followUp({ components: [successContainer], flags: 32768 + 64 });
+                const panel = createMainPanel(interaction.guild, data?.version || '1.0', data?.key_shortener, data?.default_access_time, data?.key_use_deadline, data?.target_folder_name, data?.stumble_guys_version, data?.stumble_cups_version);
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
-            if (interaction.customId === 'modal_create_category') {
-                const name = interaction.fields.getTextInputValue('cat_name');
-                const description = interaction.fields.getTextInputValue('cat_desc');
-                await Category.findOneAndUpdate({ name }, { name, description }, { upsert: true });
-                return await showCategoriesPanel(interaction);
-            }
+            if (interaction.customId === 'modal_original_links') {
+                const p1 = interaction.fields.getTextInputValue('orig_p1');
+                const p2 = interaction.fields.getTextInputValue('orig_p2');
+                await supabase.from('versions').upsert({ global_id: 'global', remove_url_part1: p1, remove_url_part2: p2 });
+                invalidateVersionCache();
+                const data = await getVersionCached();
 
-            if (interaction.customId === 'modal_search_user') {
-                const User = require('../../database/models/User');
-                const term = interaction.fields.getTextInputValue('search_hwid');
-
-                const userData = await User.findOne({
-                    $or: [
-                        { hwid: { $regex: term, $options: 'i' } },
-                        { discordId: term },
-                        { discordTag: { $regex: term, $options: 'i' } }
-                    ]
-                });
-
-                if (!userData) {
-                    const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
-                    const errorContainer = {
-                        type: 17,
-                        accent_color: 0xff0000,
-                        components: [{
-                            type: 9,
-                            components: [{ type: 10, content: `## ❌ USUÁRIO NÃO ENCONTRADO\n> Nenhum usuário encontrado com: \`${term}\`\n> Tente buscar por HWID, ID do Discord ou Nome de Usuário.` }],
-                            accessory: { type: 11, media: { url: serverIcon } }
-                        }]
-                    };
-                    await interaction.followUp({ components: [errorContainer], flags: 64 + 32768 });
-                    return await showUsersPanel(interaction);
-                }
-
-                const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
-                const container = {
-                    type: 17,
-                    accent_color: userData.isBlacklisted ? 0xff0000 : 0xc773ff,
-                    components: [
-                        {
-                            type: 9,
-                            components: [{
-                                type: 10,
-                                content: `## 👤 INFORMAÇÕES DO USUÁRIO\n> **Status:** ${userData.isBlacklisted ? '🚫 **BANIDO**' : '✅ Ativo'}\n\n**Discord:** ${userData.discordTag || 'Não vinculado'}\n**Discord ID:** \`${userData.discordId || 'N/A'}\`\n**HWID:** \`${userData.hwid}\`\n**Último IP:** \`${userData.lastIp || 'N/A'}\`\n**Última Key Usada:** \`${userData.lastKeyUsed || 'N/A'}\`\n**Última Key Gerada:** \`${userData.lastGeneratedKey || 'Nenhuma'}\`\n**Total de Instalações:** \`${userData.totalInstalls}\`\n**Criado em:** <t:${Math.floor(userData.createdAt.getTime() / 1000)}:R>\n**Atualizado em:** <t:${Math.floor(userData.updatedAt.getTime() / 1000)}:R>`
-                            }],
-                            accessory: { type: 11, media: { url: serverIcon } }
-                        },
-                        { type: 14 },
-                        {
-                            type: 1,
-                            components: [
-                                {
-                                    type: 2,
-                                    style: userData.isBlacklisted ? 3 : 4,
-                                    label: userData.isBlacklisted ? 'Remover Ban' : 'Banir Usuário',
-                                    custom_id: `toggle_ban_${userData.hwid}`
-                                },
-                                { type: 2, style: 2, label: 'Voltar', custom_id: 'manage_users' }
-                            ]
-                        }
-                    ]
-                };
-
-                return await interaction.editReply({ components: [container], flags: 32768 });
+                const panel = createMainPanel(interaction.guild, data?.version || '1.0', data?.key_shortener, data?.default_access_time, data?.key_use_deadline, data?.target_folder_name, data?.stumble_guys_version, data?.stumble_cups_version);
+                return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
             if (interaction.customId === 'modal_create_texture') {
@@ -1288,54 +1166,158 @@ async function interactionHandler(interaction) {
                 const category = interaction.fields.getTextInputValue('texture_category');
                 const version = interaction.fields.getTextInputValue('texture_version');
                 const p1 = interaction.fields.getTextInputValue('texture_p1');
-                const p2 = interaction.fields.getTextInputValue('texture_p2') || '';
+                const p2 = interaction.fields.getTextInputValue('texture_p2');
 
-                await Texture.create({
+                await supabase.from('textures').insert({
                     name,
                     category,
                     version,
-                    downloadUrl: p1,
-                    downloadUrlPart2: p2,
-                    isUpdated: true
+                    download_url: p1,
+                    download_url_part2: p2 || null,
+                    is_updated: true
                 });
 
-                const textures = await Texture.find();
-                const panel = createTexturePanel(interaction.guild, textures);
+                const { data: textures } = await supabase.from('textures').select('*');
+                const panel = createTexturePanel(interaction.guild, textures || []);
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
             if (interaction.customId.startsWith('modal_edit_texture_')) {
                 const textureId = interaction.customId.replace('modal_edit_texture_', '');
-                await Texture.findByIdAndUpdate(textureId, {
-                    name: interaction.fields.getTextInputValue('edit_name'),
-                    category: interaction.fields.getTextInputValue('edit_category'),
-                    version: interaction.fields.getTextInputValue('edit_version'),
-                    shortenerUrl: interaction.fields.getTextInputValue('edit_shortener') || undefined,
-                    profileImage: interaction.fields.getTextInputValue('edit_profile')
-                });
-                const textures = await Texture.find();
-                return await interaction.editReply(createTexturePanel(interaction.guild, textures));
-            }
+                const name = interaction.fields.getTextInputValue('edit_name');
+                const category = interaction.fields.getTextInputValue('edit_category');
+                const version = interaction.fields.getTextInputValue('edit_version');
+                const shortener = interaction.fields.getTextInputValue('edit_shortener');
+                const profile = interaction.fields.getTextInputValue('edit_profile');
 
-            if (interaction.customId === 'modal_original_links') {
-                const p1 = interaction.fields.getTextInputValue('orig_p1');
-                const p2 = interaction.fields.getTextInputValue('orig_p2');
-                await Version.findOneAndUpdate({ id: 'global' }, { removeUrlPart1: p1, removeUrlPart2: p2 }, { upsert: true });
-                invalidateVersionCache();
+                await supabase.from('textures').update({
+                    name,
+                    category,
+                    version,
+                    shortener_url: shortener || null,
+                    profile_image: profile || null
+                }).eq('id', textureId);
 
-                let versionData = await Version.findOne({ id: 'global' });
-                const panel = createMainPanel(interaction.guild, versionData?.version, versionData?.keyShortener, versionData?.defaultAccessTime, versionData?.keyUseDeadline, versionData?.targetFolderName, versionData?.stumbleGuysVersion, versionData?.stumbleCupsVersion);
+                const { data: textures } = await supabase.from('textures').select('*');
+                const panel = createTexturePanel(interaction.guild, textures || []);
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
             if (interaction.customId.startsWith('modal_removal_links_')) {
                 const textureId = interaction.customId.replace('modal_removal_links_', '');
-                await Texture.findByIdAndUpdate(textureId, {
-                    downloadUrl: interaction.fields.getTextInputValue('file_p1'),
-                    downloadUrlPart2: interaction.fields.getTextInputValue('file_p2')
+                const p1 = interaction.fields.getTextInputValue('file_p1');
+                const p2 = interaction.fields.getTextInputValue('file_p2');
+
+                await supabase.from('textures').update({
+                    download_url: p1,
+                    download_url_part2: p2 || null
+                }).eq('id', textureId);
+
+                const { data: textures } = await supabase.from('textures').select('*');
+                const panel = createTexturePanel(interaction.guild, textures || []);
+                return await interaction.editReply({ ...panel, flags: 32768 });
+            }
+
+            if (interaction.customId === 'modal_create_category') {
+                const name = interaction.fields.getTextInputValue('cat_name');
+                const description = interaction.fields.getTextInputValue('cat_desc');
+
+                await supabase.from('categories').insert({ name, description });
+
+                return await showCategoriesPanel(interaction);
+            }
+
+            if (interaction.customId === 'modal_search_user') {
+                const term = interaction.fields.getTextInputValue('search_hwid');
+                const { data: results } = await supabase.from('users').select('*')
+                    .or(`hwid.ilike.%${term}%,discord_id.ilike.%${term}%,discord_tag.ilike.%${term}%`);
+
+                const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                if (!results || results.length === 0) {
+                    const err = {
+                        type: 17,
+                        accent_color: 0xff0000,
+                        components: [{
+                            type: 9,
+                            components: [{ type: 10, content: `## ❌ SEM RESULTADOS\n> Nenhum usuário encontrado para **${term}**.` }],
+                            accessory: { type: 11, media: { url: serverIcon } }
+                        }, {
+                            type: 1,
+                            components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_users' }]
+                        }]
+                    };
+                    return await interaction.editReply({ components: [err], flags: 64 + 32768 });
+                }
+
+                const container = {
+                    type: 17,
+                    accent_color: 0xc773ff,
+                    components: [
+                        {
+                            type: 9,
+                            components: [{ type: 10, content: `## 🔍 RESULTADOS DA PESQUISA\n> Termo: **${term}**\n> Foram encontrados **${results.length}** usuários.` }],
+                            accessory: { type: 11, media: { url: serverIcon } }
+                        },
+                        {
+                            type: 1,
+                            components: [
+                                {
+                                    type: 3,
+                                    custom_id: 'select_user',
+                                    placeholder: 'Selecione um usuário...',
+                                    options: results.slice(0, 25).map(u => ({ label: u.discord_tag || u.hwid.slice(0, 20), description: `ID: ${u.discord_id || 'N/A'} | HWID: ${u.hwid.slice(0, 15)}...`, value: u.hwid }))
+                                }
+                            ]
+                        }
+                    ]
+                };
+                return await interaction.editReply({ components: [container], flags: 32768 });
+            }
+
+            if (interaction.customId.startsWith('modal_gen_key_final_')) {
+                const parts = interaction.customId.replace('modal_gen_key_final_', '').split('_');
+                const type = parts[0];
+                const value = parts[1] || 'all';
+
+                const userTime = interaction.fields.getTextInputValue('key_time');
+                const config = await getVersionCached();
+                const duration = userTime || config?.default_access_time || '2h';
+
+                const crypto = require('crypto');
+                const key = `BOLT-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+
+                const permissions = { type };
+                if (type === 'category' || type === 'texture') permissions.value = value;
+
+                let expiresToUseAt = null;
+                const deadline = config?.key_use_deadline || '24h';
+                const deadlineMs = parseDuration(deadline);
+                if (deadlineMs) expiresToUseAt = new Date(Date.now() + deadlineMs).toISOString();
+
+                await supabase.from('keys').insert({
+                    key,
+                    duration,
+                    permissions,
+                    is_used: false,
+                    expires_to_use_at: expiresToUseAt,
+                    created_at: new Date().toISOString()
                 });
-                const textures = await Texture.find();
-                return await interaction.editReply(createTexturePanel(interaction.guild, textures));
+
+                const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                const successContainer = {
+                    type: 17,
+                    accent_color: 0x00ff88,
+                    components: [{
+                        type: 9,
+                        components: [{
+                            type: 10,
+                            content: `## ✅ KEY GERADA!\n> **Key:** \`${key}\`\n> **Tipo:** \`${type}\`${value !== 'all' && value !== 'standard' ? ` (\`${value}\`)` : ''}\n> **Duração:** \`${duration}\`\n\nAcesse o encurtador para liberar o acesso.`
+                        }],
+                        accessory: { type: 11, media: { url: serverIcon } }
+                    }]
+                };
+
+                return await interaction.editReply({ components: [successContainer], flags: 64 + 32768 });
             }
         }
     } catch (error) {
@@ -1363,10 +1345,10 @@ async function interactionHandler(interaction) {
 
 // Funções Auxiliares para Navegação Limpa
 async function showKeysList(interaction) {
-    const keys = await Key.find().sort({ createdAt: -1 }).limit(25);
+    const { data: keys } = await supabase.from('keys').select('*').order('created_at', { ascending: false }).limit(25);
     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
 
-    if (keys.length === 0) {
+    if (!keys || keys.length === 0) {
         const emptyContainer = {
             type: 17,
             accent_color: 0xc773ff,
@@ -1407,10 +1389,10 @@ async function showKeysList(interaction) {
                             const accessLabel = pType === 'all' ? 'TOTAL' : (pType === 'category' ? 'CAT' : 'TEX');
 
                             return {
-                                label: k.key.replace('TEXTURE-B-', ''),
-                                description: `Exp: ${k.duration} | ${accessLabel}${pVal} | ${k.isUsed ? 'USADA' : 'SOLTA'}`,
-                                value: k._id.toString(),
-                                emoji: { name: k.isUsed ? '🔴' : '🟢' }
+                                label: k.key.replace('BOLT-', ''),
+                                description: `Exp: ${k.duration} | ${accessLabel}${pVal} | ${k.is_used ? 'USADA' : 'SOLTA'}`,
+                                value: k.id.toString(),
+                                emoji: { name: k.is_used ? '🔴' : '🟢' }
                             };
                         })
                     }
@@ -1430,13 +1412,14 @@ async function showKeysList(interaction) {
 }
 
 async function showCategoriesPanel(interaction) {
-    // Sincronizar categorias existentes nas texturas para o model Category
-    const textureCategories = await Texture.distinct('category');
+    const { data: textureData } = await supabase.from('textures').select('category');
+    const textureCategories = [...new Set((textureData || []).map(t => t.category))];
+    
     for (const catName of textureCategories) {
-        if (catName) await Category.findOneAndUpdate({ name: catName }, { name: catName }, { upsert: true });
+        if (catName) await supabase.from('categories').upsert({ name: catName }, { onConflict: 'name' });
     }
 
-    const categories = await Category.find().sort({ name: 1 });
+    const { data: categories } = await supabase.from('categories').select('*').order('name', { ascending: true });
     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
 
     const container = {
@@ -1454,7 +1437,7 @@ async function showCategoriesPanel(interaction) {
             // Lista de Categorias
             {
                 type: 10,
-                content: categories.length > 0
+                content: categories && categories.length > 0
                     ? `### 📋 Categorias cadastradas:\n` + categories.map(c => `- \`${c.name}\`${c.description ? ` (${c.description})` : ''}`).join('\n')
                     : `### 📋 Categorias cadastradas:\n> *- Nenhuma categoria cadastrada.*`
             },
@@ -1480,8 +1463,7 @@ async function showCategoriesPanel(interaction) {
 }
 
 async function showUsersPanel(interaction) {
-    const User = require('../../database/models/User');
-    const users = await User.find().sort({ createdAt: -1 }).limit(25);
+    const { data: users } = await supabase.from('users').select('*').order('created_at', { ascending: false }).limit(25);
     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
 
     const container = {
@@ -1496,7 +1478,7 @@ async function showUsersPanel(interaction) {
             { type: 14 },
             {
                 type: 10,
-                content: users.length > 0
+                content: users && users.length > 0
                     ? `### 📊 Total de usuários: **${users.length}**\n> Selecione um usuário abaixo ou use a pesquisa.`
                     : `### 📊 Nenhum usuário registrado ainda.`
             },
@@ -1504,7 +1486,7 @@ async function showUsersPanel(interaction) {
         ]
     };
 
-    if (users.length > 0) {
+    if (users && users.length > 0) {
         container.components.push({
             type: 1,
             components: [{
@@ -1512,10 +1494,10 @@ async function showUsersPanel(interaction) {
                 custom_id: 'select_user',
                 placeholder: 'Selecione um usuário...',
                 options: users.map(u => ({
-                    label: u.discordTag || `HWID: ${u.hwid.substring(0, 12)}...`,
-                    description: `IP: ${u.lastIp || 'N/A'} | Installs: ${u.totalInstalls}`,
+                    label: u.discord_tag || `HWID: ${u.hwid.substring(0, 12)}...`,
+                    description: `IP: ${u.last_ip || 'N/A'} | Installs: ${u.total_installs}`,
                     value: u.hwid,
-                    emoji: { name: u.isBlacklisted ? '🚫' : '✅' }
+                    emoji: { name: u.is_blacklisted ? '🚫' : '✅' }
                 }))
             }]
         });
@@ -1535,7 +1517,7 @@ async function showUsersPanel(interaction) {
 module.exports = interactionHandler;
 module.exports.warmVersionCache = async () => {
     try {
-        const data = await Version.findOne({ id: 'global' });
+        const { data } = await supabase.from('versions').select('*').eq('global_id', 'global').maybeSingle();
         if (data) _versionCache = { data, ts: Date.now() };
     } catch (_) {}
 };

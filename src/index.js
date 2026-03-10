@@ -10,31 +10,24 @@ const { REST, Routes, SlashCommandBuilder, Events, MessageFlags } = require('dis
 const express = require('express');
 const cors = require('cors');
 
-const Key = require('./database/models/Key');
-const Texture = require('./database/models/Texture');
-const Version = require('./database/models/Version');
-const User = require('./database/models/User');
+// Carregar Supabase
+const supabase = require('./database/supabase');
 
 // Carregar Client e Banco DEPOIS do dotenv
 const client = require('./discord/client');
-const connectDB = require('./database/connect');
 const painelHandler = require('./discord/handlers/painelHandler');
 const interactionHandler = require('./discord/handlers/interactionHandler');
 const keysPanelHandler = require('./discord/handlers/keysPanelHandler');
 
 const app = express();
 
-// Desativar buffering global para evitar que comandos fiquem "presos" se o banco demorar
-const mongoose = require('mongoose');
-mongoose.set('bufferCommands', false);
-
-// Conectar ao Banco e pré-aquecer cache (evita Unknown interaction em cold start)
-connectDB().then(async () => {
+// Cache Version pré-aquecido (Agora via Supabase)
+(async () => {
     try {
         await interactionHandler.warmVersionCache();
         console.log('📦 Cache Version pré-aquecido.');
     } catch (_) {}
-}).catch(() => {});
+})();
 
 // Configuração CORS para permitir acesso dos sites externos
 app.use(cors({
@@ -146,9 +139,9 @@ app.get(['/api/download/status', '/download/status'], async (req, res) => {
 // Rota para o site externo gerar uma key após o encurtador
 app.get('/api/generate-key', async (req, res) => {
     try {
-        const versionData = await Version.findOne({ id: 'global' });
-        const duration = versionData?.defaultAccessTime || '4h';
-        const deadline = versionData?.keyUseDeadline || '24h';
+        const { data: versionData } = await supabase.from('versions').select('*').eq('global_id', 'global').maybeSingle();
+        const duration = versionData?.default_access_time || '4h';
+        const deadline = versionData?.key_use_deadline || '24h';
 
         const keyCode = `TEXTURE-B-${require('crypto').randomBytes(6).toString('hex').toUpperCase()}`;
 
@@ -161,52 +154,68 @@ app.get('/api/generate-key', async (req, res) => {
         else if (dUnit === 's') useDeadlineDate.setSeconds(useDeadlineDate.getSeconds() + dValue);
         else useDeadlineDate.setHours(useDeadlineDate.getHours() + 24);
 
-        const newKey = await Key.create({
-            key: keyCode,
-            duration: duration,
-            expiresToUseAt: useDeadlineDate,
-            permissions: { type: 'standard', value: null } // Garante que keys do site NÃO pulem encurtador
-        });
+        const { data: newKey, error } = await supabase
+            .from('keys')
+            .insert({
+                key: keyCode,
+                duration: duration,
+                expires_to_use_at: useDeadlineDate.toISOString(),
+                permissions_type: 'standard',
+                permissions_value: null
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
 
         res.json({ success: true, key: newKey.key, duration: newKey.duration });
     } catch (error) {
+        console.error('Erro no generate-key:', error);
         res.status(500).json({ error: 'Erro ao gerar key via site.' });
     }
 });
-
-const KeyRequest = require('./database/models/KeyRequest');
 
 app.post('/api/redeem-key', async (req, res) => {
     const { token } = req.body;
     if (!token) return res.status(400).json({ error: 'Token inválido.' });
 
     try {
-        // ATOMICO: Busca e deleta imediatamente para evitar Replay/F5
-        const request = await KeyRequest.findOneAndDelete({ token });
+        // ATOMICO EM SQL: Busca e deleta imediatamente para evitar Replay/F5
+        const { data: request, error: fetchError } = await supabase
+            .from('key_requests')
+            .delete()
+            .eq('token', token)
+            .select()
+            .maybeSingle();
 
-        if (!request) return res.status(404).json({ error: 'Solicitação expirada ou inválida. Gere um novo botão no Discord.' });
+        if (fetchError || !request) return res.status(404).json({ error: 'Solicitação expirada ou inválida. Gere um novo botão no Discord.' });
 
         const crypto = require('crypto');
         const newKeyCode = `TEXTURE-B-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
-        const versionConfig = await Version.findOne({ id: 'global' });
+        const { data: versionConfig } = await supabase.from('versions').select('*').eq('global_id', 'global').maybeSingle();
 
-        const duration = versionConfig?.defaultAccessTime || '4h'; // Duração da sessão
+        const duration = versionConfig?.default_access_time || '4h'; // Duração da sessão
 
         let expiresToUseAt = new Date();
         expiresToUseAt.setHours(expiresToUseAt.getHours() + 24);
 
-        const newKey = await Key.create({
-            key: newKeyCode,
-            duration: duration,
-            generatedBy: request.userId,
-            generatedByTag: request.userTag || null,
-            createdAt: new Date(),
-            expiresToUseAt: expiresToUseAt,
-            permissions: { type: 'standard', value: null } // Keys do bot devem ser 'standard', não 'all'
-        });
+        const { data: newKey, error: insertError } = await supabase
+            .from('keys')
+            .insert({
+                key: newKeyCode,
+                duration: duration,
+                generated_by: request.user_id,
+                generated_by_tag: request.user_tag || null,
+                expires_to_use_at: expiresToUseAt.toISOString(),
+                permissions_type: 'standard',
+                permissions_value: null
+            })
+            .select()
+            .single();
 
+        if (insertError) throw insertError;
 
-        res.json({ success: true, key: newKey.key, duration: newKey.duration, user: request.userTag });
+        res.json({ success: true, key: newKey.key, duration: newKey.duration, user: request.user_tag });
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: 'Erro interno ao gerar key.' });
@@ -218,43 +227,51 @@ app.post('/api/validate', async (req, res) => {
     const { key, hwid } = req.body;
     if (!key) return res.status(400).json({ error: 'Key é obrigatória.' });
 
-    const mongoose = require('mongoose');
-    if (mongoose.connection.readyState !== 1) {
-        return res.status(503).json({ error: 'Servidor iniciando conexão com banco de dados. Tente novamente em segundos.' });
-    }
-
     try {
-        const keyData = await Key.findOne({ key });
-        if (!keyData) return res.status(404).json({ error: 'Key inválida.' });
+        const { data: keyData, error: keyError } = await supabase
+            .from('keys')
+            .select('*')
+            .eq('key', key)
+            .maybeSingle();
+
+        if (keyError || !keyData) return res.status(404).json({ error: 'Key inválida.' });
 
         // --- VERIFICAÇÃO DE BLACKLIST ---
-        let userData = await User.findOne({ hwid });
-        if (userData && userData.isBlacklisted) {
+        const { data: userData } = await supabase
+            .from('users')
+            .select('*')
+            .eq('hwid', hwid)
+            .maybeSingle();
+
+        if (userData && userData.is_blacklisted) {
             return res.status(403).json({
                 error: 'Você foi banido! Vazou textura ou fez algo proibido.'
             });
         }
 
+        const now = new Date();
+        const clientIp = getClientIp(req);
+        const permissions = keyData.permissions || { type: 'standard', value: 'all' };
+
         // --- VINCULAÇÃO/ATUALIZAÇÃO DE USUÁRIO (Multi-Conta Support) ---
-        if (keyData.generatedBy) {
+        let finalUserData = userData;
+        if (keyData.generated_by) {
             try {
-                const resolvedTag = keyData.generatedByTag || (await client.users.fetch(keyData.generatedBy).catch(() => null))?.tag || null;
-                if (!userData) {
-                    userData = new User({
-                        hwid,
-                        discordId: keyData.generatedBy,
-                        discordTag: resolvedTag || 'Unknown',
-                        lastIp: req.headers['x-forwarded-for'] || req.socket.remoteAddress
-                    });
-                    await userData.save();
-                } else if (userData.discordId !== keyData.generatedBy) {
-                    userData.discordId = keyData.generatedBy;
-                    userData.discordTag = resolvedTag || userData.discordTag || 'Unknown';
-                    await userData.save();
-                } else if (!userData.discordTag && resolvedTag) {
-                    userData.discordTag = resolvedTag;
-                    await userData.save();
-                }
+                const resolvedTag = keyData.generated_by_tag || (await client.users.fetch(keyData.generated_by).catch(() => null))?.tag || null;
+                const userPayload = {
+                    hwid,
+                    discord_id: keyData.generated_by,
+                    discord_tag: resolvedTag || userData?.discord_tag || 'Unknown',
+                    last_ip: clientIp,
+                    updated_at: now.toISOString()
+                };
+
+                const { data: updatedUser } = await supabase
+                    .from('users')
+                    .upsert(userPayload, { onConflict: 'hwid' })
+                    .select()
+                    .single();
+                finalUserData = updatedUser;
             } catch (updateErr) {
                 console.error('Erro ao atualizar usuário:', updateErr);
             }
@@ -262,89 +279,63 @@ app.post('/api/validate', async (req, res) => {
 
         // --- TRAVA DE SERVIDOR REMOVIDA A PEDIDO DO CRIADOR ---
 
-        const now = new Date();
-        const clientIp = getClientIp(req);
-        const permissions = keyData.permissions || { type: 'all', value: null };
-
         // Se a key já foi usada
-        if (keyData.isUsed) {
+        if (keyData.is_used) {
             // Verificar trava de dispositivo (HWID)
-            if (keyData.usedBy && keyData.usedBy !== hwid) {
+            if (keyData.used_by && keyData.used_by !== hwid) {
                 return res.status(403).json({ error: 'Esta key já está vinculada a outro computador.' });
             }
 
             // Verificar se expirou (se não for permanente)
-            if (keyData.duration !== 'permanente' && keyData.expiresAt && now > keyData.expiresAt) {
+            if (keyData.duration !== 'permanente' && keyData.expires_at && now > new Date(keyData.expires_at)) {
                 return res.status(403).json({ error: 'Sua licença expirou.' });
             }
 
-            // --- ATUALIZAÇÃO DE USUÁRIO (Keys já usadas) ---
-            if (!userData) {
-                const tag = keyData.generatedByTag || (keyData.generatedBy && (await client.users.fetch(keyData.generatedBy).catch(() => null))?.tag) || null;
-                userData = await User.create({
-                    hwid,
-                    discordId: keyData.generatedBy || null,
-                    discordTag: tag || null,
-                    lastIp: clientIp,
-                    lastKeyUsed: key,
-                    totalInstalls: 0
-                });
-                console.log(`\n🚀 [NOVO USUÁRIO]\nHWID: ${hwid}\nIP: ${clientIp}\nDiscord: ${userData.discordTag || userData.discordId || 'Não vinculado'}\n`);
-            } else {
-                userData.lastIp = clientIp;
-                userData.lastKeyUsed = key;
-                if (!userData.discordId && keyData.generatedBy) {
-                    userData.discordId = keyData.generatedBy;
-                    userData.discordTag = keyData.generatedByTag || (await client.users.fetch(keyData.generatedBy).catch(() => null))?.tag || null;
-                }
-                userData.updatedAt = new Date();
-                await userData.save();
-            }
+            // Atualizar last_ip e last_key_used
+            await supabase.from('users').upsert({
+                hwid,
+                last_ip: clientIp,
+                last_key_used: key,
+                updated_at: now.toISOString()
+            }, { onConflict: 'hwid' });
 
             return res.json({
                 success: true,
                 duration: keyData.duration,
-                expiresAt: keyData.expiresAt,
+                expiresAt: keyData.expires_at,
                 permissions: permissions
             });
         }
 
         // Primeira vez usando a key (Resgate)
         const { applyDuration } = require('./utils/durationParser');
-        const expirationDate = applyDuration(new Date(), keyData.duration);
+        const expirationDate = applyDuration(now, keyData.duration);
 
-        keyData.isUsed = true;
-        keyData.usedBy = hwid;
-        keyData.expiresAt = expirationDate;
-        await keyData.save();
+        const { error: updateKeyError } = await supabase
+            .from('keys')
+            .update({
+                is_used: true,
+                used_by: hwid,
+                expires_at: expirationDate.toISOString()
+            })
+            .eq('key', key);
 
-        // --- ATUALIZAÇÃO / CRIAÇÃO DE USUÁRIO (Primeiro uso) ---
-        if (!userData) {
-            const tag = keyData.generatedByTag || (keyData.generatedBy && (await client.users.fetch(keyData.generatedBy).catch(() => null))?.tag) || null;
-            userData = await User.create({
-                hwid,
-                discordId: keyData.generatedBy || null,
-                discordTag: tag || null,
-                lastIp: clientIp,
-                lastKeyUsed: key,
-                totalInstalls: 0
-            });
-            console.log(`\n🚀 [NOVO USUÁRIO]\nHWID: ${hwid}\nIP: ${clientIp}\nDiscord: ${userData.discordTag || userData.discordId || 'Não vinculado'}\n`);
-        } else {
-            userData.lastIp = clientIp;
-            userData.lastKeyUsed = key;
-            if (!userData.discordId && keyData.generatedBy) {
-                userData.discordId = keyData.generatedBy;
-                userData.discordTag = keyData.generatedByTag || (await client.users.fetch(keyData.generatedBy).catch(() => null))?.tag || null;
-            }
-            userData.updatedAt = new Date();
-            await userData.save();
-        }
+        if (updateKeyError) throw updateKeyError;
+
+        // Atualizar/Criar usuário no primeiro uso
+        await supabase.from('users').upsert({
+            hwid,
+            discord_id: keyData.generated_by || null,
+            discord_tag: keyData.generated_by_tag || null,
+            last_ip: clientIp,
+            last_key_used: key,
+            updated_at: now.toISOString()
+        }, { onConflict: 'hwid' });
 
         res.json({
             success: true,
             duration: keyData.duration,
-            expiresAt: expirationDate,
+            expiresAt: expirationDate.toISOString(),
             permissions: permissions
         });
     } catch (error) {
@@ -357,55 +348,62 @@ app.post('/api/validate', async (req, res) => {
 app.post('/api/textures', async (req, res) => {
     const { key, hwid } = req.body;
 
-    const mongoose = require('mongoose');
-    if (mongoose.connection.readyState !== 1 && key !== 'get_shortener') {
-        return res.status(503).json({ error: 'Banco de dados desconectado. Tente novamente.' });
-    }
-
     try {
-        const config = await Version.findOne({ id: 'global' });
+        const { data: config } = await supabase.from('versions').select('*').eq('global_id', 'global').maybeSingle();
 
         // Atalho para pegar encurtador e VERSAO no login
         if (key === 'get_shortener') {
             return res.json({
-                keyShortener: config?.keyShortener,
+                keyShortener: config?.key_shortener,
                 version: config?.version || '1.0',
-                stumbleGuysVersion: config?.stumbleGuysVersion || '1.0',
-                stumbleCupsVersion: config?.stumbleCupsVersion || '1.0',
-                keysChannelUrl: config?.keysChannelUrl // Novo campo para o botão do App
+                stumbleGuysVersion: config?.stumble_guys_version || '1.0',
+                stumbleCupsVersion: config?.stumble_cups_version || '1.0',
+                keysChannelUrl: config?.keys_channel_url
             });
         }
 
-        const keyData = await Key.findOne({ key });
-        if (!keyData || !keyData.isUsed) return res.status(403).json({ error: 'Acesso negado.' });
+        const { data: keyData, error: keyError } = await supabase.from('keys').select('*').eq('key', key).maybeSingle();
+        if (keyError || !keyData || !keyData.is_used) return res.status(403).json({ error: 'Acesso negado.' });
 
         // Segurança: Verificar HWID em cada chamada de texturas
-        if (keyData.usedBy && keyData.usedBy !== hwid) {
+        if (keyData.used_by && keyData.used_by !== hwid) {
             return res.status(403).json({ error: 'Acesso bloqueado. Esta key pertence a outro dispositivo.' });
         }
 
         // Validação de tempo se não for permanente
-        if (keyData.duration !== 'permanente' && keyData.expiresAt && new Date() > keyData.expiresAt) {
+        if (keyData.duration !== 'permanente' && keyData.expires_at && new Date() > new Date(keyData.expires_at)) {
             return res.status(403).json({ error: 'Sua licença expirou.' });
         }
 
-        const permissions = keyData.permissions || { type: 'all', value: null };
+        const permissions = { type: keyData.permissions_type || 'all', value: keyData.permissions_value || null };
 
-        // Retornamos sempre TODAS as texturas para que o usuário veja o catálogo completo.
-        // A lógica de "Bypass" (ignorar encurtador) é tratada pelo aplicativo usando o objeto 'permissions'.
-        const textures = await Texture.find();
+        // Retornamos sempre TODAS as texturas
+        const { data: textures } = await supabase.from('textures').select('*');
+
+        // Mapear snake_case para o formato que o App espera (camelCase se necessário, ou manter conforme o App já lia)
+        // O App lia as propriedades do Mongoose: profileImage, downloadUrl, etc.
+        const mappedTextures = textures.map(t => ({
+            ...t,
+            profileImage: t.profile_image,
+            downloadUrl: t.download_url,
+            downloadUrlPart2: t.download_url_part2,
+            shortenerUrl: t.shortener_url,
+            removeUrlPart1: t.remove_url_part1,
+            removeUrlPart2: t.remove_url_part2,
+            isUpdated: t.is_updated
+        }));
 
         res.json({
-            textures,
+            textures: mappedTextures,
             permissions,
             version: config?.version || '1.0',
-            stumbleGuysVersion: config?.stumbleGuysVersion || '1.0',
-            stumbleCupsVersion: config?.stumbleCupsVersion || '1.0',
-            keyShortener: config?.keyShortener,
-            profileImage: config?.profileImage || 'https://i.imgur.com/YahM0Nf.png',
-            targetFolderName: config?.targetFolderName || 'StumbleCups',
-            removeUrlPart1: config?.removeUrlPart1 || '',
-            removeUrlPart2: config?.removeUrlPart2 || ''
+            stumbleGuysVersion: config?.stumble_guys_version || '1.0',
+            stumbleCupsVersion: config?.stumble_cups_version || '1.0',
+            keyShortener: config?.key_shortener,
+            profileImage: config?.profile_image || 'https://i.imgur.com/YahM0Nf.png',
+            targetFolderName: config?.target_folder_name || 'StumbleCups',
+            removeUrlPart1: config?.remove_url_part1 || '',
+            removeUrlPart2: config?.remove_url_part2 || ''
         });
     } catch (error) {
         console.error('Erro ao buscar texturas:', error);
@@ -425,24 +423,36 @@ app.get('/', (req, res) => res.send('API Online 💜'));
 // --- TAREFA DE LIMPEZA AUTOMÁTICA EM SEGUNDO PLANO ---
 if (RUN_MODE === 'BOT' || RUN_MODE === 'ALL') {
     setInterval(async () => {
-        const mongoose = require('mongoose');
-        if (mongoose.connection.readyState !== 1) return;
-
         try {
-            const now = new Date();
-            const [deletedUnused, deletedUsed] = await Promise.all([
-                Key.deleteMany({ isUsed: false, expiresToUseAt: { $lt: now } }).catch(() => ({ deletedCount: 0 })),
-                Key.deleteMany({ isUsed: true, expiresAt: { $lt: now, $ne: null } }).catch(() => ({ deletedCount: 0 }))
-            ]);
+            const now = new Date().toISOString();
+            
+            // Limpar keys não usadas expiradas
+            const { data: unusedDeleted } = await supabase
+                .from('keys')
+                .delete()
+                .eq('is_used', false)
+                .lt('expires_to_use_at', now)
+                .select();
 
+            // Limpar keys usadas expiradas
+            const { data: usedDeleted } = await supabase
+                .from('keys')
+                .delete()
+                .eq('is_used', true)
+                .not('expires_at', 'is', null)
+                .lt('expires_at', now)
+                .select();
+
+            // Limpar downloads pendentes na memória
+            const nowMs = Date.now();
             for (const [key, value] of pendingDownloads.entries()) {
-                if (now - value.timestamp > 600000) {
+                if (nowMs - value.timestamp > 600000) {
                     pendingDownloads.delete(key);
                 }
             }
 
-            const u = deletedUnused?.deletedCount || 0;
-            const s = deletedUsed?.deletedCount || 0;
+            const u = unusedDeleted?.length || 0;
+            const s = usedDeleted?.length || 0;
             if (u + s > 0) {
                 console.log(`🧹 [Limpeza] Foram removidas ${u + s} chaves (Resgate: ${u} | Sessão: ${s})`);
             }
@@ -454,27 +464,15 @@ if (RUN_MODE === 'BOT' || RUN_MODE === 'ALL') {
 client.once(Events.ClientReady, async () => {
     try {
         console.log('🔄 Evento ClientReady disparado, iniciando setup...');
-        const mongoose = require('mongoose');
-
-        if (mongoose.connection.readyState !== 1) {
-            console.log('⏳ Aguardando conexão MongoDB...');
-            const timeout = new Promise(resolve => setTimeout(resolve, 10000));
-            const connection = new Promise(resolve => {
-                if (mongoose.connection.readyState === 1) resolve();
-                else mongoose.connection.once('connected', resolve);
-            });
-            await Promise.race([timeout, connection]);
-        }
 
         const guild = client.guilds.cache.first();
         const serverName = guild ? guild.name : 'Nenhum servidor encontrado';
         const memberCount = guild ? guild.memberCount : 0;
-        const mongoStatus = mongoose.connection.readyState === 1 ? 'Sim' : 'Não';
 
         console.log(`\n💜 ########## STATUS DO BOT ##########`);
         console.log(`💜 Servidor: ${serverName}`);
         console.log(`   💜 Quantas pessoas no servidor: ${memberCount}`);
-        console.log(`      💜 MongoDB conectado: ${mongoStatus}`);
+        console.log(`      💜 Database: Supabase (Online)`);
         console.log(`          💜 Criador By: bolttexturas\n`);
 
         if (RUN_MODE === 'BOT' || RUN_MODE === 'ALL') {

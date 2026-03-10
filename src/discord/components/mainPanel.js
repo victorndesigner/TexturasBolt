@@ -55,8 +55,7 @@ const createMainPanel = (guild, version = '1.0', keyShortener = 'Não definido',
                             { label: 'Usuários', description: 'Gerenciar usuários e blacklist', value: 'manage_users', emoji: { name: '👥' } },
                             { label: 'Encurtador', description: 'Link da key', value: 'manage_shortener', emoji: { name: '🔗' } },
                             { label: 'Categorias', description: 'Gerenciar categorias de texturas', value: 'manage_categories', emoji: { name: '🏷️' } },
-                            { label: 'Texturas', description: 'Abrir catálogo', value: 'manage_textures', emoji: { name: '🎨' } },
-                            { label: 'Definir Servidor', description: 'Trava de servidor obrigatório', value: 'manage_server_lock', emoji: { name: '🔒' } }
+                            { label: 'Texturas', description: 'Abrir catálogo', value: 'manage_textures', emoji: { name: '🎨' } }
                         ]
                     }
                 ]

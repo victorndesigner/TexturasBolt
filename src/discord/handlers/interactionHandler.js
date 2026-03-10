@@ -288,52 +288,6 @@ async function interactionHandler(interaction) {
                     return await interaction.showModal(modal);
                 }
 
-                if (value === 'manage_server_lock') {
-                    const config = _versionCache.data ?? null;
-                    const modal = new ModalBuilder()
-                        .setCustomId('modal_server_config')
-                        .setTitle('Configurar Trava de Servidor');
-
-                    const serverIdInput = new TextInputBuilder()
-                        .setCustomId('server_id')
-                        .setLabel('ID do Servidor (Obrigatório)')
-                        .setPlaceholder('Ex: 1042897210406338672')
-                        .setValue(config?.requiredServerId || '')
-                        .setStyle(TextInputStyle.Short)
-                        .setRequired(false); // Pode deixar vazio para desativar
-
-                    const inviteInput = new TextInputBuilder()
-                        .setCustomId('server_invite')
-                        .setLabel('Link do Convite (https://discord.gg/...)')
-                        .setPlaceholder('Link para o botão do App')
-                        .setValue(config?.requiredServerInvite || '')
-                        .setStyle(TextInputStyle.Short)
-                        .setRequired(false);
-
-                    const serverNameInput = new TextInputBuilder()
-                        .setCustomId('server_name')
-                        .setLabel('Nome do Servidor (para mensagem)')
-                        .setPlaceholder('Ex: Bolt Texturas Oficial')
-                        .setValue(config?.requiredServerName || '')
-                        .setStyle(TextInputStyle.Short)
-                        .setRequired(false);
-
-                    const keysChannelInput = new TextInputBuilder()
-                        .setCustomId('keys_channel_url')
-                        .setLabel('Link canal painel (Pegar Key)')
-                        .setPlaceholder('https://discord.com/channels/ID_SERVIDOR/ID_CANAL')
-                        .setValue(config?.keysChannelUrl || '')
-                        .setStyle(TextInputStyle.Short)
-                        .setRequired(false);
-
-                    modal.addComponents(
-                        new ActionRowBuilder().addComponents(serverIdInput),
-                        new ActionRowBuilder().addComponents(serverNameInput),
-                        new ActionRowBuilder().addComponents(inviteInput),
-                        new ActionRowBuilder().addComponents(keysChannelInput)
-                    );
-                    return await interaction.showModal(modal);
-                }
 
                 if (value === 'manage_profile_global') {
                     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
@@ -1192,23 +1146,6 @@ async function interactionHandler(interaction) {
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
-            if (interaction.customId === 'modal_server_config') {
-                const serverId = interaction.fields.getTextInputValue('server_id');
-                const serverName = interaction.fields.getTextInputValue('server_name');
-                const invite = interaction.fields.getTextInputValue('server_invite');
-                const keysUrl = interaction.fields.getTextInputValue('keys_channel_url');
-
-                const data = await Version.findOneAndUpdate({ id: 'global' }, {
-                    requiredServerId: serverId,
-                    requiredServerName: serverName,
-                    requiredServerInvite: invite,
-                    keysChannelUrl: keysUrl
-                }, { upsert: true, new: true });
-                invalidateVersionCache(data);
-
-                const panel = createMainPanel(interaction.guild, data.version, data.keyShortener, data.defaultAccessTime, data.keyUseDeadline, data.targetFolderName, data.stumbleGuysVersion, data.stumbleCupsVersion);
-                return await interaction.editReply({ ...panel, flags: 32768 });
-            }
 
             if (interaction.customId === 'modal_use_deadline') {
                 const newDeadline = interaction.fields.getTextInputValue('deadline_input');

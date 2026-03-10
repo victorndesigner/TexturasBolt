@@ -12,9 +12,6 @@ const VersionSchema = new mongoose.Schema({
     stumbleGuysVersion: { type: String, default: '1.0' },
     stumbleCupsVersion: { type: String, default: '1.0' },
     profileImage: { type: String, default: 'https://i.imgur.com/YahM0Nf.png' },
-    requiredServerId: { type: String, default: '' },
-    requiredServerName: { type: String, default: '' },
-    requiredServerInvite: { type: String, default: '' },
     keysChannelUrl: { type: String, default: 'https://discord.gg/bolttexturas' },
     updatedAt: { type: Date, default: Date.now }
 });

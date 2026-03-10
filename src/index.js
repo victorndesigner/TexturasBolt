@@ -143,7 +143,7 @@ app.get('/api/generate-key', async (req, res) => {
         const duration = versionData?.default_access_time || '4h';
         const deadline = versionData?.key_use_deadline || '24h';
 
-        const keyCode = `TEXTURE-B-${require('crypto').randomBytes(6).toString('hex').toUpperCase()}`;
+        const keyCode = `BOLT-${require('crypto').randomBytes(6).toString('hex').toUpperCase()}`;
 
         // Calcular Prazo de Resgate
         let useDeadlineDate = new Date();
@@ -384,6 +384,7 @@ app.post('/api/textures', async (req, res) => {
         // O App lia as propriedades do Mongoose: profileImage, downloadUrl, etc.
         const mappedTextures = textures.map(t => ({
             ...t,
+            _id: t.id.toString(), // Compatibilidade com o App
             profileImage: t.profile_image,
             downloadUrl: t.download_url,
             downloadUrlPart2: t.download_url_part2,

@@ -1372,7 +1372,8 @@ async function interactionHandler(interaction) {
                 await supabase.from('keys').insert({
                     key,
                     duration,
-                    permissions,
+                    permissions_type: type,
+                    permissions_value: (type === 'category' || type === 'texture') ? value : null,
                     is_used: false,
                     expires_to_use_at: expiresToUseAt,
                     created_at: new Date().toISOString()
@@ -1392,7 +1393,19 @@ async function interactionHandler(interaction) {
                     }]
                 };
 
-                return await interaction.editReply({ components: [successContainer], flags: 64 + 32768 });
+                const panel = createMainPanel(
+                    interaction.guild, 
+                    config?.version || undefined, 
+                    config?.key_shortener || undefined, 
+                    config?.default_access_time || undefined, 
+                    config?.key_use_deadline || undefined, 
+                    config?.target_folder_name || undefined, 
+                    config?.stumble_guys_version || undefined, 
+                    config?.stumble_cups_version || undefined
+                );
+
+                await interaction.followUp({ components: [successContainer], flags: 64 + 32768 });
+                return await interaction.editReply({ ...panel, flags: 32768 });
             }
         }
     } catch (error) {

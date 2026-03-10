@@ -260,50 +260,7 @@ app.post('/api/validate', async (req, res) => {
             }
         }
 
-        // --- TRAVA DE SERVIDOR (STRICT) ---
-        // Só exige servidor quando a key tem generatedBy (foi gerada pelo bot no Discord). Keys do site (/api/generate-key) não têm e podem ser usadas sem checagem.
-        try {
-            const config = await Version.findOne({ id: 'global' });
-            if (config && config.requiredServerId && (keyData.generatedBy || userData?.discordId)) {
-                let isMember = false;
-                const discordIdToCheck = (userData?.discordId) || keyData.generatedBy;
-                const guildId = config.requiredServerId.trim();
-
-                if (discordIdToCheck && guildId) {
-                    try {
-                        await client.rest.get(Routes.guildMember(guildId, discordIdToCheck));
-                        isMember = true;
-                    } catch (memberErr) {
-                        if (memberErr?.code === 10007) {
-                            console.log(`[SERVER_CHECK] Usuário ${discordIdToCheck} não está no servidor ${guildId}`);
-                        }
-                        isMember = false;
-                    }
-                }
-
-                if (!isMember) {
-                    let serverName = (config.requiredServerName || '').trim() || 'Servidor Oficial';
-
-                    // Se o bot estiver no servidor, conseguimos pegar o nome real
-                    try {
-                        const cachedGuild = client.guilds.cache.get(guildId);
-                        if (cachedGuild) {
-                            serverName = cachedGuild.name;
-                        }
-                    } catch (err) {
-                        console.log(`[SERVER_CHECK] Não foi possível ler cache do servidor ${guildId}:`, err.message);
-                    }
-
-                    return res.status(403).json({
-                        error: 'SERVER_REQUIRED',
-                        serverName: serverName,
-                        inviteUrl: config.requiredServerInvite || ''
-                    });
-                }
-            }
-        } catch (serverCheckErr) {
-            console.error('Erro na verificação de servidor:', serverCheckErr);
-        }
+        // --- TRAVA DE SERVIDOR REMOVIDA A PEDIDO DO CRIADOR ---
 
         const now = new Date();
         const clientIp = getClientIp(req);

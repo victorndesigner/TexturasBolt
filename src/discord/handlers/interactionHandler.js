@@ -655,7 +655,16 @@ async function interactionHandler(interaction) {
             if (interaction.customId === 'update_panel' || interaction.customId === 'back_to_main') {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 const versionData = await getVersionCached();
-                const panel = createMainPanel(interaction.guild, versionData?.version || '1.0', versionData?.key_shortener, versionData?.default_access_time, versionData?.key_use_deadline, versionData?.target_folder_name, versionData?.stumble_guys_version, versionData?.stumble_cups_version);
+                const panel = createMainPanel(
+                    interaction.guild, 
+                    versionData?.version || undefined, 
+                    versionData?.key_shortener || undefined, 
+                    versionData?.default_access_time || undefined, 
+                    versionData?.key_use_deadline || undefined, 
+                    versionData?.target_folder_name || undefined, 
+                    versionData?.stumble_guys_version || undefined, 
+                    versionData?.stumble_cups_version || undefined
+                );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
@@ -687,7 +696,16 @@ async function interactionHandler(interaction) {
                     ]
                 };
 
-                const panel = createMainPanel(interaction.guild, versionData?.version || '1.0', versionData?.key_shortener, versionData?.default_access_time, versionData?.key_use_deadline, versionData?.target_folder_name, versionData?.stumble_guys_version, versionData?.stumble_cups_version);
+                const panel = createMainPanel(
+                    interaction.guild, 
+                    versionData?.version || undefined, 
+                    versionData?.key_shortener || undefined, 
+                    versionData?.default_access_time || undefined, 
+                    versionData?.key_use_deadline || undefined, 
+                    versionData?.target_folder_name || undefined, 
+                    versionData?.stumble_guys_version || undefined, 
+                    versionData?.stumble_cups_version || undefined
+                );
                 await interaction.followUp({ components: [successContainer], flags: 32768 + 64 });
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
@@ -1092,7 +1110,7 @@ async function interactionHandler(interaction) {
                     global_id: 'global',
                     stumble_guys_version: sgVersion, 
                     stumble_cups_version: scVersion 
-                });
+                }, { onConflict: 'global_id' });
                 invalidateVersionCache();
                 const data = await getVersionCached();
 
@@ -1102,62 +1120,117 @@ async function interactionHandler(interaction) {
 
             if (interaction.customId === 'modal_version') {
                 const newVersion = interaction.fields.getTextInputValue('version_input');
-                await supabase.from('versions').upsert({ global_id: 'global', version: newVersion });
+                await supabase.from('versions').upsert({ global_id: 'global', version: newVersion }, { onConflict: 'global_id' });
                 invalidateVersionCache();
                 const data = await getVersionCached();
 
-                const panel = createMainPanel(interaction.guild, data?.version || '1.0', data?.key_shortener, data?.default_access_time, data?.key_use_deadline, data?.target_folder_name, data?.stumble_guys_version, data?.stumble_cups_version);
+                const panel = createMainPanel(
+                    interaction.guild, 
+                    data?.version || undefined, 
+                    data?.key_shortener || undefined, 
+                    data?.default_access_time || undefined, 
+                    data?.key_use_deadline || undefined, 
+                    data?.target_folder_name || undefined, 
+                    data?.stumble_guys_version || undefined, 
+                    data?.stumble_cups_version || undefined
+                );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
             if (interaction.customId === 'modal_shortener') {
                 const newShortener = interaction.fields.getTextInputValue('shortener_input');
-                await supabase.from('versions').upsert({ global_id: 'global', key_shortener: newShortener });
+                await supabase.from('versions').upsert({ global_id: 'global', key_shortener: newShortener }, { onConflict: 'global_id' });
                 invalidateVersionCache();
                 const data = await getVersionCached();
 
-                const panel = createMainPanel(interaction.guild, data?.version || '1.0', data?.key_shortener, data?.default_access_time, data?.key_use_deadline, data?.target_folder_name, data?.stumble_guys_version, data?.stumble_cups_version);
+                const panel = createMainPanel(
+                    interaction.guild, 
+                    data?.version || undefined, 
+                    data?.key_shortener || undefined, 
+                    data?.default_access_time || undefined, 
+                    data?.key_use_deadline || undefined, 
+                    data?.target_folder_name || undefined, 
+                    data?.stumble_guys_version || undefined, 
+                    data?.stumble_cups_version || undefined
+                );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
             if (interaction.customId === 'modal_time') {
                 const newTime = interaction.fields.getTextInputValue('time_input');
-                await supabase.from('versions').upsert({ global_id: 'global', default_access_time: newTime });
+                await supabase.from('versions').upsert({ global_id: 'global', default_access_time: newTime }, { onConflict: 'global_id' });
                 invalidateVersionCache();
                 const data = await getVersionCached();
 
-                const panel = createMainPanel(interaction.guild, data?.version || '1.0', data?.key_shortener, data?.default_access_time, data?.key_use_deadline, data?.target_folder_name, data?.stumble_guys_version, data?.stumble_cups_version);
+                const panel = createMainPanel(
+                    interaction.guild, 
+                    data?.version || undefined, 
+                    data?.key_shortener || undefined, 
+                    data?.default_access_time || undefined, 
+                    data?.key_use_deadline || undefined, 
+                    data?.target_folder_name || undefined, 
+                    data?.stumble_guys_version || undefined, 
+                    data?.stumble_cups_version || undefined
+                );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
             if (interaction.customId === 'modal_use_deadline') {
                 const newDeadline = interaction.fields.getTextInputValue('deadline_input');
-                await supabase.from('versions').upsert({ global_id: 'global', key_use_deadline: newDeadline });
+                await supabase.from('versions').upsert({ global_id: 'global', key_use_deadline: newDeadline }, { onConflict: 'global_id' });
                 invalidateVersionCache();
                 const data = await getVersionCached();
 
-                const panel = createMainPanel(interaction.guild, data?.version || '1.0', data?.key_shortener, data?.default_access_time, data?.key_use_deadline, data?.target_folder_name, data?.stumble_guys_version, data?.stumble_cups_version);
+                const panel = createMainPanel(
+                    interaction.guild, 
+                    data?.version || undefined, 
+                    data?.key_shortener || undefined, 
+                    data?.default_access_time || undefined, 
+                    data?.key_use_deadline || undefined, 
+                    data?.target_folder_name || undefined, 
+                    data?.stumble_guys_version || undefined, 
+                    data?.stumble_cups_version || undefined
+                );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
             if (interaction.customId === 'modal_folder_name') {
                 const newFolderName = interaction.fields.getTextInputValue('folder_input');
-                await supabase.from('versions').upsert({ global_id: 'global', target_folder_name: newFolderName });
+                await supabase.from('versions').upsert({ global_id: 'global', target_folder_name: newFolderName }, { onConflict: 'global_id' });
                 invalidateVersionCache();
                 const data = await getVersionCached();
 
-                const panel = createMainPanel(interaction.guild, data?.version || '1.0', data?.key_shortener, data?.default_access_time, data?.key_use_deadline, data?.target_folder_name, data?.stumble_guys_version, data?.stumble_cups_version);
+                const panel = createMainPanel(
+                    interaction.guild, 
+                    data?.version || undefined, 
+                    data?.key_shortener || undefined, 
+                    data?.default_access_time || undefined, 
+                    data?.key_use_deadline || undefined, 
+                    data?.target_folder_name || undefined, 
+                    data?.stumble_guys_version || undefined, 
+                    data?.stumble_cups_version || undefined
+                );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
             if (interaction.customId === 'modal_original_links') {
                 const p1 = interaction.fields.getTextInputValue('orig_p1');
                 const p2 = interaction.fields.getTextInputValue('orig_p2');
-                await supabase.from('versions').upsert({ global_id: 'global', remove_url_part1: p1, remove_url_part2: p2 });
+                await supabase.from('versions').upsert({ global_id: 'global', remove_url_part1: p1, remove_url_part2: p2 }, { onConflict: 'global_id' });
                 invalidateVersionCache();
                 const data = await getVersionCached();
 
-                const panel = createMainPanel(interaction.guild, data?.version || '1.0', data?.key_shortener, data?.default_access_time, data?.key_use_deadline, data?.target_folder_name, data?.stumble_guys_version, data?.stumble_cups_version);
+                const panel = createMainPanel(
+                    interaction.guild, 
+                    data?.version || undefined, 
+                    data?.key_shortener || undefined, 
+                    data?.default_access_time || undefined, 
+                    data?.key_use_deadline || undefined, 
+                    data?.target_folder_name || undefined, 
+                    data?.stumble_guys_version || undefined, 
+                    data?.stumble_cups_version || undefined
+                );
+
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 

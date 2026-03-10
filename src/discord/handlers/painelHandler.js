@@ -29,13 +29,13 @@ module.exports = async (interaction) => {
 
         const panel = createMainPanel(
             interaction.guild, 
-            versionData.version, 
-            versionData.key_shortener, 
-            versionData.default_access_time, 
-            versionData.key_use_deadline, 
-            versionData.target_folder_name, 
-            versionData.stumble_guys_version, 
-            versionData.stumble_cups_version
+            versionData.version || undefined, 
+            versionData.key_shortener || undefined, 
+            versionData.default_access_time || undefined, 
+            versionData.key_use_deadline || undefined, 
+            versionData.target_folder_name || undefined, 
+            versionData.stumble_guys_version || undefined, 
+            versionData.stumble_cups_version || undefined
         );
 
         // Painel PRINCIPAL deve ser comum (não efêmero) com flag de Components V2 (32768)

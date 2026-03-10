@@ -363,7 +363,9 @@ async function interactionHandler(interaction) {
                     timeContent += `\n> **Expira acesso em:** <t:${Math.floor(new Date(keyData.expires_at).getTime() / 1000)}:R>`;
                 }
 
-                const permissionText = keyData.permissions?.type === 'all' ? 'Acesso Total' : (keyData.permissions?.type === 'category' ? `Categoria: ${keyData.permissions.value}` : `Textura: ${keyData.permissions.value}`);
+                const pType = keyData.permissions_type || 'all';
+                const pVal = keyData.permissions_value;
+                const permissionText = pType === 'all' ? 'Acesso Total' : (pType === 'category' ? `Categoria: ${pVal}` : `Textura: ${pVal}`);
 
                 const container = {
                     type: 17,
@@ -1376,6 +1378,8 @@ async function interactionHandler(interaction) {
                     permissions_value: (type === 'category' || type === 'texture') ? value : null,
                     is_used: false,
                     expires_to_use_at: expiresToUseAt,
+                    generated_by: interaction.user.id,
+                    generated_by_tag: interaction.user.tag,
                     created_at: new Date().toISOString()
                 });
 
@@ -1472,8 +1476,8 @@ async function showKeysList(interaction) {
                         custom_id: 'manage_keys_select',
                         placeholder: 'Escolha uma key da lista...',
                         options: keys.map(k => {
-                            const pType = k.permissions?.type || 'all';
-                            const pVal = k.permissions?.value ? ` (${k.permissions.value})` : '';
+                            const pType = k.permissions_type || 'all';
+                            const pVal = k.permissions_value ? ` (${k.permissions_value})` : '';
                             const accessLabel = pType === 'all' ? 'TOTAL' : (pType === 'category' ? 'CAT' : 'TEX');
 
                             return {

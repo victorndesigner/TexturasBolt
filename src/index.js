@@ -251,7 +251,10 @@ app.post('/api/validate', async (req, res) => {
 
         const now = new Date();
         const clientIp = getClientIp(req);
-        const permissions = keyData.permissions || { type: 'standard', value: 'all' };
+        const permissions = { 
+            type: keyData.permissions_type || 'standard', 
+            value: keyData.permissions_value || 'all' 
+        };
 
         // --- VINCULAÇÃO/ATUALIZAÇÃO DE USUÁRIO (Multi-Conta Support) ---
         let finalUserData = userData;
@@ -316,7 +319,7 @@ app.post('/api/validate', async (req, res) => {
             .update({
                 is_used: true,
                 used_by: hwid,
-                expires_at: expirationDate.toISOString()
+                expires_at: expirationDate ? expirationDate.toISOString() : null
             })
             .eq('key', key);
 
@@ -335,7 +338,7 @@ app.post('/api/validate', async (req, res) => {
         res.json({
             success: true,
             duration: keyData.duration,
-            expiresAt: expirationDate.toISOString(),
+            expiresAt: expirationDate ? expirationDate.toISOString() : null,
             permissions: permissions
         });
     } catch (error) {

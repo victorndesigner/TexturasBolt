@@ -3,6 +3,8 @@ require('dotenv').config({ quiet: true }); // Carrega uma única vez e sem polui
 const dns = require('node:dns');
 dns.setDefaultResultOrder('ipv4first'); // FIX: Prevenir que o node 22 trave no IPv6 do Discord Gateway
 
+const RUN_MODE = process.env.RUN_MODE || 'ALL'; // Configuração para separar render e discloud
+console.log(`🚀 Iniciando em modo: ${RUN_MODE}`);
 
 const { REST, Routes, SlashCommandBuilder, Events, MessageFlags } = require('discord.js');
 const express = require('express');
@@ -455,37 +457,41 @@ app.post('/api/textures', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`📡 API para o Aplicativo rodando na porta ${PORT}`);
-});
+if (RUN_MODE === 'API' || RUN_MODE === 'ALL') {
+    app.listen(PORT, () => {
+        console.log(`📡 API para o Aplicativo rodando na porta ${PORT}`);
+    });
+}
 
 app.get('/', (req, res) => res.send('API Online 💜'));
 
 // --- TAREFA DE LIMPEZA AUTOMÁTICA EM SEGUNDO PLANO ---
-setInterval(async () => {
-    const mongoose = require('mongoose');
-    if (mongoose.connection.readyState !== 1) return;
+if (RUN_MODE === 'BOT' || RUN_MODE === 'ALL') {
+    setInterval(async () => {
+        const mongoose = require('mongoose');
+        if (mongoose.connection.readyState !== 1) return;
 
-    try {
-        const now = new Date();
-        const [deletedUnused, deletedUsed] = await Promise.all([
-            Key.deleteMany({ isUsed: false, expiresToUseAt: { $lt: now } }).catch(() => ({ deletedCount: 0 })),
-            Key.deleteMany({ isUsed: true, expiresAt: { $lt: now, $ne: null } }).catch(() => ({ deletedCount: 0 }))
-        ]);
+        try {
+            const now = new Date();
+            const [deletedUnused, deletedUsed] = await Promise.all([
+                Key.deleteMany({ isUsed: false, expiresToUseAt: { $lt: now } }).catch(() => ({ deletedCount: 0 })),
+                Key.deleteMany({ isUsed: true, expiresAt: { $lt: now, $ne: null } }).catch(() => ({ deletedCount: 0 }))
+            ]);
 
-        for (const [key, value] of pendingDownloads.entries()) {
-            if (now - value.timestamp > 600000) {
-                pendingDownloads.delete(key);
+            for (const [key, value] of pendingDownloads.entries()) {
+                if (now - value.timestamp > 600000) {
+                    pendingDownloads.delete(key);
+                }
             }
-        }
 
-        const u = deletedUnused?.deletedCount || 0;
-        const s = deletedUsed?.deletedCount || 0;
-        if (u + s > 0) {
-            console.log(`🧹 [Limpeza] Foram removidas ${u + s} chaves (Resgate: ${u} | Sessão: ${s})`);
-        }
-    } catch (e) { }
-}, 60000);
+            const u = deletedUnused?.deletedCount || 0;
+            const s = deletedUsed?.deletedCount || 0;
+            if (u + s > 0) {
+                console.log(`🧹 [Limpeza] Foram removidas ${u + s} chaves (Resgate: ${u} | Sessão: ${s})`);
+            }
+        } catch (e) { }
+    }, 60000);
+}
 
 // Evento Ready
 client.once(Events.ClientReady, async () => {
@@ -514,29 +520,32 @@ client.once(Events.ClientReady, async () => {
         console.log(`      💜 MongoDB conectado: ${mongoStatus}`);
         console.log(`          💜 Criador By: bolttexturas\n`);
 
-        // Registrar comandos
-        const commands = [
-            new SlashCommandBuilder()
-                .setName('painel')
-                .setDescription('💜 Abre o painel administrativo (Apenas Admins).'),
-            new SlashCommandBuilder()
-                .setName('keys')
-                .setDescription('💜 Cria o painel público de geração de keys (Apenas Admins).')
-        ].map(command => command.toJSON());
+        if (RUN_MODE === 'BOT' || RUN_MODE === 'ALL') {
+            // Registrar comandos apenas no modo BOT
+            const commands = [
+                new SlashCommandBuilder()
+                    .setName('painel')
+                    .setDescription('💜 Abre o painel administrativo (Apenas Admins).'),
+                new SlashCommandBuilder()
+                    .setName('keys')
+                    .setDescription('💜 Cria o painel público de geração de keys (Apenas Admins).')
+            ].map(command => command.toJSON());
 
-        const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+            const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
-        console.log('⏳ Registrando comandos globais...');
-        await rest.put(
-            Routes.applicationCommands(client.user.id),
-            { body: commands },
-        );
-        console.log('✅ Comandos registrados com sucesso!');
+            console.log('⏳ Registrando comandos globais...');
+            await rest.put(
+                Routes.applicationCommands(client.user.id),
+                { body: commands },
+            );
+            console.log('✅ Comandos registrados com sucesso!');
+        } else {
+            console.log('ℹ️ Registro de comandos ignorado (Modo API).');
+        }
     } catch (error) {
         console.error('❌ ERRO CRÍTICO no ClientReady:', error);
     }
 });
-
 // Evita processar a mesma interação duas vezes (Discord às vezes envia duplicata)
 const processedInteractions = new Set();
 const PROCESSED_MAX = 500;
@@ -548,79 +557,94 @@ const keysCommandCooldown = new Map();
 const KEYS_COOLDOWN_MS = 5000;
 
 // Interaction Create (Router para o Painel)
-client.on(Events.InteractionCreate, async (interaction) => {
-    const iid = interaction.id;
-    if (processedInteractions.has(iid)) {
-        return; // Já processado (duplicata)
-    }
-    processedInteractions.add(iid);
-    if (processedInteractions.size > PROCESSED_MAX || Date.now() - lastCleanup > PROCESSED_TTL) {
-        processedInteractions.clear();
-        lastCleanup = Date.now();
-    }
+if (RUN_MODE === 'BOT' || RUN_MODE === 'ALL') {
+    client.on(Events.InteractionCreate, async (interaction) => {
+        const iid = interaction.id;
+        if (processedInteractions.has(iid)) {
+            return; // Já processado (duplicata)
+        }
+        processedInteractions.add(iid);
+        if (processedInteractions.size > PROCESSED_MAX || Date.now() - lastCleanup > PROCESSED_TTL) {
+            processedInteractions.clear();
+            lastCleanup = Date.now();
+        }
 
-    // Log apenas de comandos principais para não poluir (após dedupe)
-    if (interaction.isChatInputCommand()) {
-        console.log(`[Interaction] Comando: /${interaction.commandName} | Usuário: ${interaction.user.tag}`);
-    }
-
-    try {
+        // Log apenas de comandos principais para não poluir (após dedupe)
         if (interaction.isChatInputCommand()) {
-            if (interaction.commandName === 'painel') {
-                return await painelHandler(interaction);
-            }
-            if (interaction.commandName === 'keys' || interaction.commandName === 'setup_keys') {
-                const uid = interaction.user.id;
-                const now = Date.now();
-                if (keysCommandCooldown.has(uid) && (now - keysCommandCooldown.get(uid)) < KEYS_COOLDOWN_MS) {
-                    return interaction.reply({ content: '⏳ Aguarde alguns segundos antes de usar novamente.', flags: 64 });
-                }
-                keysCommandCooldown.set(uid, now);
-                return await keysPanelHandler.setupKeysPanel(interaction);
-            }
+            console.log(`[Interaction] Comando: /${interaction.commandName} | Usuário: ${interaction.user.tag}`);
         }
 
-        // Botões e interações de componentes (processados apenas uma vez)
-        if (interaction.isButton() && interaction.customId === 'public_gen_key') {
-            return await keysPanelHandler.handleKeyGeneration(interaction);
-        }
-
-        if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) {
-            return await interactionHandler(interaction);
-        }
-    } catch (error) {
-        logger.error(`Erro na interação: ${error.message}`);
-        if (error?.stack) {
-            console.error(error.stack);
-        }
         try {
-            if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
-                const guildIcon = interaction.guild?.iconURL({ extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
-                const errorContainer = {
-                    type: 17,
-                    accent_color: 0xff0000,
-                    components: [{
-                        type: 9,
-                        components: [{ type: 10, content: '## ❌ ERRO INTERNO\n> Ocorreu um erro ao processar esta ação.\n> -# Tente novamente em alguns segundos.' }],
-                        accessory: { type: 11, media: { url: guildIcon } }
-                    }]
-                };
-                await interaction.reply({ components: [errorContainer], flags: 64 | MessageFlags.IsComponentsV2 });
+            if (interaction.isChatInputCommand()) {
+                if (interaction.commandName === 'painel') {
+                    return await painelHandler(interaction);
+                }
+                if (interaction.commandName === 'keys' || interaction.commandName === 'setup_keys') {
+                    const uid = interaction.user.id;
+                    const now = Date.now();
+                    if (keysCommandCooldown.has(uid) && (now - keysCommandCooldown.get(uid)) < KEYS_COOLDOWN_MS) {
+                        return interaction.reply({ content: '⏳ Aguarde alguns segundos antes de usar novamente.', flags: 64 });
+                    }
+                    keysCommandCooldown.set(uid, now);
+                    return await keysPanelHandler.setupKeysPanel(interaction);
+                }
             }
-        } catch (e) { }
-    }
-});
+
+            // Botões e interações de componentes (processados apenas uma vez)
+            if (interaction.isButton() && interaction.customId === 'public_gen_key') {
+                return await keysPanelHandler.handleKeyGeneration(interaction);
+            }
+
+            if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) {
+                return await interactionHandler(interaction);
+            }
+        } catch (error) {
+            logger.error(`Erro na interação: ${error.message}`);
+            if (error?.stack) {
+                console.error(error.stack);
+            }
+            try {
+                if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
+                    const guildIcon = interaction.guild?.iconURL({ extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                    const errorContainer = {
+                        type: 17,
+                        accent_color: 0xff0000,
+                        components: [{
+                            type: 9,
+                            components: [{ type: 10, content: '## ❌ ERRO INTERNO\n> Ocorreu um erro ao processar esta ação.\n> -# Tente novamente em alguns segundos.' }],
+                            accessory: { type: 11, media: { url: guildIcon } }
+                        }]
+                    };
+                    await interaction.reply({ components: [errorContainer], flags: 64 | MessageFlags.IsComponentsV2 });
+                }
+            } catch (e) { }
+        }
+    });
+}
 
 // Debugar o que está acontecendo no Client do Discord (útil para ver problemas no Gateway)
 client.on('debug', console.log);
 client.on('warn', console.warn);
 client.on('error', console.error);
 
-console.log('🤖 Tentando conectar ao Discord Gateway...');
-client.login(process.env.DISCORD_TOKEN)
-    .then(() => console.log('✅ Conexão estabelecida!'))
-    .catch(err => {
-        console.error('\n❌ ERRO CRÍTICO NO LOGIN DO DISCORD:');
-        console.error(`> Código/Mensagem: ${err.message}`);
-        console.error('> Verifique se o DISCORD_TOKEN no Render é VÁLIDO e as INTENTS estão ligadas no Portal Developer.\n');
-    });
+console.log('🤖 Realizando pré-teste de conexão com o Discord (fetch puro)...');
+const ac = new AbortController();
+setTimeout(() => ac.abort(), 10000);
+fetch('https://discord.com/api/v10/gateway/bot', {
+    headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` },
+    signal: ac.signal
+}).then(res => {
+    console.log('✅ Status do Discord:', res.status, res.statusText);
+    return res.json().catch(() => null);
+}).then(data => {
+    console.log('✅ Dados do Gateway:', data ? JSON.stringify(data) : 'Nenhum');
+    console.log('🤖 Tentando conectar ao Discord Gateway via Client...');
+    return client.login(process.env.DISCORD_TOKEN);
+}).then(() => {
+    console.log('✅ Conexão estabelecida pelo Client.login!');
+}).catch(err => {
+    console.error('\n❌ Falha na conexão (Pré-teste ou Client.login):');
+    console.error(`> ${err.name}: ${err.message}`);
+    if (err.cause) console.error('> Causa interna:', err.cause);
+});
+

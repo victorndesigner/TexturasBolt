@@ -1,5 +1,8 @@
 const logger = require('./utils/logger');
 require('dotenv').config({ quiet: true }); // Carrega uma única vez e sem poluir o log
+const dns = require('node:dns');
+dns.setDefaultResultOrder('ipv4first'); // FIX: Prevenir que o node 22 trave no IPv6 do Discord Gateway
+
 
 const { REST, Routes, SlashCommandBuilder, Events, MessageFlags } = require('discord.js');
 const express = require('express');
@@ -607,6 +610,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
         } catch (e) { }
     }
 });
+
+// Debugar o que está acontecendo no Client do Discord (útil para ver problemas no Gateway)
+client.on('debug', console.log);
+client.on('warn', console.warn);
+client.on('error', console.error);
 
 console.log('🤖 Tentando conectar ao Discord Gateway...');
 client.login(process.env.DISCORD_TOKEN)

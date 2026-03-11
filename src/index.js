@@ -141,27 +141,7 @@ app.get(['/api/download/status', '/download/status'], async (req, res) => {
     res.json({ status: data?.status || 'none' });
 });
 
-// Rota para o site externo gerar uma key após o encurtador
-// --- GERAÇÃO DE KEYS POR TOKEN (SISTEMA DE TICKET ÚNICO) ---
-// Rota para solicitar um token público (Para links fora do Discord)
-app.get('/api/request-token', async (req, res) => {
-    try {
-        const crypto = require('crypto');
-        const token = crypto.randomBytes(16).toString('hex');
-        const ip = getClientIp(req);
-        
-        await supabase.from('key_requests').insert({
-            token: token,
-            user_id: 'PUBLIC_ACCESS',
-            user_tag: 'Visitante',
-            ip: ip
-        });
-
-        res.json({ success: true, token });
-    } catch (error) {
-        res.status(500).json({ error: 'Erro ao preparar acesso.' });
-    }
-});
+// --- FIM DA GERAÇÃO DE KEYS ---
 
 app.post('/api/redeem-key', async (req, res) => {
     const { token } = req.body;

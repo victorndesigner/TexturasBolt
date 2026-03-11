@@ -23,13 +23,8 @@ const createMainPanel = (guild, version = '1.0', keyShortener = 'Não definido',
             },
             { type: 14 },
             {
-                type: 9,
-                components: [
-                    {
-                        type: 10,
-                        content: `> **Servidor:** ${guild.name}\n> **Versão Atual:** \`${version}\`\n> **Versão StumbleGuys:** \`${sgVersion}\` | **Versão StumbleCups:** \`${scVersion}\`\n> **Tempo de Acesso:** \`${accessTime}\`\n> **Prazo de Uso:** \`${useDeadline}\`\n> -# Selecione uma categoria abaixo para iniciar o gerenciamento.`
-                    }
-                ]
+                type: 10,
+                content: `> **Servidor:** ${guild.name}\n> **Versão Atual:** \`${version}\`\n> **Versão StumbleGuys:** \`${sgVersion}\` | **Versão StumbleCups:** \`${scVersion}\`\n> **Tempo de Acesso:** \`${accessTime}\`\n> **Prazo de Uso:** \`${useDeadline}\`\n> -# Selecione uma categoria abaixo para iniciar o gerenciamento.`
             },
             { type: 14 },
             {

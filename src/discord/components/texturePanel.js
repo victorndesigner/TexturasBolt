@@ -17,15 +17,10 @@ const createTexturePanel = (guild, textures = []) => {
                 accessory: { type: 11, media: { url: serverIcon } }
             },
             { type: 14 }, // SEPARATOR
-            // Stats Section
+            // Stats (Flat)
             {
-                type: 9,
-                components: [
-                    {
-                        type: 10,
-                        content: `> **Servidor:** ${guild.name}\n> **Total de Texturas:** \`${textures.length}\`\n> -# Selecione uma textura abaixo para editar.`
-                    }
-                ]
+                type: 10,
+                content: `> **Servidor:** ${guild.name}\n> **Total de Texturas:** \`${textures.length}\`\n> -# Selecione uma textura abaixo para editar.`
             },
             { type: 14 }, // SEPARATOR
             // Select Menu

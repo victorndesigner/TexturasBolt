@@ -27,23 +27,26 @@ function componentFingerprint(interaction) {
 async function interactionHandler(interaction) {
     const OWNER_ID = '971163830887514132';
     const isAdmin = !!interaction.member?.permissions?.has?.('Administrator');
+    const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+
     if (!isAdmin && interaction.user?.id !== OWNER_ID) {
-        const noPermissionContainer = { type: 17, accent_color: 0xff0000, components: [{ type: 9, components: [{ type: 10, content: `## 🚫 ACESSO NEGADO\n> Apenas administradores podem interagir com o painel.` }], accessory: { type: 11, media: { url: interaction.guild?.iconURL() || 'https://cdn.discordapp.com/embed/avatars/0.png' } } }] };
+        const noPermissionContainer = { 
+            type: 17, 
+            accent_color: 0xff0000, 
+            components: [
+                { 
+                    type: 9, 
+                    components: [{ type: 10, content: `## 🚫 ACESSO NEGADO\n> Apenas administradores podem interagir com o painel.` }], 
+                    accessory: { type: 11, media: { url: serverIcon } } 
+                }
+            ] 
+        };
         if (interaction.isRepliable()) {
             if (interaction.deferred || interaction.replied) return await interaction.followUp({ components: [noPermissionContainer], flags: 32768 });
             else return await interaction.reply({ components: [noPermissionContainer], flags: 32768 });
         }
         return;
     }
-
-    if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) {
-        const fp = componentFingerprint(interaction);
-        const last = _recentComponentActions.get(fp) || 0;
-        if (Date.now() - last < COMPONENT_DEDUPE_MS) return;
-        _recentComponentActions.set(fp, Date.now());
-    }
-
-    const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
 
     // DEFER LOGIC
     if (!interaction.deferred && !interaction.replied) {
@@ -108,7 +111,7 @@ async function interactionHandler(interaction) {
                 const container = {
                     type: 17, accent_color: 0xc773ff, components: [
                         { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
-                        { type: 9, components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\n> Escolha o que deseja gerenciar:\n> **Categorias:** \`${catCount || 0}\` | **Texturas:** \`${texCount || 0}\`` }], accessory: { type: 11, media: { url: serverIcon } } },
+                        { type: 10, content: `## GERENCIAR CONTEÚDO\n> Escolha o que deseja gerenciar:\n> **Categorias:** \`${catCount || 0}\` | **Texturas:** \`${texCount || 0}\`` },
                         { type: 14 },
                         { type: 1, components: [
                             { type: 2, style: 2, label: 'Categorias', custom_id: 'manage_categories' },
@@ -126,7 +129,7 @@ async function interactionHandler(interaction) {
                 const container = {
                     type: 17, accent_color: 0xc773ff, components: [
                         { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
-                        { type: 9, components: [{ type: 10, content: `## 🔑 GERAR KEY\n> Selecione o tipo de permissão para a nova chave:\n\n### 📝 Tipos Disponíveis:\n> - **Padrão:** Todas as texturas + Encurtador Obrigatório.\n> - **Acesso Total:** Todas as texturas + Download Direto.\n> - **Por Categoria:** Apenas uma categoria + Download Direto.\n> - **Por Textura:** Apenas uma textura + Download Direto.` }], accessory: { type: 11, media: { url: serverIcon } } },
+                        { type: 10, content: `## 🔑 GERAR KEY\n> Selecione o tipo de permissão para a nova chave:\n\n### 📝 Tipos Disponíveis:\n> - **Padrão:** Todas as texturas + Encurtador Obrigatório.\n> - **Acesso Total:** Todas as texturas + Download Direto.\n> - **Por Categoria:** Apenas uma categoria + Download Direto.\n> - **Por Textura:** Apenas uma textura + Download Direto.` },
                         { type: 14 },
                         { type: 1, components: [{
                             type: 3, custom_id: 'gen_key_type_select', placeholder: 'Selecione o tipo de acesso...',
@@ -159,54 +162,6 @@ async function interactionHandler(interaction) {
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('orig_p2').setLabel('P2 (AppData)').setValue(config?.remove_url_part2 || '').setStyle(TextInputStyle.Short).setRequired(false))
                 );
                 return await interaction.showModal(modal);
-            }
-        }
-
-        // --- SUBMITS ---
-        if (interaction.isModalSubmit()) {
-            const cid = interaction.customId;
-            if (cid === 'modal_group_style') {
-                const { data, error } = await supabase.from('versions').upsert({ global_id: 'global', profile_url: interaction.fields.getTextInputValue('profile_url_input'), default_banner_url: interaction.fields.getTextInputValue('default_banner_input') }).select().single();
-                if (!error) invalidateVersionCache(data);
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ ESTILO ATUALIZADO` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
-            }
-
-            if (cid === 'modal_group_links') {
-                const { data, error } = await supabase.from('versions').upsert({ global_id: 'global', discord_url: interaction.fields.getTextInputValue('discord_url_input'), update_url: interaction.fields.getTextInputValue('update_url_input'), key_shortener: interaction.fields.getTextInputValue('key_shortener_input'), download_shortener: interaction.fields.getTextInputValue('dl_shortener_input') }).select().single();
-                if (!error) invalidateVersionCache(data);
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ LINKS ATUALIZADOS` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
-            }
-
-            if (cid === 'modal_group_system') {
-                const rawTime = interaction.fields.getTextInputValue('time_input');
-                const parts = rawTime.split('|').map(p => p.trim());
-                const { data, error } = await supabase.from('versions').upsert({
-                    global_id: 'global', version: interaction.fields.getTextInputValue('app_version_input'), stumble_guys_version: interaction.fields.getTextInputValue('sg_version_input'), stumble_cups_version: interaction.fields.getTextInputValue('sc_version_input'), target_folder_name: interaction.fields.getTextInputValue('folder_input'), default_access_time: parts[0] || '4h', key_use_deadline: parts[1] || '24h'
-                }).select().single();
-                if (!error) invalidateVersionCache(data);
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ SISTEMA ATUALIZADO` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
-            }
-
-            if (cid === 'modal_create_category') {
-                await supabase.from('categories').insert({ name: interaction.fields.getTextInputValue('cat_name'), icon_url: interaction.fields.getTextInputValue('cat_icon'), description: interaction.fields.getTextInputValue('cat_desc') });
-                return await showCategoriesPanel(interaction);
-            }
-
-            if (cid.startsWith('modal_edit_category_')) {
-                await supabase.from('categories').update({ name: interaction.fields.getTextInputValue('cat_name'), icon_url: interaction.fields.getTextInputValue('cat_icon'), description: interaction.fields.getTextInputValue('cat_desc') }).eq('id', cid.replace('modal_edit_category_', ''));
-                return await showCategoriesPanel(interaction);
-            }
-
-            if (cid === 'modal_create_texture') {
-                await supabase.from('textures').insert({ name: interaction.fields.getTextInputValue('tex_name'), download_url: interaction.fields.getTextInputValue('tex_url'), icon_url: interaction.fields.getTextInputValue('tex_icon'), category: interaction.fields.getTextInputValue('tex_cat') });
-                const { data: textures } = await supabase.from('textures').select('*');
-                return await interaction.editReply({ ...createTexturePanel(interaction.guild, textures || []), flags: 32768 });
-            }
-
-            if (cid.startsWith('modal_edit_texture_')) {
-                await supabase.from('textures').update({ name: interaction.fields.getTextInputValue('tex_name'), download_url: interaction.fields.getTextInputValue('tex_url'), icon_url: interaction.fields.getTextInputValue('tex_icon'), category: interaction.fields.getTextInputValue('tex_cat') }).eq('id', cid.replace('modal_edit_texture_', ''));
-                const { data: textures } = await supabase.from('textures').select('*');
-                return await interaction.editReply({ ...createTexturePanel(interaction.guild, textures || []), flags: 32768 });
             }
         }
 
@@ -304,8 +259,6 @@ async function interactionHandler(interaction) {
         if (interaction.isButton()) {
             const cid = interaction.customId;
             if (cid === 'back_to_main' || cid === 'update_panel') {
-                const { count: c } = await supabase.from('categories').select('*', { count: 'exact', head: true });
-                const { count: t } = await supabase.from('textures').select('*', { count: 'exact', head: true });
                 const v = await getVersionCached();
                 return await interaction.editReply({ ...createMainPanel(interaction.guild, v?.version, v?.key_shortener, v?.default_access_time, v?.key_use_deadline, v?.target_folder_name, v?.stumble_guys_version, v?.stumble_cups_version, v?.update_url, v?.download_shortener), flags: 32768 });
             }
@@ -313,7 +266,6 @@ async function interactionHandler(interaction) {
                 try {
                     await interaction.deleteReply();
                 } catch (e) {
-                    // Se não puder deletar o original, tenta apenas esconder os botões
                     await interaction.editReply({ components: [], flags: 32768 });
                 }
                 return;
@@ -363,7 +315,7 @@ async function interactionHandler(interaction) {
                 const { count: texCount } = await supabase.from('textures').select('*', { count: 'exact', head: true });
                 const container = { type: 17, accent_color: 0xc773ff, components: [
                     { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
-                    { type: 9, components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\n> **Categorias:** \`${catCount || 0}\` | **Texturas:** \`${texCount || 0}\`` }] },
+                    { type: 10, content: `## GERENCIAR CONTEÚDO\n> **Categorias:** \`${catCount || 0}\` | **Texturas:** \`${texCount || 0}\`` },
                     { type: 14 },
                     { type: 1, components: [{ type: 2, style: 2, label: 'Categorias', custom_id: 'manage_categories' }, { type: 2, style: 2, label: 'Texturas', custom_id: 'manage_textures' }, { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }] }
                 ]};
@@ -380,14 +332,79 @@ async function interactionHandler(interaction) {
                 return await showKeysAndUsersPanel(interaction);
             }
         }
-    } catch (e) { console.error(e); }
+
+        // --- MODAL SUBMITS ---
+        if (interaction.isModalSubmit()) {
+            const cid = interaction.customId;
+            if (cid === 'modal_group_style') {
+                const { data, error } = await supabase.from('versions').upsert({ global_id: 'global', profile_url: interaction.fields.getTextInputValue('profile_url_input'), default_banner_url: interaction.fields.getTextInputValue('default_banner_input') }).select().single();
+                if (!error) invalidateVersionCache(data);
+                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ ESTILO ATUALIZADO` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
+            }
+            if (cid === 'modal_group_links') {
+                const { data, error } = await supabase.from('versions').upsert({ global_id: 'global', discord_url: interaction.fields.getTextInputValue('discord_url_input'), update_url: interaction.fields.getTextInputValue('update_url_input'), key_shortener: interaction.fields.getTextInputValue('key_shortener_input'), download_shortener: interaction.fields.getTextInputValue('dl_shortener_input') }).select().single();
+                if (!error) invalidateVersionCache(data);
+                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ LINKS ATUALIZADOS` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
+            }
+            if (cid === 'modal_group_system') {
+                const rawTime = interaction.fields.getTextInputValue('time_input');
+                const [at, ud] = rawTime.split('|').map(p => p.trim());
+                const { data, error } = await supabase.from('versions').upsert({
+                    global_id: 'global', version: interaction.fields.getTextInputValue('app_version_input'), stumble_guys_version: interaction.fields.getTextInputValue('sg_version_input'), stumble_cups_version: interaction.fields.getTextInputValue('sc_version_input'), target_folder_name: interaction.fields.getTextInputValue('folder_input'), default_access_time: at || '4h', key_use_deadline: ud || '24h'
+                }).select().single();
+                if (!error) invalidateVersionCache(data);
+                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ SISTEMA ATUALIZADO` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
+            }
+            if (cid === 'modal_create_category') {
+                await supabase.from('categories').insert({ name: interaction.fields.getTextInputValue('cat_name'), icon_url: interaction.fields.getTextInputValue('cat_icon'), description: interaction.fields.getTextInputValue('cat_desc') });
+                return await showCategoriesPanel(interaction);
+            }
+            if (cid.startsWith('modal_edit_category_')) {
+                await supabase.from('categories').update({ name: interaction.fields.getTextInputValue('cat_name'), icon_url: interaction.fields.getTextInputValue('cat_icon'), description: interaction.fields.getTextInputValue('cat_desc') }).eq('id', cid.replace('modal_edit_category_', ''));
+                return await showCategoriesPanel(interaction);
+            }
+            if (cid === 'modal_create_texture') {
+                await supabase.from('textures').insert({ name: interaction.fields.getTextInputValue('tex_name'), download_url: interaction.fields.getTextInputValue('tex_url'), icon_url: interaction.fields.getTextInputValue('tex_icon'), category: interaction.fields.getTextInputValue('tex_cat') });
+                const { data: textures } = await supabase.from('textures').select('*');
+                return await interaction.editReply({ ...createTexturePanel(interaction.guild, textures || []), flags: 32768 });
+            }
+            if (cid.startsWith('modal_edit_texture_')) {
+                await supabase.from('textures').update({ name: interaction.fields.getTextInputValue('tex_name'), download_url: interaction.fields.getTextInputValue('tex_url'), icon_url: interaction.fields.getTextInputValue('tex_icon'), category: interaction.fields.getTextInputValue('tex_cat') }).eq('id', cid.replace('modal_edit_texture_', ''));
+                const { data: textures } = await supabase.from('textures').select('*');
+                return await interaction.editReply({ ...createTexturePanel(interaction.guild, textures || []), flags: 32768 });
+            }
+            if (cid === 'modal_original_links') {
+                const { data, error } = await supabase.from('versions').upsert({ global_id: 'global', remove_url_part1: interaction.fields.getTextInputValue('orig_p1'), remove_url_part2: interaction.fields.getTextInputValue('orig_p2') }).select().single();
+                if (!error) invalidateVersionCache(data);
+                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ ARQUIVOS ATUALIZADOS` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
+            }
+        }
+    } catch (err) {
+        console.error('Erro no interactionHandler:', err);
+        const errorContainer = {
+            type: 17,
+            accent_color: 0xff0000,
+            components: [
+                {
+                    type: 9,
+                    components: [{ type: 10, content: `## ❌ ERRO DE INTERAÇÃO\n> Ocorreu um problema ao processar esta ação.\n> -# Detalhe: \`${err.message || 'Erro desconhecido'}\`` }],
+                    accessory: { type: 11, media: { url: serverIcon } }
+                }
+            ]
+        };
+        try {
+            await (interaction.deferred || interaction.replied ? 
+                interaction.editReply({ components: [errorContainer], flags: 64 | 32768 }) : 
+                interaction.reply({ components: [errorContainer], flags: 64 | 32768 }));
+        } catch (e) {}
+    }
 }
 
 async function showCategoriesPanel(interaction) {
     const { data: cats } = await supabase.from('categories').select('*');
     const container = { type: 17, accent_color: 0xc773ff, components: [
         { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
-        { type: 9, components: [{ type: 10, content: `## GESTÃO DE CATEGORIAS\n> **Categorias cadastradas:** \`${cats?.length || 0}\`\n\n${(cats || []).map(c => `• ${c.name}`).join('\n') || '*Nenhuma.*'}` }] },
+        { type: 10, content: `## GESTÃO DE CATEGORIAS\n> **Categorias cadastradas:** \`${cats?.length || 0}\`\n\n${(cats || []).map(c => `• ${c.name}`).join('\n') || '*Nenhuma.*'}` },
         { type: 14 },
         { type: 1, components: [{ type: 2, style: 2, label: 'Criar', custom_id: 'create_category' }, { type: 2, style: 2, label: 'Editar', custom_id: 'edit_category_btn' }, { type: 2, style: 2, label: 'Remover', custom_id: 'remove_category_btn' }, { type: 2, style: 2, label: 'Voltar', custom_id: 'group_content' }] }
     ]};
@@ -397,7 +414,7 @@ async function showCategoriesPanel(interaction) {
 async function showUsersPanel(interaction) {
     const { data: users } = await supabase.from('users').select('*').limit(20);
     const container = { type: 17, accent_color: 0xc773ff, components: [
-        { type: 9, components: [{ type: 10, content: `## GESTÃO DE USUÁRIOS` }] },
+        { type: 10, content: `## GESTÃO DE USUÁRIOS` },
         { type: 14 },
         { type: 1, components: [{ type: 3, custom_id: 'select_user', options: (users || []).map(u => ({ label: `HWID: ${u.hwid.substring(0,10)}...`, value: u.id })) }] },
         { type: 14 },
@@ -411,7 +428,7 @@ async function showKeysList(interaction) {
     const used = keys?.filter(k => k.current_uses > 0).length || 0;
     const fresh = keys?.filter(k => k.current_uses === 0).length || 0;
     const container = { type: 17, accent_color: 0xc773ff, components: [
-        { type: 9, components: [{ type: 10, content: `## LISTA DE KEYS\n> **Uso:** 🔴 \`${used}\` Usadas | 🟢 \`${fresh}\` Livres` }] },
+        { type: 10, content: `## LISTA DE KEYS\n> **Uso:** 🔴 \`${used}\` Usadas | 🟢 \`${fresh}\` Livres` },
         { type: 14 },
         { type: 1, components: [{ type: 3, custom_id: 'manage_keys_select', options: (keys || []).map(k => ({ label: k.key, value: k.id, emoji: { name: k.current_uses > 0 ? '🔴' : '🟢' } })) }] },
         { type: 14 },
@@ -425,7 +442,7 @@ async function showKeysAndUsersPanel(interaction) {
     const { count: b } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('is_blacklisted', true);
     const container = { type: 17, accent_color: 0xc773ff, components: [
         { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
-        { type: 9, components: [{ type: 10, content: `## KEYS E USUÁRIOS\n> **Keys:** \`${k || 0}\` | **Blacklist:** \`${b || 0}\`` }] },
+        { type: 10, content: `## KEYS E USUÁRIOS\n> **Keys:** \`${k || 0}\` | **Blacklist:** \`${b || 0}\`` },
         { type: 14 },
         { type: 1, components: [{ type: 2, style: 2, label: 'Gerar Key', custom_id: 'generate_key' }, { type: 2, style: 2, label: 'Lista Keys', custom_id: 'list_keys' }, { type: 2, style: 2, label: 'Usuários', custom_id: 'manage_users' }, { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }] }
     ]};

@@ -65,6 +65,18 @@ module.exports = async (interaction) => {
         await interaction.reply({ ...panel, flags: 32768 });
     } catch (error) {
         console.error('Erro no painelHandler:', error);
-        await interaction.reply({ content: '❌ Houve um erro ao abrir o painel.', flags: 64 });
+        const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+        const errorContainer = {
+            type: 17,
+            accent_color: 0xff0000,
+            components: [
+                {
+                    type: 9,
+                    components: [{ type: 10, content: `## ❌ ERRO NO PAINEL\n> Houve um erro ao abrir o painel administrativo.\n> -# Tente novamente em alguns instantes.` }],
+                    accessory: { type: 11, media: { url: serverIcon } }
+                }
+            ]
+        };
+        await interaction.reply({ components: [errorContainer], flags: 64 | 32768 });
     }
 };

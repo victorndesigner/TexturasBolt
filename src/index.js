@@ -410,7 +410,8 @@ app.post('/api/textures', async (req, res) => {
             profileImage: config?.profile_image || 'https://i.imgur.com/YahM0Nf.png',
             targetFolderName: config?.target_folder_name || 'StumbleCups',
             removeUrlPart1: config?.remove_url_part1 || '',
-            removeUrlPart2: config?.remove_url_part2 || ''
+            removeUrlPart2: config?.remove_url_part2 || '',
+            downloadShortener: config?.download_shortener
         });
     } catch (error) {
         console.error('Erro ao buscar texturas:', error);
@@ -468,10 +469,17 @@ app.get('/api/verify-download', async (req, res) => {
             return res.status(403).json({ error: 'Ticket de download expirado ou inválido.' });
         }
 
-        // 2. Registra o histórico
+        // 2. Registra o histórico no Supabase
         await supabase.from('download_history').insert({
             hwid: ticket.hwid,
             texture_id: ticket.texture_id,
+            ip: getClientIp(req)
+        });
+
+        // 3. Autoriza no App (Mapa em memória)
+        pendingDownloads.set(`${ticket.hwid}_${ticket.texture_id}`, {
+            status: 'ready',
+            timestamp: Date.now(),
             ip: getClientIp(req)
         });
 

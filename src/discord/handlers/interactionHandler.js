@@ -355,12 +355,15 @@ async function interactionHandler(interaction) {
 
                 const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
 
-                let timeContent = `> **Código:** \`${keyData.key}\`\n> **Duração:** \`${keyData.duration}\`\n> **Status:** \`${keyData.is_used ? 'Utilizada' : 'Disponível'}\`\n> **Criada em:** <t:${Math.floor(new Date(keyData.created_at).getTime() / 1000)}:R>`;
+                const createdAtTs = Math.floor(new Date(keyData.created_at).getTime() / 1000) || 0;
+                let timeContent = `> **Código:** \`${keyData.key}\`\n> **Duração:** \`${keyData.duration}\`\n> **Status:** \`${keyData.is_used ? 'Utilizada' : 'Disponível'}\`\n> **Criada em:** <t:${createdAtTs}:R>`;
 
                 if (!keyData.is_used && keyData.expires_to_use_at) {
-                    timeContent += `\n> **Expira para uso em:** <t:${Math.floor(new Date(keyData.expires_to_use_at).getTime() / 1000)}:R>`;
+                    const expiresToUseTs = Math.floor(new Date(keyData.expires_to_use_at).getTime() / 1000) || 0;
+                    timeContent += `\n> **Expira para uso em:** <t:${expiresToUseTs}:R>`;
                 } else if (keyData.is_used && keyData.expires_at) {
-                    timeContent += `\n> **Expira acesso em:** <t:${Math.floor(new Date(keyData.expires_at).getTime() / 1000)}:R>`;
+                    const expiresAtTs = Math.floor(new Date(keyData.expires_at).getTime() / 1000) || 0;
+                    timeContent += `\n> **Expira acesso em:** <t:${expiresAtTs}:R>`;
                 }
 
                 const pType = keyData.permissions_type || 'all';
@@ -1371,7 +1374,7 @@ async function interactionHandler(interaction) {
                 const deadlineMs = parseDuration(deadline);
                 if (deadlineMs) expiresToUseAt = new Date(Date.now() + deadlineMs).toISOString();
 
-                await supabase.from('keys').insert({
+                const { error: insertError } = await supabase.from('keys').insert({
                     key,
                     duration,
                     permissions_type: type,
@@ -1379,9 +1382,10 @@ async function interactionHandler(interaction) {
                     is_used: false,
                     expires_to_use_at: expiresToUseAt,
                     generated_by: interaction.user.id,
-                    generated_by_tag: interaction.user.tag,
-                    created_at: new Date().toISOString()
+                    generated_by_tag: interaction.user.tag
                 });
+
+                if (insertError) throw insertError;
 
                 const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                 const successContainer = {
@@ -1413,14 +1417,15 @@ async function interactionHandler(interaction) {
             }
         }
     } catch (error) {
-        console.error('Erro no interactionHandler:', error);
+        console.error('❌ Erro Crítico no interactionHandler:', error);
+        
         const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
         const errorContainer = {
             type: 17,
             accent_color: 0xff0000,
             components: [{
                 type: 9,
-                components: [{ type: 10, content: `## ❌ ERRO INTERNO\n> Houve um problema ao processar seu comando.\n> Tente novamente em instantes.` }],
+                components: [{ type: 10, content: `## ❌ ERRO INTERNO\n> Houve um problema ao processar seu comando.\n> -# Erro: \`${error.message || 'Desconhecido'}\`` }],
                 accessory: { type: 11, media: { url: serverIcon } }
             }]
         };

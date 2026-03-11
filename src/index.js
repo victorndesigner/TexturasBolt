@@ -256,25 +256,26 @@ app.post('/api/validate', async (req, res) => {
             value: keyData.permissions_value || 'all' 
         };
 
-        // --- VINCULAÇÃO/ATUALIZAÇÃO DE USUÁRIO (Multi-Conta Support) ---
-        let finalUserData = userData;
+        // --- VINCULAÇÃO DE USUÁRIO (Opcional) ---
         if (keyData.generated_by) {
             try {
-                const resolvedTag = keyData.generated_by_tag || (await client.users.fetch(keyData.generated_by).catch(() => null))?.tag || null;
+                // Se o usuário já tem um discord_id diferente, e o gerador não é o mesmo, 
+                // pode ser uma key dada por um admin. Nesse caso, não sobrescrevemos o discord_id do usuário do HWID
+                // a menos que o usuário atual no DB seja 'Unknown' ou nulo.
+                
                 const userPayload = {
                     hwid,
-                    discord_id: keyData.generated_by,
-                    discord_tag: resolvedTag || userData?.discord_tag || 'Unknown',
                     last_ip: clientIp,
                     updated_at: now.toISOString()
                 };
 
-                const { data: updatedUser } = await supabase
-                    .from('users')
-                    .upsert(userPayload, { onConflict: 'hwid' })
-                    .select()
-                    .single();
-                finalUserData = updatedUser;
+                // Só vincula o Discord ID se o usuário ainda não tiver um ou se for o mesmo que gerou a key
+                if (!userData?.discord_id || userData.discord_id === keyData.generated_by) {
+                    userPayload.discord_id = keyData.generated_by;
+                    userPayload.discord_tag = keyData.generated_by_tag || userData?.discord_tag || 'Unknown';
+                }
+
+                await supabase.from('users').upsert(userPayload, { onConflict: 'hwid' });
             } catch (updateErr) {
                 console.error('Erro ao atualizar usuário:', updateErr);
             }

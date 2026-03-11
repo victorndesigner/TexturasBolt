@@ -101,9 +101,16 @@ async function interactionHandler(interaction) {
     }
 
     try {
-        if (interaction.isStringSelectMenu()) {
-            if (interaction.customId === 'main_select') {
-                const value = interaction.values[0];
+        let value = null;
+        if (interaction.isStringSelectMenu() && interaction.customId === 'main_select') {
+            value = interaction.values[0];
+        } else if (interaction.isButton()) {
+            // Se for botão de sub-menu (ex: generate_key, list_keys, manage_textures), mapeia o custom_id para "value"
+            value = interaction.customId;
+        }
+
+        if (interaction.isStringSelectMenu() || interaction.isButton()) {
+            if (value) {
 
                 if (value === 'group_style') {
                     const config = await getVersionCached();
@@ -234,6 +241,8 @@ async function interactionHandler(interaction) {
                 }
 
                 if (value === 'group_content') {
+                    const { count: catCount } = await supabase.from('categories').select('*', { count: 'exact', head: true });
+                    const { count: texCount } = await supabase.from('textures').select('*', { count: 'exact', head: true });
                     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                     const container = {
                         type: 17,
@@ -245,7 +254,7 @@ async function interactionHandler(interaction) {
                             },
                             {
                                 type: 9,
-                                components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\nEscolha o que deseja gerenciar:` }],
+                                components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\n> Escolha o que deseja gerenciar:\n> **Categorias:** \`${catCount || 0}\` | **Texturas:** \`${texCount || 0}\`` }],
                                 accessory: { type: 11, media: { url: serverIcon } }
                             },
                             { type: 14 },
@@ -263,6 +272,8 @@ async function interactionHandler(interaction) {
                 }
 
                 if (value === 'group_keys') {
+                    const { count: keysCount } = await supabase.from('keys').select('*', { count: 'exact', head: true });
+                    const { count: blCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('is_blacklisted', true);
                     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                     const container = {
                         type: 17,
@@ -274,7 +285,7 @@ async function interactionHandler(interaction) {
                             },
                             {
                                 type: 9,
-                                components: [{ type: 10, content: `## KEYS E USUÁRIOS\nGerenciamento de acessos e permissões:` }],
+                                components: [{ type: 10, content: `## KEYS E USUÁRIOS\n> Gerenciamento de acessos e permissões:\n> **Keys Geradas:** \`${keysCount || 0}\` | **Usuários na Blacklist:** \`${blCount || 0}\`` }],
                                 accessory: { type: 11, media: { url: serverIcon } }
                             },
                             { type: 14 },
@@ -1023,6 +1034,8 @@ async function interactionHandler(interaction) {
 
             if (interaction.customId === 'group_content_return') {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
+                const { count: catCount } = await supabase.from('categories').select('*', { count: 'exact', head: true });
+                const { count: texCount } = await supabase.from('textures').select('*', { count: 'exact', head: true });
                 const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                 const container = {
                     type: 17,
@@ -1034,7 +1047,7 @@ async function interactionHandler(interaction) {
                         },
                         {
                             type: 9,
-                            components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\nEscolha o que deseja gerenciar:` }],
+                            components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\n> Escolha o que deseja gerenciar:\n> **Categorias:** \`${catCount || 0}\` | **Texturas:** \`${texCount || 0}\`` }],
                             accessory: { type: 11, media: { url: serverIcon } }
                         },
                         { type: 14 },
@@ -1053,6 +1066,8 @@ async function interactionHandler(interaction) {
 
             if (interaction.customId === 'group_keys_return') {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
+                const { count: keysCount } = await supabase.from('keys').select('*', { count: 'exact', head: true });
+                const { count: blCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('is_blacklisted', true);
                 const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                 const container = {
                     type: 17,
@@ -1064,7 +1079,7 @@ async function interactionHandler(interaction) {
                         },
                         {
                             type: 9,
-                            components: [{ type: 10, content: `## KEYS E USUÁRIOS\nGerenciamento de acessos e permissões:` }],
+                            components: [{ type: 10, content: `## KEYS E USUÁRIOS\n> Gerenciamento de acessos e permissões:\n> **Keys Geradas:** \`${keysCount || 0}\` | **Usuários na Blacklist:** \`${blCount || 0}\`` }],
                             accessory: { type: 11, media: { url: serverIcon } }
                         },
                         { type: 14 },

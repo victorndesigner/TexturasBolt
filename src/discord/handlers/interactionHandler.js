@@ -89,7 +89,7 @@ async function interactionHandler(interaction) {
             }
         } else if (interaction.isStringSelectMenu() && interaction.customId === 'main_select') {
             const val = interaction.values?.[0];
-            const deferVals = ['manage_textures', 'manage_categories', 'generate_key', 'list_keys', 'manage_users'];
+            const deferVals = ['manage_textures', 'manage_categories', 'generate_key', 'list_keys', 'manage_users', 'group_content', 'group_keys'];
             if (deferVals.includes(val)) {
                 await interaction.deferUpdate();
             }
@@ -110,7 +110,7 @@ async function interactionHandler(interaction) {
                     const config = await getVersionCached();
                     const modal = new ModalBuilder()
                         .setCustomId('modal_group_style')
-                        .setTitle('🎨 Personalização Visual');
+                        .setTitle('Personalização Visual');
 
                     const profileInput = new TextInputBuilder()
                         .setCustomId('profile_url_input')
@@ -139,7 +139,7 @@ async function interactionHandler(interaction) {
                     const config = await getVersionCached();
                     const modal = new ModalBuilder()
                         .setCustomId('modal_group_links')
-                        .setTitle('🔗 Links e Encurtadores');
+                        .setTitle('Links e Encurtadores');
 
                     const discordInput = new TextInputBuilder()
                         .setCustomId('discord_url_input')
@@ -186,7 +186,7 @@ async function interactionHandler(interaction) {
                     const config = await getVersionCached();
                     const modal = new ModalBuilder()
                         .setCustomId('modal_group_system')
-                        .setTitle('⚙️ Configurações do Sistema');
+                        .setTitle('Configurações do Sistema');
 
                     const appVersionInput = new TextInputBuilder()
                         .setCustomId('app_version_input')
@@ -241,7 +241,7 @@ async function interactionHandler(interaction) {
                         components: [
                             {
                                 type: 9,
-                                components: [{ type: 10, content: `## 📦 GERENCIAR CONTEÚDO\nEscolha o que deseja gerenciar:` }]
+                                components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\nEscolha o que deseja gerenciar:` }]
                             },
                             {
                                 type: 1,
@@ -263,7 +263,7 @@ async function interactionHandler(interaction) {
                         components: [
                             {
                                 type: 9,
-                                components: [{ type: 10, content: `## 🔑 KEYS & USUÁRIOS\nGerenciamento de acessos:` }]
+                                components: [{ type: 10, content: `## KEYS & USUÁRIOS\nGerenciamento de acessos:` }]
                             },
                             {
                                 type: 1,
@@ -1434,6 +1434,93 @@ async function interactionHandler(interaction) {
                     data?.download_shortener || undefined
                 );
 
+                return await interaction.editReply({ ...panel, flags: 32768 });
+            }
+
+            // --- GROUPED MODAL HANDLERS ---
+            if (interaction.customId === 'modal_group_style') {
+                const profileUrl = interaction.fields.getTextInputValue('profile_url_input');
+                const bannerUrl = interaction.fields.getTextInputValue('default_banner_input');
+                const updateData = { global_id: 'global' };
+                if (profileUrl !== undefined) updateData.profile_url = profileUrl || null;
+                if (bannerUrl !== undefined) updateData.default_banner_url = bannerUrl || null;
+                await supabase.from('versions').upsert(updateData, { onConflict: 'global_id' });
+                invalidateVersionCache();
+                const data = await getVersionCached();
+                const panel = createMainPanel(
+                    interaction.guild, 
+                    data?.version || undefined, 
+                    data?.key_shortener || undefined, 
+                    data?.default_access_time || undefined, 
+                    data?.key_use_deadline || undefined, 
+                    data?.target_folder_name || undefined, 
+                    data?.stumble_guys_version || undefined, 
+                    data?.stumble_cups_version || undefined,
+                    data?.update_url || undefined,
+                    data?.download_shortener || undefined
+                );
+                return await interaction.editReply({ ...panel, flags: 32768 });
+            }
+
+            if (interaction.customId === 'modal_group_links') {
+                const discordUrl = interaction.fields.getTextInputValue('discord_url_input');
+                const updateUrl = interaction.fields.getTextInputValue('update_url_input');
+                const keyShort = interaction.fields.getTextInputValue('key_shortener_input');
+                const dlShort = interaction.fields.getTextInputValue('dl_shortener_input');
+                const updateData = { global_id: 'global' };
+                if (discordUrl !== undefined) updateData.discord_url = discordUrl || null;
+                if (updateUrl !== undefined) updateData.update_url = updateUrl || null;
+                if (keyShort !== undefined) updateData.key_shortener = keyShort || null;
+                if (dlShort !== undefined) updateData.download_shortener = dlShort || null;
+                await supabase.from('versions').upsert(updateData, { onConflict: 'global_id' });
+                invalidateVersionCache();
+                const data = await getVersionCached();
+                const panel = createMainPanel(
+                    interaction.guild, 
+                    data?.version || undefined, 
+                    data?.key_shortener || undefined, 
+                    data?.default_access_time || undefined, 
+                    data?.key_use_deadline || undefined, 
+                    data?.target_folder_name || undefined, 
+                    data?.stumble_guys_version || undefined, 
+                    data?.stumble_cups_version || undefined,
+                    data?.update_url || undefined,
+                    data?.download_shortener || undefined
+                );
+                return await interaction.editReply({ ...panel, flags: 32768 });
+            }
+
+            if (interaction.customId === 'modal_group_system') {
+                const appVersion = interaction.fields.getTextInputValue('app_version_input');
+                const sgVersion = interaction.fields.getTextInputValue('sg_version_input');
+                const scVersion = interaction.fields.getTextInputValue('sc_version_input');
+                const folder = interaction.fields.getTextInputValue('folder_input');
+                const timeRaw = interaction.fields.getTextInputValue('time_input');
+                const [accessTime, useDeadline] = timeRaw.split('|').map(s => s.trim());
+                const updateData = { 
+                    global_id: 'global',
+                    version: appVersion,
+                    stumble_guys_version: sgVersion,
+                    stumble_cups_version: scVersion,
+                    target_folder_name: folder
+                };
+                if (accessTime) updateData.default_access_time = accessTime;
+                if (useDeadline) updateData.key_use_deadline = useDeadline;
+                await supabase.from('versions').upsert(updateData, { onConflict: 'global_id' });
+                invalidateVersionCache();
+                const data = await getVersionCached();
+                const panel = createMainPanel(
+                    interaction.guild, 
+                    data?.version || undefined, 
+                    data?.key_shortener || undefined, 
+                    data?.default_access_time || undefined, 
+                    data?.key_use_deadline || undefined, 
+                    data?.target_folder_name || undefined, 
+                    data?.stumble_guys_version || undefined, 
+                    data?.stumble_cups_version || undefined,
+                    data?.update_url || undefined,
+                    data?.download_shortener || undefined
+                );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 

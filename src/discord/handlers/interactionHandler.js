@@ -18,12 +18,6 @@ function invalidateVersionCache(newData) {
     _versionCache = newData ? { data: newData, ts: Date.now() } : { data: null, ts: 0 };
 }
 
-const _recentComponentActions = new Map();
-const COMPONENT_DEDUPE_MS = 2000;
-function componentFingerprint(interaction) {
-    return `${interaction.type}:${interaction.customId || ''}:${interaction.message?.id || ''}:${interaction.user?.id || ''}:${interaction.values?.join(',') || ''}`;
-}
-
 async function interactionHandler(interaction) {
     const OWNER_ID = '971163830887514132';
     const isAdmin = !!interaction.member?.permissions?.has?.('Administrator');
@@ -54,10 +48,10 @@ async function interactionHandler(interaction) {
             await interaction.deferUpdate();
         } else if (interaction.isButton() || interaction.isStringSelectMenu()) {
             const cid = interaction.customId || '';
-            const val = interaction.values?.[0];
+            const val = interaction.values?.[0] || '';
             const trigger = val || cid;
             
-            const modalTriggers = ['group_style', 'group_links', 'group_system', 'manage_original_links', 'create_category', 'edit_category_select', 'create_texture', 'texture_manage_select', 'manage_time', 'manage_use_deadline', 'manage_folder', 'manage_profile_global'];
+            const modalTriggers = ['group_style', 'group_links', 'group_system', 'manage_original_links', 'create_category', 'edit_category_select', 'create_texture', 'texture_manage_select', 'manage_time', 'manage_use_deadline', 'manage_folder', 'manage_profile_global', 'gen_key_type_select', 'gen_key_category_select', 'gen_key_texture_select'];
             const isModal = modalTriggers.some(mt => trigger === mt || trigger.startsWith(mt));
             
             if (!isModal) {
@@ -165,37 +159,48 @@ async function interactionHandler(interaction) {
             }
         }
 
-        // --- SELECTS ---
+        // --- SUBMITS ---
         if (interaction.isStringSelectMenu()) {
             const cid = interaction.customId;
             if (cid === 'gen_key_type_select') {
                 const type = interaction.values[0];
                 if (type === 'standard' || type === 'all') {
-                    const v = await getVersionCached();
-                    const dMs = parseDuration(v?.default_access_time || '4h');
-                    const exp = dMs > 0 ? new Date(Date.now() + dMs).toISOString() : null;
-                    const key = `BOLT-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
-                    await supabase.from('keys').insert({ key, type: type === 'all' ? 'premium' : 'free', expires_at: exp, use_deadline: new Date(Date.now() + parseDuration(v?.key_use_deadline || '24h')).toISOString(), max_uses: 1, current_uses: 0, is_active: true });
-                    return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ KEY GERADA\n> **Key:** \`${key}\`\n> **Tipo:** \`${type === 'all' ? 'Acesso Total' : 'Padrão'}\`` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
+                    const config = await getVersionCached();
+                    const modal = new ModalBuilder().setCustomId(`modal_gen_key_duration_${type}_null`).setTitle('Duração da Key');
+                    modal.addComponents(new ActionRowBuilder().addComponents(
+                        new TextInputBuilder().setCustomId('duration_input').setLabel('Duração (ex: Permanente, 1h, 24h)').setValue(config?.default_access_time || '4h').setStyle(TextInputStyle.Short).setRequired(true)
+                    ));
+                    return await interaction.showModal(modal);
                 }
                 if (type === 'category') {
                     const { data: cats } = await supabase.from('categories').select('*');
-                    return await interaction.editReply({ components: [{ type: 17, accent_color: 0xc773ff, components: [{ type: 9, components: [{ type: 10, content: `## 🏷️ SELECIONE A CATEGORIA` }], accessory: { type: 11, media: { url: serverIcon } } }, { type: 1, components: [{ type: 3, custom_id: 'gen_key_category_select', options: (cats || []).map(c => ({ label: c.name, value: c.name })) }] }] }], flags: 32768 });
+                    const container = { type: 17, accent_color: 0xc773ff, components: [
+                        { type: 9, components: [{ type: 10, content: `## 🏷️ SELECIONE A CATEGORIA` }], accessory: { type: 11, media: { url: serverIcon } } },
+                        { type: 1, components: [{ type: 3, custom_id: 'gen_key_category_select', options: (cats || []).map(c => ({ label: c.name, value: c.name })) }] },
+                        { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'generate_key' }] }
+                    ]};
+                    return await interaction.editReply({ components: [container], flags: 32768 });
                 }
                 if (type === 'texture') {
                     const { data: texs } = await supabase.from('textures').select('*');
-                    return await interaction.editReply({ components: [{ type: 17, accent_color: 0xc773ff, components: [{ type: 9, components: [{ type: 10, content: `## 🎨 SELECIONE A TEXTURA` }], accessory: { type: 11, media: { url: serverIcon } } }, { type: 1, components: [{ type: 3, custom_id: 'gen_key_texture_select', options: (texs || []).map(t => ({ label: t.name, value: t.name })) }] }] }], flags: 32768 });
+                    const container = { type: 17, accent_color: 0xc773ff, components: [
+                        { type: 9, components: [{ type: 10, content: `## 🎨 SELECIONE A TEXTURA` }], accessory: { type: 11, media: { url: serverIcon } } },
+                        { type: 1, components: [{ type: 3, custom_id: 'gen_key_texture_select', options: (texs || []).map(t => ({ label: t.name, value: t.id })) }] },
+                        { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'generate_key' }] }
+                    ]};
+                    return await interaction.editReply({ components: [container], flags: 32768 });
                 }
             }
 
             if (cid === 'gen_key_category_select' || cid === 'gen_key_texture_select') {
-                const v = await getVersionCached();
-                const key = `BOLT-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
-                const data = { key, type: 'premium', expires_at: new Date(Date.now() + parseDuration(v?.default_access_time || '4h')).toISOString(), use_deadline: new Date(Date.now() + parseDuration(v?.key_use_deadline || '24h')).toISOString(), max_uses: 1, current_uses: 0, is_active: true };
-                if (cid === 'gen_key_category_select') data.allowed_category = interaction.values[0];
-                else data.allowed_texture = interaction.values[0];
-                await supabase.from('keys').insert(data);
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ KEY GERADA\n> **Key:** \`${key}\`` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
+                const type = cid === 'gen_key_category_select' ? 'category' : 'texture';
+                const item = interaction.values[0];
+                const config = await getVersionCached();
+                const modal = new ModalBuilder().setCustomId(`modal_gen_key_duration_${type}_${item}`).setTitle('Duração da Key');
+                modal.addComponents(new ActionRowBuilder().addComponents(
+                    new TextInputBuilder().setCustomId('duration_input').setLabel('Duração (ex: Permanente, 1h, 24h)').setValue(config?.default_access_time || '4h').setStyle(TextInputStyle.Short).setRequired(true)
+                ));
+                return await interaction.showModal(modal);
             }
 
             if (cid === 'texture_manage_select') {
@@ -238,7 +243,7 @@ async function interactionHandler(interaction) {
                 const { data: k } = await supabase.from('keys').select('*').eq('id', interaction.values[0]).maybeSingle();
                 if (!k) return;
                 const container = { type: 17, accent_color: 0xc773ff, components: [
-                    { type: 9, components: [{ type: 10, content: `## 🔑 DETALHES DA KEY\n> **Key:** \`${k.key}\`\n> **Expira:** \`${k.expires_at ? new Date(k.expires_at).toLocaleString() : 'Permanente'}\`` }], accessory: { type: 11, media: { url: serverIcon } } },
+                    { type: 9, components: [{ type: 10, content: `## 🔑 DETALHES DA KEY\n> **Key:** \`${k.key}\`\n> **Duração:** \`${k.duration}\`\n> **Resgate:** ${k.is_used ? '✅ Sim' : '⏳ Não'}` }], accessory: { type: 11, media: { url: serverIcon } } },
                     { type: 1, components: [{ type: 2, style: 4, label: 'Excluir', custom_id: `delete_key_${k.id}` }, { type: 2, style: 2, label: 'Voltar', custom_id: 'list_keys' }] }
                 ]};
                 return await interaction.editReply({ components: [container], flags: 32768 });
@@ -333,9 +338,51 @@ async function interactionHandler(interaction) {
             }
         }
 
-        // --- MODAL SUBMITS ---
+        // --- SUBMIT DE MODAIS ---
         if (interaction.isModalSubmit()) {
             const cid = interaction.customId;
+
+            if (cid.startsWith('modal_gen_key_duration_')) {
+                const parts = cid.split('_');
+                const type = parts[4]; // standard, all, category, texture
+                const item = parts[5]; // null, catName, or texID
+                const duration = interaction.fields.getTextInputValue('duration_input');
+                
+                const config = await getVersionCached();
+                const key = `BOLT-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+                
+                let expiresToUseAt = new Date();
+                expiresToUseAt.setHours(expiresToUseAt.getHours() + 24);
+
+                const data = { 
+                    key, 
+                    duration: duration,
+                    is_used: false,
+                    permissions_type: type === 'standard' ? 'standard' : 'premium',
+                    permissions_value: item !== 'null' ? item : 'all',
+                    generated_by: interaction.user.id,
+                    generated_by_tag: interaction.user.tag,
+                    expires_to_use_at: expiresToUseAt.toISOString()
+                };
+                
+                if (type === 'texture') {
+                    const { data: tex } = await supabase.from('textures').select('name').eq('id', item).maybeSingle();
+                    data.permissions_value = tex?.name || item;
+                }
+
+                const { error } = await supabase.from('keys').insert(data);
+                if (error) throw error;
+
+                const successContainer = {
+                    type: 17, accent_color: 0x00ff88, components: [{
+                        type: 9, components: [{ type: 10, content: `## ✅ KEY GERADA\n> **Key:** \`${key}\` \n> **Duração:** \`${duration}\` \n> **Tipo:** \`${type}\`${item !== 'null' ? `\n> **Alvo:** \`${data.permissions_value}\`` : ''}` }],
+                        accessory: { type: 11, media: { url: serverIcon } }
+                    }]
+                };
+                await interaction.followUp({ components: [successContainer], flags: 64 | 32768 });
+                return await showKeysAndUsersPanel(interaction);
+            }
+
             if (cid === 'modal_group_style') {
                 const { data, error } = await supabase.from('versions').upsert({ global_id: 'global', profile_url: interaction.fields.getTextInputValue('profile_url_input'), default_banner_url: interaction.fields.getTextInputValue('default_banner_input') }).select().single();
                 if (!error) invalidateVersionCache(data);
@@ -425,12 +472,12 @@ async function showUsersPanel(interaction) {
 
 async function showKeysList(interaction) {
     const { data: keys } = await supabase.from('keys').select('*').limit(24);
-    const used = keys?.filter(k => k.current_uses > 0).length || 0;
-    const fresh = keys?.filter(k => k.current_uses === 0).length || 0;
+    const used = keys?.filter(k => k.is_used).length || 0;
+    const fresh = keys?.filter(k => !k.is_used).length || 0;
     const container = { type: 17, accent_color: 0xc773ff, components: [
         { type: 10, content: `## LISTA DE KEYS\n> **Uso:** 🔴 \`${used}\` Usadas | 🟢 \`${fresh}\` Livres` },
         { type: 14 },
-        { type: 1, components: [{ type: 3, custom_id: 'manage_keys_select', options: (keys || []).map(k => ({ label: k.key, value: k.id, emoji: { name: k.current_uses > 0 ? '🔴' : '🟢' } })) }] },
+        { type: 1, components: [{ type: 3, custom_id: 'manage_keys_select', options: (keys || []).map(k => ({ label: k.key, value: k.id, emoji: { name: k.is_used ? '🔴' : '🟢' } })) }] },
         { type: 14 },
         { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'group_keys_return' }] }
     ]};

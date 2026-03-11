@@ -96,11 +96,11 @@ async function handleKeyGeneration(interaction) {
     }
 
     const { data: config } = await supabase.from('versions').select('*').eq('global_id', 'global').maybeSingle();
-    let shortenerBase = (config?.key_shortener || '').trim() || 'https://referrer.bolttexturas.site';
+    // Prioritiza o link do Linkvertise fornecido pelo usuário
+    let shortenerBase = (config?.key_shortener || '').trim() || 'https://linkvertise.com/4171462/Phfl89HIrpV5?o=sharing';
     const keysSiteUrl = 'https://referrer.bolttexturas.site';
 
-    // Encurtadores em cadeia (sannerurl->caminhodesperto) não repassam ?token= nem url=.
-    // Usar go.html: salva token no sessionStorage, redireciona pro encurtador. Ao voltar, index pega o token.
+    // Anti-bypass: Redireciona via go.html para salvar o token ANTES do encurtador
     const shortenerClean = shortenerBase.replace(/\?url=.*$/, '').replace(/\&url=.*$/, '');
     const finalUrl = `${keysSiteUrl}/go.html?t=${token}&s=${encodeURIComponent(shortenerClean)}`;
 

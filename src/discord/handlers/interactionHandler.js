@@ -50,7 +50,7 @@ async function interactionHandler(interaction) {
             const cid = interaction.customId || '';
             const val = interaction.values?.[0] || '';
 
-            const modalTriggers = ['group_style', 'group_links', 'group_system', 'manage_original_links', 'create_category', 'create_texture', 'manage_time', 'manage_use_deadline', 'manage_folder', 'manage_profile_global'];
+            const modalTriggers = ['group_style', 'group_links', 'group_system', 'manage_original_links', 'create_category', 'create_texture', 'manage_time', 'manage_use_deadline', 'manage_folder', 'manage_profile_global', 'search_users_btn'];
             let shouldShowModal = modalTriggers.some(mt => cid === mt || cid.startsWith(mt));
 
             // Casos especiais de Selects que abrem modais dependendo do valor
@@ -260,10 +260,10 @@ async function interactionHandler(interaction) {
                 if (!k) return;
 
                 const createdAt = k.created_at ? `<t:${Math.floor(new Date(k.created_at).getTime() / 1000)}:f>` : '`N/A`';
-                const expiresToUse = k.expires_to_use_at ? `<t:${Math.floor(new Date(k.expires_to_use_at).getTime() / 1000)}:f>` : '`N/A`';
-                const expiresAt = k.expires_at ? `<t:${Math.floor(new Date(k.expires_at).getTime() / 1000)}:f>` : (k.duration === 'permanente' ? '`Nunca`' : '`N/A`');
-
-                const details = [
+                const expiresToUse = k.expires_to_use_at ? `<t:${Math.floor(new Date(k.expires_to_use_at).getTime() / 1000)}:f> (<t:${Math.floor(new Date(k.expires_to_use_at).getTime() / 1000)}:R>)` : '`N/A`';
+                const expiresAt = k.expires_at ? `<t:${Math.floor(new Date(k.expires_at).getTime() / 1000)}:f> (<t:${Math.floor(new Date(k.expires_at).getTime() / 1000)}:R>)` : (k.duration === 'permanente' ? '`Nunca`' : '`N/A`');
+                
+                let details = [
                     `## 🔑 DETALHES DA KEY`,
                     `> **Key:** \`${k.key}\``,
                     `> **Tipo:** \`${k.permissions_type || 'standard'}\` (\`${k.permissions_value || 'all'}\`)`,
@@ -271,10 +271,14 @@ async function interactionHandler(interaction) {
                     `> **Status:** ${k.is_used ? '🔴 Resgatada' : '🟢 Disponível'}`,
                     `> **Gerada por:** <@${k.generated_by}> (\`${k.generated_by || 'N/A'}\`)`,
                     `> **Criada em:** ${createdAt}`,
-                    k.is_used ? `> **Usada por (HWID):** \`${k.used_by || 'N/A'}\`` : `> **Prazo para Resgate:** ${expiresToUse}`,
-                    k.is_used ? `> **Expira em:** ${expiresAt}` : '',
+                    k.is_used ? `> **Expira em:** ${expiresAt}` : `> **Prazo para Resgate:** ${expiresToUse}`,
                     k.generated_ip ? `> **IP do Gerador:** \`${k.generated_ip}\`` : ''
                 ].filter(line => line !== '').join('\n');
+                
+                // Adicionar campo de HWID se estiver usada
+                if (k.is_used && k.used_by) {
+                    details = details.replace('Expira em:', `**Usada por (HWID):** \`${k.used_by}\` \n> **Expira em:`);
+                }
 
                 const container = {
                     type: 17, accent_color: 0xc773ff, components: [
@@ -406,8 +410,8 @@ async function interactionHandler(interaction) {
                 const config = await getVersionCached();
                 const key = `BOLT-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
 
-                let expiresToUseAt = new Date();
-                expiresToUseAt.setHours(expiresToUseAt.getHours() + 24);
+                const useDeadline = config?.key_use_deadline || '24h';
+                let expiresToUseAt = applyDuration(new Date(), useDeadline);
 
                 const data = {
                     key,
@@ -596,7 +600,7 @@ async function showSearchResults(interaction, searchTerm) {
     const { data: users, error } = await supabase
         .from('users')
         .select('*')
-        .or(`discord_id.eq.${searchTerm},discord_tag.ilike.%${searchTerm}%,hwid.ilike.%${searchTerm}%,last_ip.ilike.%${searchTerm}%`)
+        .or(`discord_id.ilike.%${searchTerm}%,discord_tag.ilike.%${searchTerm}%,hwid.ilike.%${searchTerm}%,last_ip.ilike.%${searchTerm}%`)
         .limit(25);
 
     const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';

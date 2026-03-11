@@ -52,6 +52,9 @@ const downloadTickets = new Map(); // token -> { texture_id, hwid, ip, timestamp
 
 // Helper para pegar IP limpo
 const getClientIp = (req) => {
+    // Log para depuração de IP (remova se poluir muito)
+    if (Math.random() < 0.1) console.log('DEBUG_IP Headers:', req.headers['cf-connecting-ip'], req.headers['x-forwarded-for'], req.ip);
+
     // Ordem: CF-Connecting-IP -> X-Forwarded-For -> X-Real-IP -> req.ip
     const ip = req.headers['cf-connecting-ip'] || 
                req.headers['x-forwarded-for']?.split(',')[0] || 
@@ -178,8 +181,9 @@ app.post('/api/redeem-key', async (req, res) => {
 
         const duration = versionConfig?.default_access_time || '4h'; // Duração da sessão
 
-        let expiresToUseAt = new Date();
-        expiresToUseAt.setHours(expiresToUseAt.getHours() + 24);
+        const { applyDuration } = require('./utils/durationParser');
+        const useDeadline = versionConfig?.key_use_deadline || '24h';
+        let expiresToUseAt = applyDuration(new Date(), useDeadline);
 
         const { data: newKey, error: insertError } = await supabase
             .from('keys')

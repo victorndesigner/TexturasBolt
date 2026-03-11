@@ -129,10 +129,18 @@ app.get(['/api/download/confirm', '/download/confirm'], async (req, res) => {
 // Checar status do download (App polla aqui)
 app.get(['/api/download/status', '/download/status'], async (req, res) => {
     const { hwid, textureId } = req.query;
+    if (!hwid || !textureId) return res.status(400).json({ error: 'Faltam dados.' });
+
     const key = `${hwid}_${textureId}`;
     const data = pendingDownloads.get(key);
 
     if (data?.status === 'ready') {
+        // Validação extra por IP para evitar burlas de rede
+        const currentIp = getClientIp(req);
+        if (data.ip !== currentIp) {
+            return res.json({ status: 'waiting_verification', detail: 'Aguardando validação de rede segura.' });
+        }
+
         // CONSUMO ÚNICO
         pendingDownloads.delete(key);
         return res.json({ status: 'ready' });

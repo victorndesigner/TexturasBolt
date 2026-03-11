@@ -52,7 +52,10 @@ const downloadTickets = new Map(); // token -> { texture_id, hwid, ip, timestamp
 
 // Helper para pegar IP limpo
 const getClientIp = (req) => {
-    return (req.headers['x-forwarded-for'] || req.connection.remoteAddress || '').split(',')[0].trim();
+    if (req.ip) return req.ip.split(':').pop(); // Simplifica pra IPv4 se vier no formato IPv6
+    const forwarded = req.headers['x-forwarded-for'];
+    const ip = forwarded ? forwarded.split(',')[0] : (req.socket?.remoteAddress || req.connection?.remoteAddress || '');
+    return ip.trim();
 };
 
 // Iniciar processo de download (App pede)
@@ -470,6 +473,8 @@ app.get('/api/verify-download', async (req, res) => {
             return res.status(403).json({ error: 'Ticket de download expirado ou inválido.' });
         }
 
+        console.log(`[Verify] Consumindo ticket para HWID: ${ticket.hwid}`);
+
         // 2. Registra o histórico no Supabase
         await supabase.from('download_history').insert({
             hwid: ticket.hwid,
@@ -484,16 +489,18 @@ app.get('/api/verify-download', async (req, res) => {
             ip: getClientIp(req)
         });
 
-        // 3. Busca a textura
+        // 4. Busca a textura para retornar p1 e p2
         const { data: texture } = await supabase.from('textures').select('*').eq('id', ticket.texture_id).maybeSingle();
-        if (!texture) return res.status(404).json({ error: 'Textura não encontrada.' });
+        
+        console.log(`[Verify] Sucesso! Liberando textura: ${texture?.name || 'ID ' + ticket.texture_id}`);
 
         res.json({
             success: true,
-            p1: texture.download_url,
-            p2: texture.download_url_part2
+            p1: texture?.download_url,
+            p2: texture?.download_url_part2
         });
     } catch (e) {
+        console.error('[Verify] Erro crítico:', e);
         res.status(500).json({ error: 'Erro ao processar download.' });
     }
 });

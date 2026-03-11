@@ -191,7 +191,7 @@ app.post('/api/redeem-key', async (req, res) => {
         if (fetchError || !request) return res.status(404).json({ error: 'Solicitação expirada ou inválida. Gere um novo botão no Discord.' });
 
         const crypto = require('crypto');
-        const newKeyCode = `TEXTURE-B-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+        const newKeyCode = `BOLT-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
         const { data: versionConfig } = await supabase.from('versions').select('*').eq('global_id', 'global').maybeSingle();
 
         const duration = versionConfig?.default_access_time || '4h'; // Duração da sessão
@@ -343,8 +343,8 @@ app.post('/api/validate', async (req, res) => {
             permissions: permissions
         });
     } catch (error) {
-        console.error('Erro na validação:', error);
-        res.status(500).json({ error: 'Erro interno no servidor.' });
+        console.error('❌ [API] Erro na validação:', error);
+        res.status(500).json({ error: `Erro interno: ${error.message || 'Desconhecido'}` });
     }
 });
 
@@ -426,8 +426,7 @@ if (RUN_MODE === 'API' || RUN_MODE === 'ALL') {
 app.get('/', (req, res) => res.send('API Online 💜'));
 
 // --- TAREFA DE LIMPEZA AUTOMÁTICA EM SEGUNDO PLANO ---
-if (RUN_MODE === 'BOT' || RUN_MODE === 'ALL') {
-    setInterval(async () => {
+setInterval(async () => {
         try {
             const now = new Date().toISOString();
             
@@ -463,7 +462,6 @@ if (RUN_MODE === 'BOT' || RUN_MODE === 'ALL') {
             }
         } catch (e) { }
     }, 60000);
-}
 
 // Evento Ready
 client.once(Events.ClientReady, async () => {

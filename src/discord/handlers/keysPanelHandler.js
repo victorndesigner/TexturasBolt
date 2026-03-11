@@ -24,7 +24,7 @@ async function setupKeysPanel(interaction) {
                         components: [
                             {
                                 type: 10, // TEXT DISPLAY
-                                content: `## 🔑 Key Textura\n> Para continuar, clique no botão abaixo e gere seu acesso às texturas.\n> -# Esse processo é necessário para a chave de acesso ao sistema.`
+                                content: `## 🔑 Key Textura [v1.1]\n> Para continuar, clique no botão abaixo e gere seu acesso às texturas.\n> -# Esse processo é necessário para a chave de acesso ao sistema.`
                             }
                         ],
                         accessory: {

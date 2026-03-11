@@ -404,6 +404,9 @@ async function interactionHandler(interaction) {
                 }
 
                 const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                const createdTs = Math.floor(new Date(userData.created_at).getTime() / 1000) || 0;
+                const updatedTs = Math.floor(new Date(userData.updated_at).getTime() / 1000) || 0;
+
                 const container = {
                     type: 17,
                     accent_color: userData.is_blacklisted ? 0xff0000 : 0xc773ff,
@@ -412,7 +415,7 @@ async function interactionHandler(interaction) {
                             type: 9,
                             components: [{
                                 type: 10,
-                                content: `## 👤 INFORMAÇÕES DO USUÁRIO\n> **Status:** ${userData.is_blacklisted ? '🚫 **BANIDO**' : '✅ Ativo'}\n\n**Discord:** ${userData.discord_tag || 'Não vinculado'}\n**Discord ID:** \`${userData.discord_id || 'N/A'}\`\n**HWID:** \`${userData.hwid}\`\n**Último IP:** \`${userData.last_ip || 'N/A'}\`\n**Última Key Usada:** \`${userData.last_key_used || 'N/A'}\`\n**Última Key Gerada:** \`${userData.last_generated_key || 'Nenhuma'}\`\n**Total de Instalações:** \`${userData.total_installs}\`\n**Criado em:** <t:${Math.floor(new Date(userData.created_at).getTime() / 1000)}:R>\n**Atualizado em:** <t:${Math.floor(new Date(userData.updated_at).getTime() / 1000)}:R>`
+                                content: `## 👤 INFORMAÇÕES DO USUÁRIO\n> **Status:** ${userData.is_blacklisted ? '🚫 **BANIDO**' : '✅ Ativo'}\n\n**Discord:** ${userData.discord_tag || 'Não vinculado'}\n**Discord ID:** \`${userData.discord_id || 'N/A'}\`\n**HWID:** \`${userData.hwid}\`\n**Último IP:** \`${userData.last_ip || 'N/A'}\`\n**Última Key Usada:** \`${userData.last_key_used || 'N/A'}\`\n**Última Key Gerada:** \`${userData.last_generated_key || 'Nenhuma'}\`\n**Total de Instalações:** \`${userData.total_installs}\`\n**Criado em:** <t:${createdTs}:R>\n**Atualizado em:** <t:${updatedTs}:R>`
                             }],
                             accessory: { type: 11, media: { url: serverIcon } }
                         },

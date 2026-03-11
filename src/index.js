@@ -411,7 +411,8 @@ app.post('/api/textures', async (req, res) => {
             targetFolderName: config?.target_folder_name || 'StumbleCups',
             removeUrlPart1: config?.remove_url_part1 || '',
             removeUrlPart2: config?.remove_url_part2 || '',
-            downloadShortener: config?.download_shortener
+            downloadShortener: config?.download_shortener,
+            keysChannelUrl: config?.keys_channel_url
         });
     } catch (error) {
         console.error('Erro ao buscar texturas:', error);

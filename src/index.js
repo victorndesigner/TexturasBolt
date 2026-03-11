@@ -138,41 +138,22 @@ app.get(['/api/download/status', '/download/status'], async (req, res) => {
 });
 
 // Rota para o site externo gerar uma key após o encurtador
-app.get('/api/generate-key', async (req, res) => {
+// --- GERAÇÃO DE KEYS POR TOKEN (SISTEMA DE TICKET ÚNICO) ---
+// Rota para solicitar um token público (Para links fora do Discord)
+app.get('/api/request-token', async (req, res) => {
     try {
-        const { data: versionData } = await supabase.from('versions').select('*').eq('global_id', 'global').maybeSingle();
-        const duration = versionData?.default_access_time || '4h';
-        const deadline = versionData?.key_use_deadline || '24h';
+        const crypto = require('crypto');
+        const token = crypto.randomBytes(16).toString('hex');
+        
+        await supabase.from('key_requests').insert({
+            token: token,
+            user_id: 'PUBLIC_ACCESS',
+            user_tag: 'Visitante'
+        });
 
-        const keyCode = `BOLT-${require('crypto').randomBytes(6).toString('hex').toUpperCase()}`;
-
-        // Calcular Prazo de Resgate
-        let useDeadlineDate = new Date();
-        const dValue = parseInt(deadline);
-        const dUnit = deadline.slice(-1);
-        if (dUnit === 'h') useDeadlineDate.setHours(useDeadlineDate.getHours() + dValue);
-        else if (dUnit === 'm') useDeadlineDate.setMinutes(useDeadlineDate.getMinutes() + dValue);
-        else if (dUnit === 's') useDeadlineDate.setSeconds(useDeadlineDate.getSeconds() + dValue);
-        else useDeadlineDate.setHours(useDeadlineDate.getHours() + 24);
-
-        const { data: newKey, error } = await supabase
-            .from('keys')
-            .insert({
-                key: keyCode,
-                duration: duration,
-                expires_to_use_at: useDeadlineDate.toISOString(),
-                permissions_type: 'standard',
-                permissions_value: null
-            })
-            .select()
-            .single();
-
-        if (error) throw error;
-
-        res.json({ success: true, key: newKey.key, duration: newKey.duration });
+        res.json({ success: true, token });
     } catch (error) {
-        console.error('Erro no generate-key:', error);
-        res.status(500).json({ error: 'Erro ao gerar key via site.' });
+        res.status(500).json({ error: 'Erro ao preparar acesso.' });
     }
 });
 

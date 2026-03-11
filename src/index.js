@@ -422,6 +422,9 @@ app.get('/api/request-download-token', async (req, res) => {
         const token = crypto.randomBytes(16).toString('hex');
         const ip = getClientIp(req);
 
+        // ANTI-BYPASS: Invalida tickets anteriores para esta textura no mesmo PC
+        await supabase.from('download_tickets').delete().eq('hwid', hwid).eq('texture_id', texture_id);
+
         // Salva ticket no banco para segurança (persistência)
         await supabase.from('download_tickets').insert({
             token: token,

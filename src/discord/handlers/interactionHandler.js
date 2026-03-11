@@ -263,6 +263,12 @@ async function interactionHandler(interaction) {
                                 components: [
                                     { type: 2, style: 2, label: 'Categorias', custom_id: 'manage_categories' },
                                     { type: 2, style: 2, label: 'Texturas', custom_id: 'manage_textures' },
+                                ]
+                            },
+                            { type: 14 },
+                            {
+                                type: 1,
+                                components: [
                                     { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }
                                 ]
                             }
@@ -343,11 +349,18 @@ async function interactionHandler(interaction) {
                         accent_color: 0xc773ff,
                         components: [
                             {
+                                type: 12,
+                                items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }]
+                            },
+                            {
                                 type: 9,
-                                components: [{ type: 10, content: `## 🔑 GERAR KEY\n> Selecione o tipo de permissão para a nova chave:` }],
+                                components: [{
+                                    type: 10,
+                                    content: `## 🔑 GERAR KEY\n> Selecione o tipo de permissão para a nova chave:\n\n### 📝 Tipos Disponíveis:\n> - **Padrão:** Todas as texturas + Encurtador Obrigatório.\n> - **Acesso Total:** Todas as texturas + Download Direto.\n> - **Por Categoria:** Apenas uma categoria + Download Direto.\n> - **Por Textura:** Apenas uma textura + Download Direto.`
+                                }],
                                 accessory: { type: 11, media: { url: serverIcon } }
                             },
-                            { type: 14 }, // SEPARADOR (AGORA NO LUGAR CERTO)
+                            { type: 14 },
                             {
                                 type: 1,
                                 components: [
@@ -366,7 +379,7 @@ async function interactionHandler(interaction) {
                             },
                             {
                                 type: 1,
-                                components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }]
+                                components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'group_keys_return' }]
                             }
                         ]
                     };
@@ -544,7 +557,7 @@ async function interactionHandler(interaction) {
                 const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                 const createdTs = Math.floor(new Date(userData.created_at).getTime() / 1000) || 0;
 
-                let keyHistoryText = userKeys?.length > 0 
+                let keyHistoryText = userKeys?.length > 0
                     ? userKeys.map(k => `\`${k.key.replace('BOLT-', '')}\` (${k.duration}) - <t:${Math.floor(new Date(k.created_at).getTime()/1000)}:R>`).join('\n')
                     : 'Nenhuma chave usada.';
 
@@ -596,19 +609,19 @@ async function interactionHandler(interaction) {
                     components: [
                         {
                             type: 9,
-                            components: [{ 
-                                type: 10, 
-                                content: `## ⚙️ GERENCIAR: ${texture.name}\n> **Categoria:** \`${texture.category}\`\n> **Versão:** \`${texture.version || '1.0'}\`\n> **Status:** ${texture.is_updated ? '✅ Atualizada' : '❌ Desatualizada'}\n\nEscolha o que deseja configurar abaixo:` 
+                            components: [{
+                                type: 10,
+                                content: `## ⚙️ GERENCIAR: ${texture.name}\n> **Categoria:** \`${texture.category}\`\n> **Versão:** \`${texture.version || '1.0'}\`\n> **Status:** ${texture.is_updated ? '✅ Atualizada' : '❌ Desatualizada'}\n\nEscolha o que deseja configurar abaixo:`
                             }],
                             accessory: { type: 11, media: { url: serverIcon } }
                         },
                         {
                             type: 1,
                             components: [
-                                { 
-                                type: 2, 
-                                style: texture.is_updated ? 4 : 3, 
-                                label: texture.is_updated ? 'Desatualizar' : 'Atualizar', 
+                                {
+                                type: 2,
+                                style: texture.is_updated ? 4 : 3,
+                                label: texture.is_updated ? 'Desatualizar' : 'Atualizar',
                                 custom_id: `toggle_texture_status_${textureId}`
                                 },
                                 { type: 2, style: 2, label: 'Editar', custom_id: `manage_edit_data_${textureId}` },
@@ -767,12 +780,12 @@ async function interactionHandler(interaction) {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 const textureId = interaction.customId.replace('toggle_texture_status_', '');
                 const { data: texture } = await supabase.from('textures').select('*').eq('id', textureId).maybeSingle();
-                
+
                 if (texture) {
                     const newStatus = !texture.is_updated;
                     await supabase.from('textures').update({ is_updated: newStatus }).eq('id', textureId);
                     texture.is_updated = newStatus; // Local update for the panel rebuild
-                    
+
                     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                     const container = {
                         type: 17,
@@ -780,20 +793,20 @@ async function interactionHandler(interaction) {
                         components: [
                             {
                                 type: 9,
-                                components: [{ 
-                                    type: 10, 
-                                    content: `## ⚙️ GERENCIAR: ${texture.name}\n> **Categoria:** \`${texture.category}\`\n> **Versão:** \`${texture.version || '1.0'}\`\n> **Status:** ${texture.is_updated ? '✅ Atualizada' : '❌ Desatualizada'}\n\nEscolha o que deseja configurar abaixo:` 
+                                components: [{
+                                    type: 10,
+                                    content: `## ⚙️ GERENCIAR: ${texture.name}\n> **Categoria:** \`${texture.category}\`\n> **Versão:** \`${texture.version || '1.0'}\`\n> **Status:** ${texture.is_updated ? '✅ Atualizada' : '❌ Desatualizada'}\n\nEscolha o que deseja configurar abaixo:`
                                 }],
                                 accessory: { type: 11, media: { url: serverIcon } }
                             },
                             {
                                 type: 1,
                                 components: [
-                                    { 
-                                        type: 2, 
-                                        style: texture.is_updated ? 4 : 3, 
-                                        label: texture.is_updated ? 'Desatualizar' : 'Atualizar', 
-                                        custom_id: `toggle_texture_status_${textureId}` 
+                                    {
+                                        type: 2,
+                                        style: texture.is_updated ? 4 : 3,
+                                        label: texture.is_updated ? 'Desatualizar' : 'Atualizar',
+                                        custom_id: `toggle_texture_status_${textureId}`
                                     },
                                     { type: 2, style: 2, label: 'Editar', custom_id: `manage_edit_data_${textureId}` },
                                     { type: 2, style: 2, label: 'Links', custom_id: `manage_removal_${textureId}` },
@@ -810,13 +823,13 @@ async function interactionHandler(interaction) {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 const versionData = await getVersionCached();
                 const panel = createMainPanel(
-                    interaction.guild, 
-                    versionData?.version || undefined, 
-                    versionData?.key_shortener || undefined, 
-                    versionData?.default_access_time || undefined, 
-                    versionData?.key_use_deadline || undefined, 
-                    versionData?.target_folder_name || undefined, 
-                    versionData?.stumble_guys_version || undefined, 
+                    interaction.guild,
+                    versionData?.version || undefined,
+                    versionData?.key_shortener || undefined,
+                    versionData?.default_access_time || undefined,
+                    versionData?.key_use_deadline || undefined,
+                    versionData?.target_folder_name || undefined,
+                    versionData?.stumble_guys_version || undefined,
                     versionData?.stumble_cups_version || undefined,
                     versionData?.update_url || undefined,
                     versionData?.download_shortener || undefined
@@ -853,13 +866,13 @@ async function interactionHandler(interaction) {
                 };
 
                 const panel = createMainPanel(
-                    interaction.guild, 
-                    versionData?.version || undefined, 
-                    versionData?.key_shortener || undefined, 
-                    versionData?.default_access_time || undefined, 
-                    versionData?.key_use_deadline || undefined, 
-                    versionData?.target_folder_name || undefined, 
-                    versionData?.stumble_guys_version || undefined, 
+                    interaction.guild,
+                    versionData?.version || undefined,
+                    versionData?.key_shortener || undefined,
+                    versionData?.default_access_time || undefined,
+                    versionData?.key_use_deadline || undefined,
+                    versionData?.target_folder_name || undefined,
+                    versionData?.stumble_guys_version || undefined,
                     versionData?.stumble_cups_version || undefined,
                     versionData?.update_url || undefined,
                     versionData?.download_shortener || undefined
@@ -1108,12 +1121,12 @@ async function interactionHandler(interaction) {
                 }
 
                 const newBanStatus = !userData.is_blacklisted;
-                await supabase.from('users').update({ 
+                await supabase.from('users').update({
                     is_blacklisted: newBanStatus,
                     blacklist_reason: newBanStatus ? 'Banido via painel administrativo' : null,
                     updated_at: new Date().toISOString()
                 }).eq('hwid', hwid);
-                
+
                 userData.is_blacklisted = newBanStatus; // Local sync for success msg
 
                 const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
@@ -1131,6 +1144,48 @@ async function interactionHandler(interaction) {
 
                 await interaction.followUp({ components: [successContainer], flags: 64 + 32768 });
                 return await showUsersPanel(interaction);
+            }
+
+            if (interaction.customId === 'edit_category_btn') {
+                const { data: categories } = await supabase.from('categories').select('*').order('name', { ascending: true });
+                if (!categories || categories.length === 0) {
+                    return await interaction.reply({ content: '❌ Nenhuma categoria para editar.', flags: 64 });
+                }
+
+                const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                const container = {
+                    type: 17,
+                    accent_color: 0xc773ff,
+                    components: [
+                        {
+                            type: 9,
+                            components: [{ type: 10, content: `## 📝 EDITAR CATEGORIA\n> Escolha uma categoria abaixo para editar.` }],
+                            accessory: { type: 11, media: { url: serverIcon } }
+                        },
+                        {
+                            type: 1,
+                            components: [
+                                {
+                                    type: 3,
+                                    custom_id: 'edit_category_select',
+                                    placeholder: 'Selecione uma categoria...',
+                                    options: categories.slice(0, 25).map(c => ({ label: c.name, description: c.description || 'Sem descrição', value: c.id.toString() }))
+                                }
+                            ]
+                        },
+                        {
+                            type: 1,
+                            components: [
+                                { type: 2, style: 2, label: 'Voltar', custom_id: 'manage_categories' }
+                            ]
+                        }
+                    ]
+                };
+                if (!interaction.deferred && !interaction.replied) {
+                    return await interaction.reply({ components: [container], flags: 32768 });
+                } else {
+                    return await interaction.editReply({ components: [container], flags: 32768 });
+                }
             }
 
             if (interaction.customId === 'manage_users') {
@@ -1308,483 +1363,186 @@ async function interactionHandler(interaction) {
                 };
                 return await interaction.update({ components: [ok], flags: 64 + 32768 });
             }
+            if (interaction.customId === 'edit_category_select') {
+                const catId = interaction.values[0];
+                const { data: category } = await supabase.from('categories').select('*').eq('id', catId).maybeSingle();
+                if (!category) return;
+
+                const modal = new ModalBuilder()
+                    .setCustomId(`modal_edit_category_${catId}`)
+                    .setTitle(`Editar: ${category.name}`);
+
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_cat_name').setLabel('Nome da Categoria').setValue(category.name).setStyle(TextInputStyle.Short).setRequired(true)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_cat_desc').setLabel('Descrição').setValue(category.description || '').setStyle(TextInputStyle.Short).setRequired(false)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_cat_logo').setLabel('URL do Logo/Ícone').setValue(category.logo_url || '').setStyle(TextInputStyle.Short).setRequired(false))
+                );
+                return await interaction.showModal(modal);
+            }
         }
 
-        // --- MODALS ---
-        if (interaction.isModalSubmit()) {
-            try {
-                if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
-            } catch (err) {
-                // Ignorar erro se já foi respondida (evita crash 40060)
-                if (err.code !== 40060 && err.code !== 10062) console.error('Erro ao deferir modal:', err);
-            }
-
-            if (interaction.customId === 'modal_textures_version') {
-                const sgVersion = interaction.fields.getTextInputValue('sg_version_input');
-                const scVersion = interaction.fields.getTextInputValue('sc_version_input');
-                await supabase.from('versions').upsert({ 
-                    global_id: 'global',
-                    stumble_guys_version: sgVersion, 
-                    stumble_cups_version: scVersion 
-                }, { onConflict: 'global_id' });
-                invalidateVersionCache();
-                const data = await getVersionCached();
-
-                const panel = createMainPanel(
-                    interaction.guild, 
-                    data?.version || '1.0', 
-                    data?.key_shortener, 
-                    data?.default_access_time, 
-                    data?.key_use_deadline, 
-                    data?.target_folder_name, 
-                    data?.stumble_guys_version, 
-                    data?.stumble_cups_version,
-                    data?.update_url,
-                    data?.download_shortener
-                );
-                return await interaction.editReply({ ...panel, flags: 32768 });
-            }
-
-            if (interaction.customId === 'modal_version') {
-                const newVersion = interaction.fields.getTextInputValue('version_input');
-                await supabase.from('versions').upsert({ global_id: 'global', version: newVersion }, { onConflict: 'global_id' });
-                invalidateVersionCache();
-                const data = await getVersionCached();
-
-                const panel = createMainPanel(
-                    interaction.guild, 
-                    data?.version || undefined, 
-                    data?.key_shortener || undefined, 
-                    data?.default_access_time || undefined, 
-                    data?.key_use_deadline || undefined, 
-                    data?.target_folder_name || undefined, 
-                    data?.stumble_guys_version || undefined, 
-                    data?.stumble_cups_version || undefined,
-                    data?.update_url || undefined,
-                    data?.download_shortener || undefined
-                );
-                return await interaction.editReply({ ...panel, flags: 32768 });
-            }
-
-            if (interaction.customId === 'modal_update_url') {
-                const newUpdateUrl = interaction.fields.getTextInputValue('url_input');
-                await supabase.from('versions').upsert({ global_id: 'global', update_url: newUpdateUrl }, { onConflict: 'global_id' });
-                invalidateVersionCache();
-                const data = await getVersionCached();
-
-                const panel = createMainPanel(
-                    interaction.guild, 
-                    data?.version || undefined, 
-                    data?.key_shortener || undefined, 
-                    data?.default_access_time || undefined, 
-                    data?.key_use_deadline || undefined, 
-                    data?.target_folder_name || undefined, 
-                    data?.stumble_guys_version || undefined, 
-                    data?.stumble_cups_version || undefined,
-                    data?.update_url || undefined,
-                    data?.download_shortener || undefined
-                );
-                return await interaction.editReply({ ...panel, flags: 32768 });
-            }
-
-            if (interaction.customId === 'modal_shortener') {
-                const newShortener = interaction.fields.getTextInputValue('shortener_input');
-                await supabase.from('versions').upsert({ global_id: 'global', key_shortener: newShortener }, { onConflict: 'global_id' });
-                invalidateVersionCache();
-                const data = await getVersionCached();
-
-                const panel = createMainPanel(
-                    interaction.guild, 
-                    data?.version || undefined, 
-                    data?.key_shortener || undefined, 
-                    data?.default_access_time || undefined, 
-                    data?.key_use_deadline || undefined, 
-                    data?.target_folder_name || undefined, 
-                    data?.stumble_guys_version || undefined, 
-                    data?.stumble_cups_version || undefined,
-                    data?.update_url || undefined,
-                    data?.download_shortener || undefined
-                );
-                return await interaction.editReply({ ...panel, flags: 32768 });
-            }
-
-            if (interaction.customId === 'modal_download_shortener') {
-                const newShortener = interaction.fields.getTextInputValue('shortener_input');
-                await supabase.from('versions').upsert({ global_id: 'global', download_shortener: newShortener }, { onConflict: 'global_id' });
-                invalidateVersionCache();
-                const data = await getVersionCached();
-
-                const panel = createMainPanel(
-                    interaction.guild, 
-                    data?.version || undefined, 
-                    data?.key_shortener || undefined, 
-                    data?.default_access_time || undefined, 
-                    data?.key_use_deadline || undefined, 
-                    data?.target_folder_name || undefined, 
-                    data?.stumble_guys_version || undefined, 
-                    data?.stumble_cups_version || undefined,
-                    data?.update_url || undefined,
-                    data?.download_shortener || undefined
-                );
-                return await interaction.editReply({ ...panel, flags: 32768 });
-            }
-
-            if (interaction.customId === 'modal_time') {
-                const newTime = interaction.fields.getTextInputValue('time_input');
-                await supabase.from('versions').upsert({ global_id: 'global', default_access_time: newTime }, { onConflict: 'global_id' });
-                invalidateVersionCache();
-                const data = await getVersionCached();
-
-                const panel = createMainPanel(
-                    interaction.guild, 
-                    data?.version || undefined, 
-                    data?.key_shortener || undefined, 
-                    data?.default_access_time || undefined, 
-                    data?.key_use_deadline || undefined, 
-                    data?.target_folder_name || undefined, 
-                    data?.stumble_guys_version || undefined, 
-                    data?.stumble_cups_version || undefined,
-                    data?.update_url || undefined,
-                    data?.download_shortener || undefined
-                );
-                return await interaction.editReply({ ...panel, flags: 32768 });
-            }
-
-            if (interaction.customId === 'modal_use_deadline') {
-                const newDeadline = interaction.fields.getTextInputValue('deadline_input');
-                await supabase.from('versions').upsert({ global_id: 'global', key_use_deadline: newDeadline }, { onConflict: 'global_id' });
-                invalidateVersionCache();
-                const data = await getVersionCached();
-
-                const panel = createMainPanel(
-                    interaction.guild, 
-                    data?.version || undefined, 
-                    data?.key_shortener || undefined, 
-                    data?.default_access_time || undefined, 
-                    data?.key_use_deadline || undefined, 
-                    data?.target_folder_name || undefined, 
-                    data?.stumble_guys_version || undefined, 
-                    data?.stumble_cups_version || undefined,
-                    data?.update_url || undefined,
-                    data?.download_shortener || undefined
-                );
-                return await interaction.editReply({ ...panel, flags: 32768 });
-            }
-
-            if (interaction.customId === 'modal_folder_name') {
-                const newFolderName = interaction.fields.getTextInputValue('folder_input');
-                await supabase.from('versions').upsert({ global_id: 'global', target_folder_name: newFolderName }, { onConflict: 'global_id' });
-                invalidateVersionCache();
-                const data = await getVersionCached();
-
-                const panel = createMainPanel(
-                    interaction.guild, 
-                    data?.version || undefined, 
-                    data?.key_shortener || undefined, 
-                    data?.default_access_time || undefined, 
-                    data?.key_use_deadline || undefined, 
-                    data?.target_folder_name || undefined, 
-                    data?.stumble_guys_version || undefined, 
-                    data?.stumble_cups_version || undefined,
-                    data?.update_url || undefined,
-                    data?.download_shortener || undefined
-                );
-                return await interaction.editReply({ ...panel, flags: 32768 });
-            }
-
-            if (interaction.customId === 'modal_original_links') {
-                const p1 = interaction.fields.getTextInputValue('orig_p1');
-                const p2 = interaction.fields.getTextInputValue('orig_p2');
-                await supabase.from('versions').upsert({ global_id: 'global', remove_url_part1: p1, remove_url_part2: p2 }, { onConflict: 'global_id' });
-                invalidateVersionCache();
-                const data = await getVersionCached();
-
-                const panel = createMainPanel(
-                    interaction.guild, 
-                    data?.version || undefined, 
-                    data?.key_shortener || undefined, 
-                    data?.default_access_time || undefined, 
-                    data?.key_use_deadline || undefined, 
-                    data?.target_folder_name || undefined, 
-                    data?.stumble_guys_version || undefined, 
-                    data?.stumble_cups_version || undefined,
-                    data?.update_url || undefined,
-                    data?.download_shortener || undefined
-                );
-
-                return await interaction.editReply({ ...panel, flags: 32768 });
-            }
-
-            // --- GROUPED MODAL HANDLERS ---
-            if (interaction.customId === 'modal_group_style') {
-                const profileUrl = interaction.fields.getTextInputValue('profile_url_input');
-                const bannerUrl = interaction.fields.getTextInputValue('default_banner_input');
-                const updateData = { global_id: 'global' };
-                if (profileUrl !== undefined) updateData.profile_url = profileUrl || null;
-                if (bannerUrl !== undefined) updateData.default_banner_url = bannerUrl || null;
-                await supabase.from('versions').upsert(updateData, { onConflict: 'global_id' });
-                invalidateVersionCache();
-                const data = await getVersionCached();
-                const panel = createMainPanel(
-                    interaction.guild, 
-                    data?.version || undefined, 
-                    data?.key_shortener || undefined, 
-                    data?.default_access_time || undefined, 
-                    data?.key_use_deadline || undefined, 
-                    data?.target_folder_name || undefined, 
-                    data?.stumble_guys_version || undefined, 
-                    data?.stumble_cups_version || undefined,
-                    data?.update_url || undefined,
-                    data?.download_shortener || undefined
-                );
-                return await interaction.editReply({ ...panel, flags: 32768 });
-            }
-
-            if (interaction.customId === 'modal_group_links') {
-                const discordUrl = interaction.fields.getTextInputValue('discord_url_input');
-                const updateUrl = interaction.fields.getTextInputValue('update_url_input');
-                const keyShort = interaction.fields.getTextInputValue('key_shortener_input');
-                const dlShort = interaction.fields.getTextInputValue('dl_shortener_input');
-                const updateData = { global_id: 'global' };
-                if (discordUrl !== undefined) updateData.discord_url = discordUrl || null;
-                if (updateUrl !== undefined) updateData.update_url = updateUrl || null;
-                if (keyShort !== undefined) updateData.key_shortener = keyShort || null;
-                if (dlShort !== undefined) updateData.download_shortener = dlShort || null;
-                await supabase.from('versions').upsert(updateData, { onConflict: 'global_id' });
-                invalidateVersionCache();
-                const data = await getVersionCached();
-                const panel = createMainPanel(
-                    interaction.guild, 
-                    data?.version || undefined, 
-                    data?.key_shortener || undefined, 
-                    data?.default_access_time || undefined, 
-                    data?.key_use_deadline || undefined, 
-                    data?.target_folder_name || undefined, 
-                    data?.stumble_guys_version || undefined, 
-                    data?.stumble_cups_version || undefined,
-                    data?.update_url || undefined,
-                    data?.download_shortener || undefined
-                );
-                return await interaction.editReply({ ...panel, flags: 32768 });
-            }
-
-            if (interaction.customId === 'modal_group_system') {
-                const appVersion = interaction.fields.getTextInputValue('app_version_input');
-                const sgVersion = interaction.fields.getTextInputValue('sg_version_input');
-                const scVersion = interaction.fields.getTextInputValue('sc_version_input');
-                const folder = interaction.fields.getTextInputValue('folder_input');
-                const timeRaw = interaction.fields.getTextInputValue('time_input');
-                const [accessTime, useDeadline] = timeRaw.split('|').map(s => s.trim());
-                const updateData = { 
-                    global_id: 'global',
-                    version: appVersion,
-                    stumble_guys_version: sgVersion,
-                    stumble_cups_version: scVersion,
-                    target_folder_name: folder
-                };
-                if (accessTime) updateData.default_access_time = accessTime;
-                if (useDeadline) updateData.key_use_deadline = useDeadline;
-                await supabase.from('versions').upsert(updateData, { onConflict: 'global_id' });
-                invalidateVersionCache();
-                const data = await getVersionCached();
-                const panel = createMainPanel(
-                    interaction.guild, 
-                    data?.version || undefined, 
-                    data?.key_shortener || undefined, 
-                    data?.default_access_time || undefined, 
-                    data?.key_use_deadline || undefined, 
-                    data?.target_folder_name || undefined, 
-                    data?.stumble_guys_version || undefined, 
-                    data?.stumble_cups_version || undefined,
-                    data?.update_url || undefined,
-                    data?.download_shortener || undefined
-                );
-                return await interaction.editReply({ ...panel, flags: 32768 });
-            }
-
-            if (interaction.customId === 'modal_create_texture') {
-                const name = interaction.fields.getTextInputValue('texture_name');
-                const category = interaction.fields.getTextInputValue('texture_category');
-                const version = interaction.fields.getTextInputValue('texture_version');
-                const banner = interaction.fields.getTextInputValue('texture_banner');
-                const p1 = interaction.fields.getTextInputValue('texture_p1');
-
-                await supabase.from('textures').insert({
-                    name,
-                    category,
-                    version,
-                    banner_url: banner || null,
-                    download_url: p1,
-                    is_updated: true
-                });
-
-                const { data: textures } = await supabase.from('textures').select('*');
-                const panel = createTexturePanel(interaction.guild, textures || []);
-                return await interaction.editReply({ ...panel, flags: 32768 });
-            }
-
-            if (interaction.customId.startsWith('modal_edit_texture_')) {
-                const textureId = interaction.customId.replace('modal_edit_texture_', '');
-                const name = interaction.fields.getTextInputValue('edit_name');
-                const category = interaction.fields.getTextInputValue('edit_category');
-                const version = interaction.fields.getTextInputValue('edit_version');
-                const profile = interaction.fields.getTextInputValue('edit_profile');
-                const banner = interaction.fields.getTextInputValue('edit_banner');
-
-                await supabase.from('textures').update({
-                    name,
-                    category,
-                    version,
-                    profile_image: profile || null,
-                    banner_url: banner || null
-                }).eq('id', textureId);
-
-                const { data: textures } = await supabase.from('textures').select('*');
-                const panel = createTexturePanel(interaction.guild, textures || []);
-                return await interaction.editReply({ ...panel, flags: 32768 });
-            }
-
-            if (interaction.customId.startsWith('modal_removal_links_')) {
-                const textureId = interaction.customId.replace('modal_removal_links_', '');
-                const p1 = interaction.fields.getTextInputValue('file_p1');
-                const p2 = interaction.fields.getTextInputValue('file_p2');
-
-                await supabase.from('textures').update({
-                    download_url: p1,
-                    download_url_part2: p2 || null
-                }).eq('id', textureId);
-
-                const { data: textures } = await supabase.from('textures').select('*');
-                const panel = createTexturePanel(interaction.guild, textures || []);
-                return await interaction.editReply({ ...panel, flags: 32768 });
-            }
-
-            if (interaction.customId === 'modal_create_category') {
-                const name = interaction.fields.getTextInputValue('cat_name');
-                const description = interaction.fields.getTextInputValue('cat_desc');
-                const logo = interaction.fields.getTextInputValue('cat_logo');
-
-                await supabase.from('categories').insert({ 
-                    name, 
-                    description: description || null, 
-                    logo_url: logo || null 
-                });
-
-                return await showCategoriesPanel(interaction);
-            }
-
-            if (interaction.customId === 'modal_search_user') {
-                const term = interaction.fields.getTextInputValue('search_hwid');
-                const { data: results } = await supabase.from('users').select('*')
-                    .or(`hwid.ilike.%${term}%,discord_id.ilike.%${term}%,discord_tag.ilike.%${term}%`);
-
-                const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
-                if (!results || results.length === 0) {
-                    const err = {
-                        type: 17,
-                        accent_color: 0xff0000,
-                        components: [{
-                            type: 9,
-                            components: [{ type: 10, content: `## ❌ SEM RESULTADOS\n> Nenhum usuário encontrado para **${term}**.` }]
-                        }, {
-                            type: 1,
-                            components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_users' }]
-                        }]
-                    };
-                    return await interaction.editReply({ components: [err], flags: 64 + 32768 });
-                }
-
-                const container = {
-                    type: 17,
-                    accent_color: 0xc773ff,
-                    components: [
-                        {
-                            type: 9,
-                            components: [{ type: 10, content: `## 🔍 RESULTADOS DA PESQUISA\n> Termo: **${term}**\n> Foram encontrados **${results.length}** usuários.` }],
-                            accessory: { type: 11, media: { url: serverIcon } }
-                        },
-                        {
-                            type: 1,
-                            components: [
-                                {
-                                    type: 3,
-                                    custom_id: 'select_user',
-                                    placeholder: 'Selecione um usuário...',
-                                    options: results.slice(0, 25).map(u => ({ label: u.discord_tag || u.hwid.slice(0, 20), description: `ID: ${u.discord_id || 'N/A'} | HWID: ${u.hwid.slice(0, 15)}...`, value: u.hwid }))
-                                }
-                            ]
-                        }
-                    ]
-                };
-                return await interaction.editReply({ components: [container], flags: 32768 });
-            }
-
-            if (interaction.customId.startsWith('modal_gen_key_final_')) {
-                const parts = interaction.customId.replace('modal_gen_key_final_', '').split('_');
-                const type = parts[0];
-                const value = parts[1] || 'all';
-
-                const userTime = interaction.fields.getTextInputValue('key_time');
-                const config = await getVersionCached();
-                const duration = userTime || config?.default_access_time || '2h';
-
-                const crypto = require('crypto');
-                const key = `BOLT-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
-
-                const permissions = { type };
-                if (type === 'category' || type === 'texture') permissions.value = value;
-
-                let expiresToUseAt = null;
-                const deadline = config?.key_use_deadline || '24h';
-                const deadlineMs = parseDuration(deadline);
-                if (deadlineMs) expiresToUseAt = new Date(Date.now() + deadlineMs).toISOString();
-
-                const { error: insertError } = await supabase.from('keys').insert({
-                    key,
-                    duration,
-                    permissions_type: type,
-                    permissions_value: (type === 'category' || type === 'texture') ? value : null,
-                    is_used: false,
-                    expires_to_use_at: expiresToUseAt,
-                    generated_by: interaction.user.id,
-                    generated_by_tag: interaction.user.tag
-                });
-
-                if (insertError) throw insertError;
-
-                const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
-                const successContainer = {
-                    type: 17,
-                    accent_color: 0x00ff88,
-                    components: [{
-                        type: 9,
-                        components: [{
-                            type: 10,
-                            content: `## ✅ KEY GERADA!\n> **Key:** \`${key}\`\n> **Tipo:** \`${type}\`${value !== 'all' && value !== 'standard' ? ` (\`${value}\`)` : ''}\n> **Duração:** \`${duration}\`\n\nAcesse o encurtador para liberar o acesso.`
-                        }]
-                    }]
-                };
-
-                const panel = createMainPanel(
-                    interaction.guild, 
-                    config?.version || undefined, 
-                    config?.key_shortener || undefined, 
-                    config?.default_access_time || undefined, 
-                    config?.key_use_deadline || undefined, 
-                    data?.target_folder_name || undefined, 
-                    data?.stumble_guys_version || undefined, 
-                    data?.stumble_cups_version || undefined,
-                    config?.update_url || undefined,
-                    config?.download_shortener || undefined
-                );
-
-                await interaction.followUp({ components: [successContainer], flags: 64 + 32768 });
-                return await interaction.editReply({ ...panel, flags: 32768 });
-            }
+    // --- MODALS ---
+    if (interaction.isModalSubmit()) {
+        try {
+            if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
+        } catch (err) {
+            if (err.code !== 40060 && err.code !== 10062) console.error('Erro ao deferir modal:', err);
         }
+
+        if (interaction.customId === 'modal_create_category') {
+            const name = interaction.fields.getTextInputValue('cat_name');
+            const description = interaction.fields.getTextInputValue('cat_desc');
+            const logo = interaction.fields.getTextInputValue('cat_logo');
+
+            await supabase.from('categories').insert({
+                name,
+                description: description || null,
+                logo_url: logo || null
+            });
+
+            return await showCategoriesPanel(interaction);
+        }
+
+        if (interaction.customId.startsWith('modal_edit_category_')) {
+            const catId = interaction.customId.replace('modal_edit_category_', '');
+            const name = interaction.fields.getTextInputValue('edit_cat_name');
+            const desc = interaction.fields.getTextInputValue('edit_cat_desc');
+            const logo = interaction.fields.getTextInputValue('edit_cat_logo');
+
+            const { data: oldCat } = await supabase.from('categories').select('name').eq('id', catId).maybeSingle();
+            if (oldCat && oldCat.name !== name) {
+                await supabase.from('textures').update({ category: name }).eq('category', oldCat.name);
+            }
+
+            await supabase.from('categories').update({ name, description: desc, logo_url: logo }).eq('id', catId);
+            return await showCategoriesPanel(interaction);
+        }
+
+        if (interaction.customId === 'modal_create_texture') {
+            const name = interaction.fields.getTextInputValue('texture_name');
+            const category = interaction.fields.getTextInputValue('texture_category');
+            const version = interaction.fields.getTextInputValue('texture_version');
+            const banner = interaction.fields.getTextInputValue('texture_banner');
+            const p1 = interaction.fields.getTextInputValue('texture_p1');
+
+            await supabase.from('textures').insert({
+                name,
+                category,
+                version,
+                banner_url: banner || null,
+                download_url: p1,
+                is_updated: true
+            });
+
+            const { data: textures } = await supabase.from('textures').select('*');
+            const panel = createTexturePanel(interaction.guild, textures || []);
+            return await interaction.editReply({ ...panel, flags: 32768 });
+        }
+
+        if (interaction.customId.startsWith('modal_edit_texture_')) {
+            const textureId = interaction.customId.replace('modal_edit_texture_', '');
+            const name = interaction.fields.getTextInputValue('edit_name');
+            const category = interaction.fields.getTextInputValue('edit_category');
+            const version = interaction.fields.getTextInputValue('edit_version');
+            const profile = interaction.fields.getTextInputValue('edit_profile');
+            const banner = interaction.fields.getTextInputValue('edit_banner');
+
+            await supabase.from('textures').update({
+                name,
+                category,
+                version,
+                profile_image: profile || null,
+                banner_url: banner || null
+            }).eq('id', textureId);
+
+            const { data: textures } = await supabase.from('textures').select('*');
+            const panel = createTexturePanel(interaction.guild, textures || []);
+            return await interaction.editReply({ ...panel, flags: 32768 });
+        }
+
+        if (interaction.customId.startsWith('modal_removal_links_')) {
+            const textureId = interaction.customId.replace('modal_removal_links_', '');
+            const p1 = interaction.fields.getTextInputValue('file_p1');
+            const p2 = interaction.fields.getTextInputValue('file_p2');
+
+            await supabase.from('textures').update({
+                download_url: p1,
+                download_url_part2: p2 || null
+            }).eq('id', textureId);
+
+            const { data: textures } = await supabase.from('textures').select('*');
+            const panel = createTexturePanel(interaction.guild, textures || []);
+            return await interaction.editReply({ ...panel, flags: 32768 });
+        }
+
+        if (interaction.customId === 'modal_group_style') {
+            const profileUrl = interaction.fields.getTextInputValue('profile_url_input');
+            const bannerUrl = interaction.fields.getTextInputValue('default_banner_input');
+            await supabase.from('versions').upsert({ global_id: 'global', profile_url: profileUrl || null, default_banner_url: bannerUrl || null }, { onConflict: 'global_id' });
+            invalidateVersionCache();
+            const data = await getVersionCached();
+            const panel = createMainPanel(interaction.guild, data?.version, data?.key_shortener, data?.default_access_time, data?.key_use_deadline, data?.target_folder_name, data?.stumble_guys_version, data?.stumble_cups_version, data?.update_url, data?.download_shortener);
+            return await interaction.editReply({ ...panel, flags: 32768 });
+        }
+
+        if (interaction.customId === 'modal_group_links') {
+            const discordUrl = interaction.fields.getTextInputValue('discord_url_input');
+            const updateUrl = interaction.fields.getTextInputValue('update_url_input');
+            const keyShort = interaction.fields.getTextInputValue('key_shortener_input');
+            const dlShort = interaction.fields.getTextInputValue('dl_shortener_input');
+            await supabase.from('versions').upsert({ global_id: 'global', discord_url: discordUrl || null, update_url: updateUrl || null, key_shortener: keyShort || null, download_shortener: dlShort || null }, { onConflict: 'global_id' });
+            invalidateVersionCache();
+            const data = await getVersionCached();
+            const panel = createMainPanel(interaction.guild, data?.version, data?.key_shortener, data?.default_access_time, data?.key_use_deadline, data?.target_folder_name, data?.stumble_guys_version, data?.stumble_cups_version, data?.update_url, data?.download_shortener);
+            return await interaction.editReply({ ...panel, flags: 32768 });
+        }
+
+        if (interaction.customId === 'modal_group_system') {
+            const appVersion = interaction.fields.getTextInputValue('app_version_input');
+            const sgVersion = interaction.fields.getTextInputValue('sg_version_input');
+            const scVersion = interaction.fields.getTextInputValue('sc_version_input');
+            const folder = interaction.fields.getTextInputValue('folder_input');
+            const timeRaw = interaction.fields.getTextInputValue('time_input');
+            const [accessTime, useDeadline] = timeRaw.split('|').map(s => s.trim());
+            await supabase.from('versions').upsert({ global_id: 'global', version: appVersion, stumble_guys_version: sgVersion, stumble_cups_version: scVersion, target_folder_name: folder, default_access_time: accessTime || '4h', key_use_deadline: useDeadline || '24h' }, { onConflict: 'global_id' });
+            invalidateVersionCache();
+            const data = await getVersionCached();
+            const panel = createMainPanel(interaction.guild, data?.version, data?.key_shortener, data?.default_access_time, data?.key_use_deadline, data?.target_folder_name, data?.stumble_guys_version, data?.stumble_cups_version, data?.update_url, data?.download_shortener);
+            return await interaction.editReply({ ...panel, flags: 32768 });
+        }
+
+        if (interaction.customId === 'modal_search_user') {
+            const term = interaction.fields.getTextInputValue('search_hwid');
+            const { data: results } = await supabase.from('users').select('*').or(`hwid.ilike.%${term}%,discord_id.ilike.%${term}%,discord_tag.ilike.%${term}%`);
+            if (!results || results.length === 0) {
+                const err = { type: 17, accent_color: 0xff0000, components: [{ type: 9, components: [{ type: 10, content: `## ❌ SEM RESULTADOS\n> Nenhum usuário encontrado para **${term}**.` }] }, { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_users' }] }] };
+                return await interaction.editReply({ components: [err], flags: 64 + 32768 });
+            }
+            const container = { type: 17, accent_color: 0xc773ff, components: [{ type: 9, components: [{ type: 10, content: `## 🔍 RESULTADOS DA PESQUISA\n> Termo: **${term}**\n> Foram encontrados **${results.length}** usuários.` }] }, { type: 1, components: [{ type: 3, custom_id: 'select_user', placeholder: 'Selecione um usuário...', options: results.slice(0, 25).map(u => ({ label: u.discord_tag || u.hwid.slice(0, 20), description: `ID: ${u.discord_id || 'N/A'} | HWID: ${u.hwid.slice(0, 15)}...`, value: u.hwid })) }] }] };
+            return await interaction.editReply({ components: [container], flags: 32768 });
+        }
+
+        if (interaction.customId.startsWith('modal_gen_key_final_')) {
+            const parts = interaction.customId.replace('modal_gen_key_final_', '').split('_');
+            const type = parts[0];
+            const value = parts[1] || 'all';
+            const userTime = interaction.fields.getTextInputValue('key_time');
+            const config = await getVersionCached();
+            const duration = userTime || config?.default_access_time || '2h';
+            const key = `BOLT-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+            let expiresToUseAt = null;
+            const deadlineMs = parseDuration(config?.key_use_deadline || '24h');
+            if (deadlineMs) expiresToUseAt = new Date(Date.now() + deadlineMs).toISOString();
+            await supabase.from('keys').insert({ key, duration, permissions_type: type, permissions_value: (type === 'category' || type === 'texture') ? value : null, is_used: false, expires_to_use_at: expiresToUseAt, generated_by: interaction.user.id, generated_by_tag: interaction.user.tag });
+            const successContainer = { type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ KEY GERADA!\n> **Key:** \`${key}\`\n> **Tipo:** \`${type}\`${value !== 'all' && value !== 'standard' ? ` (\`${value}\`)` : ''}\n> **Duração:** \`${duration}\`\n\nAcesse o encurtador para liberar o acesso.` }] }] };
+            const panel = createMainPanel(interaction.guild, config?.version, config?.key_shortener, config?.default_access_time, config?.key_use_deadline, config?.target_folder_name, config?.stumble_guys_version, config?.stumble_cups_version, config?.update_url, config?.download_shortener);
+            await interaction.followUp({ components: [successContainer], flags: 64 + 32768 });
+            return await interaction.editReply({ ...panel, flags: 32768 });
+        }
+    }
     } catch (error) {
         console.error('❌ Erro Crítico no interactionHandler:', error);
-        
+
         const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
         const errorContainer = {
             type: 17,
@@ -1807,8 +1565,12 @@ async function interactionHandler(interaction) {
 
 // Funções Auxiliares para Navegação Limpa
 async function showKeysList(interaction) {
-    const { data: keys } = await supabase.from('keys').select('*').order('created_at', { ascending: false }).limit(25);
+    const { data: allKeys } = await supabase.from('keys').select('*').order('created_at', { ascending: false });
     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+
+    const keys = (allKeys || []).slice(0, 25);
+    const usedKeys = allKeys?.filter(k => k.is_used).length || 0;
+    const looseKeys = (allKeys?.length || 0) - usedKeys;
 
     if (!keys || keys.length === 0) {
         const emptyContainer = {
@@ -1843,7 +1605,7 @@ async function showKeysList(interaction) {
             },
             {
                 type: 9,
-                components: [{ type: 10, content: `## LISTA DE KEYS\n> Selecione uma chave abaixo para gerenciar.` }],
+                components: [{ type: 10, content: `## 📋 LISTA DE KEYS\n> **Keys Usadas:** \`${usedKeys}\` | **Keys Soltas:** \`${looseKeys}\` (Total: \`${allKeys?.length || 0}\`)\n\nSelecione uma chave abaixo para gerenciar.` }],
                 accessory: { type: 11, media: { url: serverIcon } }
             },
             {
@@ -1862,6 +1624,7 @@ async function showKeysList(interaction) {
                                 label: k.key.replace('BOLT-', ''),
                                 description: `Exp: ${k.duration} | ${accessLabel}${pVal} | ${k.is_used ? 'USADA' : 'SOLTA'}`,
                                 value: k.id.toString(),
+                                emoji: { name: k.is_used ? '🔴' : '🟢' }
                             };
                         })
                     }
@@ -1883,13 +1646,17 @@ async function showKeysList(interaction) {
 async function showCategoriesPanel(interaction) {
     const { data: textureData } = await supabase.from('textures').select('category');
     const textureCategories = [...new Set((textureData || []).map(t => t.category))];
-    
+
     for (const catName of textureCategories) {
         if (catName) await supabase.from('categories').upsert({ name: catName }, { onConflict: 'name' });
     }
 
-    const { data: categories } = await supabase.from('categories').select('*').order('name', { ascending: true });
+    const { data: categories, count: catCount } = await supabase.from('categories').select('*', { count: 'exact' }).order('name', { ascending: true });
     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+
+    const catList = categories && categories.length > 0 
+        ? categories.map(c => `> - ${c.name}`).join('\n')
+        : '> Nenhuma categoria cadastrada.';
 
     const container = {
         type: 17,
@@ -1901,22 +1668,18 @@ async function showCategoriesPanel(interaction) {
             },
             {
                 type: 9,
-                components: [{ type: 10, content: `## GESTÃO DE CATEGORIAS\nOrganize suas texturas por categorias:` }],
+                components: [{ 
+                    type: 10, 
+                    content: `## GESTÃO DE CATEGORIAS\n> Organize suas texturas por categorias:\n\n### Categorias cadastradas: (${catCount || 0})\n${catList}` 
+                }],
                 accessory: { type: 11, media: { url: serverIcon } }
             },
             { type: 14 },
             {
-                type: 10,
-                content: categories && categories.length > 0
-                    ? `### Categorias cadastradas:\n` + categories.map(c => `- \`${c.name}\`${c.description ? ` (${c.description})` : ''}`).join('\n')
-                    : `### Categorias cadastradas:\n> *- Nenhuma categoria cadastrada.*`
-            },
-            { type: 14 },
-
-            {
                 type: 1,
                 components: [
                     { type: 2, style: 2, label: 'Criar', custom_id: 'create_category' },
+                    { type: 2, style: 2, label: 'Editar', custom_id: 'edit_category_btn' },
                     { type: 2, style: 2, label: 'Remover', custom_id: 'remove_category_btn' },
                     { type: 2, style: 2, label: 'Voltar', custom_id: 'group_content_return' }
                 ]

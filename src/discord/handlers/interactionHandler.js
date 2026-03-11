@@ -106,97 +106,177 @@ async function interactionHandler(interaction) {
             if (interaction.customId === 'main_select') {
                 const value = interaction.values[0];
 
-                if (value === 'manage_version') {
+                if (value === 'group_style') {
+                    const config = await getVersionCached();
                     const modal = new ModalBuilder()
-                        .setCustomId('modal_version')
-                        .setTitle('Atualizar Versão');
+                        .setCustomId('modal_group_style')
+                        .setTitle('🎨 Personalização Visual');
 
-                    const versionInput = new TextInputBuilder()
-                        .setCustomId('version_input')
-                        .setLabel('Nova Versão')
-                        .setPlaceholder('Ex: 1.2')
+                    const profileInput = new TextInputBuilder()
+                        .setCustomId('profile_url_input')
+                        .setLabel('URL da Imagem de Perfil (App)')
+                        .setPlaceholder('Ex: https://i.imgur.com/...')
+                        .setValue(config?.profile_url || '')
                         .setStyle(TextInputStyle.Short)
-                        .setRequired(true);
+                        .setRequired(false);
 
-                    modal.addComponents(new ActionRowBuilder().addComponents(versionInput));
+                    const bannerInput = new TextInputBuilder()
+                        .setCustomId('default_banner_input')
+                        .setLabel('URL do Banner Padrão (Opcional)')
+                        .setPlaceholder('Ex: https://i.imgur.com/...')
+                        .setValue(config?.default_banner_url || '')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false);
+
+                    modal.addComponents(
+                        new ActionRowBuilder().addComponents(profileInput),
+                        new ActionRowBuilder().addComponents(bannerInput)
+                    );
                     return await interaction.showModal(modal);
                 }
 
-                if (value === 'manage_textures_version') {
+                if (value === 'group_links') {
                     const config = await getVersionCached();
                     const modal = new ModalBuilder()
-                        .setCustomId('modal_textures_version')
-                        .setTitle('Versão das Texturas');
+                        .setCustomId('modal_group_links')
+                        .setTitle('🔗 Links e Encurtadores');
+
+                    const discordInput = new TextInputBuilder()
+                        .setCustomId('discord_url_input')
+                        .setLabel('Link do Servidor Discord')
+                        .setPlaceholder('Ex: https://discord.gg/...')
+                        .setValue(config?.discord_url || '')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false);
+
+                    const updateInput = new TextInputBuilder()
+                        .setCustomId('update_url_input')
+                        .setLabel('Link de Atualização do App')
+                        .setPlaceholder('Ex: https://youtube.com/...')
+                        .setValue(config?.update_url || '')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false);
+
+                    const keyShortInput = new TextInputBuilder()
+                        .setCustomId('key_shortener_input')
+                        .setLabel('Encurtador de KEY')
+                        .setPlaceholder('Ex: https://linkvertise.com/...')
+                        .setValue(config?.key_shortener || '')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false);
+
+                    const dlShortInput = new TextInputBuilder()
+                        .setCustomId('dl_shortener_input')
+                        .setLabel('Encurtador de DOWNLOAD')
+                        .setPlaceholder('Ex: https://linkvertise.com/...')
+                        .setValue(config?.download_shortener || '')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false);
+
+                    modal.addComponents(
+                        new ActionRowBuilder().addComponents(discordInput),
+                        new ActionRowBuilder().addComponents(updateInput),
+                        new ActionRowBuilder().addComponents(keyShortInput),
+                        new ActionRowBuilder().addComponents(dlShortInput)
+                    );
+                    return await interaction.showModal(modal);
+                }
+
+                if (value === 'group_system') {
+                    const config = await getVersionCached();
+                    const modal = new ModalBuilder()
+                        .setCustomId('modal_group_system')
+                        .setTitle('⚙️ Configurações do Sistema');
+
+                    const appVersionInput = new TextInputBuilder()
+                        .setCustomId('app_version_input')
+                        .setLabel('Versão do Aplicativo (Ex: 1.0)')
+                        .setValue(config?.version || '1.0')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true);
 
                     const sgVersionInput = new TextInputBuilder()
                         .setCustomId('sg_version_input')
-                        .setLabel('Versão StumbleGuys/Reviver')
-                        .setPlaceholder('Ex: 1.5')
+                        .setLabel('Versão StumbleGuys (Injetor)')
                         .setValue(config?.stumble_guys_version || '1.0')
                         .setStyle(TextInputStyle.Short)
                         .setRequired(true);
 
                     const scVersionInput = new TextInputBuilder()
                         .setCustomId('sc_version_input')
-                        .setLabel('Versão Stumble Cups')
-                        .setPlaceholder('Ex: 1.2')
+                        .setLabel('Versão StumbleCups')
                         .setValue(config?.stumble_cups_version || '1.0')
                         .setStyle(TextInputStyle.Short)
                         .setRequired(true);
 
+                    const folderInput = new TextInputBuilder()
+                        .setCustomId('folder_input')
+                        .setLabel('Nome da Pasta Alvo (Documents)')
+                        .setValue(config?.target_folder_name || 'StumbleCups')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true);
+
+                    const timeInput = new TextInputBuilder()
+                        .setCustomId('time_input')
+                        .setLabel('Tempo de Acesso / Prazo Uso')
+                        .setPlaceholder('Ex: 4h | 24h')
+                        .setValue(`${config?.default_access_time || '4h'} | ${config?.key_use_deadline || '24h'}`)
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true);
+
                     modal.addComponents(
+                        new ActionRowBuilder().addComponents(appVersionInput),
                         new ActionRowBuilder().addComponents(sgVersionInput),
-                        new ActionRowBuilder().addComponents(scVersionInput)
+                        new ActionRowBuilder().addComponents(scVersionInput),
+                        new ActionRowBuilder().addComponents(folderInput),
+                        new ActionRowBuilder().addComponents(timeInput)
                     );
                     return await interaction.showModal(modal);
                 }
 
-                if (value === 'manage_update_url') {
-                    const modal = new ModalBuilder()
-                        .setCustomId('modal_update_url')
-                        .setTitle('Link de Atualização do App');
-
-                    const urlInput = new TextInputBuilder()
-                        .setCustomId('url_input')
-                        .setLabel('Link de Download (YouTube/Direto)')
-                        .setPlaceholder('Ex: https://youtube.com/...')
-                        .setStyle(TextInputStyle.Short)
-                        .setRequired(true);
-
-                    modal.addComponents(new ActionRowBuilder().addComponents(urlInput));
-                    return await interaction.showModal(modal);
+                if (value === 'group_content') {
+                    const panel = {
+                        type: 17,
+                        accent_color: 0xc773ff,
+                        components: [
+                            {
+                                type: 9,
+                                components: [{ type: 10, content: `## 📦 GERENCIAR CONTEÚDO\nEscolha o que deseja gerenciar:` }]
+                            },
+                            {
+                                type: 1,
+                                components: [
+                                    { type: 2, style: 1, label: 'Categorias', custom_id: 'manage_categories', emoji: { name: '🏷️' } },
+                                    { type: 2, style: 1, label: 'Texturas', custom_id: 'manage_textures', emoji: { name: '🎨' } },
+                                    { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }
+                                ]
+                            }
+                        ]
+                    };
+                    return await interaction.editReply({ ...panel, flags: 32768 });
                 }
 
-                if (value === 'manage_shortener') {
-                    const modal = new ModalBuilder()
-                        .setCustomId('modal_shortener')
-                        .setTitle('Encurtador da Key');
-
-                    const shortenerInput = new TextInputBuilder()
-                        .setCustomId('shortener_input')
-                        .setLabel('Link do Encurtador (Keys)')
-                        .setPlaceholder('Ex: https://linkvertise.com/...')
-                        .setStyle(TextInputStyle.Short)
-                        .setRequired(true);
-
-                    modal.addComponents(new ActionRowBuilder().addComponents(shortenerInput));
-                    return await interaction.showModal(modal);
-                }
-
-                if (value === 'manage_download_shortener') {
-                    const modal = new ModalBuilder()
-                        .setCustomId('modal_download_shortener')
-                        .setTitle('Encurtador de Download');
-
-                    const shortenerInput = new TextInputBuilder()
-                        .setCustomId('shortener_input')
-                        .setLabel('Link do Encurtador (Texturas)')
-                        .setPlaceholder('Ex: https://linkvertise.com/...')
-                        .setStyle(TextInputStyle.Short)
-                        .setRequired(true);
-
-                    modal.addComponents(new ActionRowBuilder().addComponents(shortenerInput));
-                    return await interaction.showModal(modal);
+                if (value === 'group_keys') {
+                    const panel = {
+                        type: 17,
+                        accent_color: 0xc773ff,
+                        components: [
+                            {
+                                type: 9,
+                                components: [{ type: 10, content: `## 🔑 KEYS & USUÁRIOS\nGerenciamento de acessos:` }]
+                            },
+                            {
+                                type: 1,
+                                components: [
+                                    { type: 2, style: 1, label: 'Gerar Key', custom_id: 'generate_key', emoji: { name: '➕' } },
+                                    { type: 2, style: 1, label: 'Listar Keys', custom_id: 'list_keys', emoji: { name: '📋' } },
+                                    { type: 2, style: 1, label: 'Usuários/Blacklist', custom_id: 'manage_users', emoji: { name: '👥' } },
+                                    { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }
+                                ]
+                            }
+                        ]
+                    };
+                    return await interaction.editReply({ ...panel, flags: 32768 });
                 }
 
                 if (value === 'manage_time') {
@@ -785,10 +865,10 @@ async function interactionHandler(interaction) {
 
                 modal.addComponents(
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texture_name').setLabel('Nome').setStyle(TextInputStyle.Short).setRequired(true)),
-                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texture_category').setLabel('Categoria (StumbleGuys, StumbleCups, Reviver)').setStyle(TextInputStyle.Short).setRequired(true)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texture_category').setLabel('Categoria (Ex: StumbleGuys)').setStyle(TextInputStyle.Short).setRequired(true)),
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texture_version').setLabel('Versão da Textura').setPlaceholder('Ex: 1.0').setStyle(TextInputStyle.Short).setRequired(true)),
-                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texture_p1').setLabel('Link Part 1 (Textura)').setStyle(TextInputStyle.Short).setRequired(true)),
-                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texture_p2').setLabel('Link Part 2 (Opcional - AppData)').setStyle(TextInputStyle.Short).setRequired(false))
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texture_banner').setLabel('URL do Banner (800x240)').setStyle(TextInputStyle.Short).setRequired(false)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('texture_p1').setLabel('Link Download').setStyle(TextInputStyle.Short).setRequired(true))
                 );
                 return await interaction.showModal(modal);
             }
@@ -800,8 +880,9 @@ async function interactionHandler(interaction) {
                 modal.addComponents(
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_name').setLabel('Nome').setValue(texture.name).setStyle(TextInputStyle.Short)),
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_category').setLabel('Categoria').setValue(texture.category).setStyle(TextInputStyle.Short)),
-                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_version').setLabel('Versão Atual').setValue(texture.version || '1.0').setStyle(TextInputStyle.Short)),
-                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_profile').setLabel('Foto Perfil').setValue(texture.profile_image).setStyle(TextInputStyle.Short))
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_version').setLabel('Versão').setValue(texture.version || '1.0').setStyle(TextInputStyle.Short)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_profile').setLabel('Foto Perfil (Circulo)').setValue(texture.profile_image || '').setStyle(TextInputStyle.Short).setRequired(false)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_banner').setLabel('URL Banner (800x240)').setValue(texture.banner_url || '').setStyle(TextInputStyle.Short).setRequired(false))
                 );
                 return await interaction.showModal(modal);
             }
@@ -881,7 +962,8 @@ async function interactionHandler(interaction) {
 
                 modal.addComponents(
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_name').setLabel('Nome da Categoria').setStyle(TextInputStyle.Short).setRequired(true)),
-                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_desc').setLabel('Descrição (Opcional)').setStyle(TextInputStyle.Short).setRequired(false))
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_desc').setLabel('Descrição (Opcional)').setStyle(TextInputStyle.Short).setRequired(false)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_logo').setLabel('URL do Logo/Ícone').setPlaceholder('Ex: https://i.imgur.com/...').setStyle(TextInputStyle.Short).setRequired(false))
                 );
                 return await interaction.showModal(modal);
             }
@@ -1359,15 +1441,15 @@ async function interactionHandler(interaction) {
                 const name = interaction.fields.getTextInputValue('texture_name');
                 const category = interaction.fields.getTextInputValue('texture_category');
                 const version = interaction.fields.getTextInputValue('texture_version');
+                const banner = interaction.fields.getTextInputValue('texture_banner');
                 const p1 = interaction.fields.getTextInputValue('texture_p1');
-                const p2 = interaction.fields.getTextInputValue('texture_p2');
 
                 await supabase.from('textures').insert({
                     name,
                     category,
                     version,
+                    banner_url: banner || null,
                     download_url: p1,
-                    download_url_part2: p2 || null,
                     is_updated: true
                 });
 
@@ -1382,12 +1464,14 @@ async function interactionHandler(interaction) {
                 const category = interaction.fields.getTextInputValue('edit_category');
                 const version = interaction.fields.getTextInputValue('edit_version');
                 const profile = interaction.fields.getTextInputValue('edit_profile');
+                const banner = interaction.fields.getTextInputValue('edit_banner');
 
                 await supabase.from('textures').update({
                     name,
                     category,
                     version,
-                    profile_image: profile || null
+                    profile_image: profile || null,
+                    banner_url: banner || null
                 }).eq('id', textureId);
 
                 const { data: textures } = await supabase.from('textures').select('*');
@@ -1413,8 +1497,13 @@ async function interactionHandler(interaction) {
             if (interaction.customId === 'modal_create_category') {
                 const name = interaction.fields.getTextInputValue('cat_name');
                 const description = interaction.fields.getTextInputValue('cat_desc');
+                const logo = interaction.fields.getTextInputValue('cat_logo');
 
-                await supabase.from('categories').insert({ name, description });
+                await supabase.from('categories').insert({ 
+                    name, 
+                    description: description || null, 
+                    logo_url: logo || null 
+                });
 
                 return await showCategoriesPanel(interaction);
             }

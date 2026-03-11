@@ -43,21 +43,11 @@ const createMainPanel = (guild, version = '1.0', keyShortener = 'Não definido',
                         custom_id: 'main_select',
                         placeholder: 'Configurar encurtadores e sistema...',
                         options: [
-                            { label: 'Versão App', description: 'Alterar versão do aplicativo', value: 'manage_version', emoji: { name: '🚀' } },
-                            { label: 'Link Atualização', description: 'Url de download do app novo', value: 'manage_update_url', emoji: { name: '📥' } },
-                            { label: 'Versão Texturas', description: 'Alterar versão das categorias', value: 'manage_textures_version', emoji: { name: '🏷️' } },
-                            { label: 'Tempo', description: 'Tempo de acesso do App', value: 'manage_time', emoji: { name: '⏳' } },
-                            { label: 'Prazo Uso', description: 'Tempo para usar a key', value: 'manage_use_deadline', emoji: { name: '⌛' } },
-                            { label: 'Gerar Key', description: 'Criar nova key de acesso', value: 'generate_key', emoji: { name: '🔑' } },
-                            { label: 'Pasta Alvo', description: 'Nome da pasta do jogo', value: 'manage_folder', emoji: { name: '📂' } },
-                            { label: 'Foto Perfil', description: 'Mudar foto global', value: 'manage_profile_global', emoji: { name: '🖼️' } },
-                            { label: 'Arquivos Originais', description: 'Links de remoção (Cups)', value: 'manage_original_links', emoji: { name: '🛡️' } },
-                            { label: 'Keys', description: 'Ver todas as keys geradas', value: 'list_keys', emoji: { name: '📋' } },
-                            { label: 'Usuários', description: 'Gerenciar usuários e blacklist', value: 'manage_users', emoji: { name: '👥' } },
-                            { label: 'Encurtador Key', description: 'Link do encurtador para as keys', value: 'manage_shortener', emoji: { name: '🔑' } },
-                            { label: 'Encurtador Download', description: 'Link do encurtador para as texturas', value: 'manage_download_shortener', emoji: { name: '📥' } },
-                            { label: 'Categorias', description: 'Gerenciar categorias de texturas', value: 'manage_categories', emoji: { name: '🏷️' } },
-                            { label: 'Texturas', description: 'Abrir catálogo', value: 'manage_textures', emoji: { name: '🎨' } }
+                            { label: '🎨 Estilo & Perfil', description: 'Banner padrão, Perfil e Visual', value: 'group_style', emoji: { name: '🎨' } },
+                            { label: '🔗 Links & Encurtadores', description: 'Discord, Updates e Encurtadores', value: 'group_links', emoji: { name: '🔗' } },
+                            { label: '⚙️ Sistema & Pastas', description: 'Versões, Prazos e Pastas', value: 'group_system', emoji: { name: '⚙️' } },
+                            { label: '📦 Conteúdo', description: 'Categorias e Catálogo de Texturas', value: 'group_content', emoji: { name: '📦' } },
+                            { label: '🔑 Keys & Usuários', description: 'Gerar Keys, Blacklist e Usuarios', value: 'group_keys', emoji: { name: '🔑' } }
                         ]
                     }
                 ]

@@ -374,15 +374,17 @@ app.post('/api/textures', async (req, res) => {
 
         const permissions = { type: keyData.permissions_type || 'all', value: keyData.permissions_value || null };
 
-        // Retornamos sempre TODAS as texturas
+        // Retornamos sempre TODAS as texturas e todas as categorias
         const { data: textures } = await supabase.from('textures').select('*');
+        const { data: categories } = await supabase.from('categories').select('*');
 
-        // Mapear snake_case para o formato que o App espera (camelCase se necessário, ou manter conforme o App já lia)
+        // Mapear snake_case para o formato que o App espera
         // O App lia as propriedades do Mongoose: profileImage, downloadUrl, etc.
         const mappedTextures = textures.map(t => ({
             ...t,
-            _id: t.id.toString(), // Compatibilidade com o App
+            _id: t.id.toString(),
             profileImage: t.profile_image,
+            bannerUrl: t.banner_url,
             downloadUrl: t.download_url,
             downloadUrlPart2: t.download_url_part2,
             shortenerUrl: t.shortener_url,
@@ -391,14 +393,23 @@ app.post('/api/textures', async (req, res) => {
             isUpdated: t.is_updated
         }));
 
+        const mappedCategories = (categories || []).map(c => ({
+            name: c.name,
+            description: c.description,
+            logoUrl: c.logo_url
+        }));
+
         res.json({
             textures: mappedTextures,
+            categories: mappedCategories,
             permissions,
             version: config?.version || '1.0',
             stumbleGuysVersion: config?.stumble_guys_version || '1.0',
             stumbleCupsVersion: config?.stumble_cups_version || '1.0',
             keyShortener: config?.key_shortener,
-            profileImage: config?.profile_image || 'https://i.imgur.com/YahM0Nf.png',
+            profileUrl: config?.profile_url || config?.profile_image || 'https://i.imgur.com/YahM0Nf.png',
+            defaultBannerUrl: config?.default_banner_url || 'https://i.imgur.com/YahM0Nf.png',
+            discordUrl: config?.discord_url || 'https://discord.gg/bolttexturas',
             targetFolderName: config?.target_folder_name || 'StumbleCups',
             removeUrlPart1: config?.remove_url_part1 || '',
             removeUrlPart2: config?.remove_url_part2 || '',

@@ -24,16 +24,16 @@ async function interactionHandler(interaction) {
     const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
 
     if (!isAdmin && interaction.user?.id !== OWNER_ID) {
-        const noPermissionContainer = { 
-            type: 17, 
-            accent_color: 0xff0000, 
+        const noPermissionContainer = {
+            type: 17,
+            accent_color: 0xff0000,
             components: [
-                { 
-                    type: 9, 
-                    components: [{ type: 10, content: `## 🚫 ACESSO NEGADO\n> Apenas administradores podem interagir com o painel.` }], 
-                    accessory: { type: 11, media: { url: serverIcon } } 
+                {
+                    type: 9,
+                    components: [{ type: 10, content: `## 🚫 ACESSO NEGADO\n> Apenas administradores podem interagir com o painel.` }],
+                    accessory: { type: 11, media: { url: serverIcon } }
                 }
-            ] 
+            ]
         };
         if (interaction.isRepliable()) {
             if (interaction.deferred || interaction.replied) return await interaction.followUp({ components: [noPermissionContainer], flags: 32768 });
@@ -49,7 +49,7 @@ async function interactionHandler(interaction) {
         } else if (interaction.isButton() || interaction.isStringSelectMenu()) {
             const cid = interaction.customId || '';
             const val = interaction.values?.[0] || '';
-            
+
             const modalTriggers = ['group_style', 'group_links', 'group_system', 'manage_original_links', 'create_category', 'create_texture', 'manage_time', 'manage_use_deadline', 'manage_folder', 'manage_profile_global'];
             let shouldShowModal = modalTriggers.some(mt => cid === mt || cid.startsWith(mt));
 
@@ -57,7 +57,7 @@ async function interactionHandler(interaction) {
             if (cid === 'gen_key_type_select' && (val === 'standard' || val === 'all')) shouldShowModal = true;
             if (cid === 'gen_key_category_select' || cid === 'gen_key_texture_select') shouldShowModal = true;
             if (cid === 'edit_category_select' || cid === 'texture_manage_select') shouldShowModal = true;
-            
+
             if (!shouldShowModal) {
                 try { await interaction.deferUpdate(); } catch (e) { console.error('Defer Error:', e); }
             }
@@ -111,11 +111,13 @@ async function interactionHandler(interaction) {
                         { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
                         { type: 10, content: `## GERENCIAR CONTEÚDO\n> Escolha o que deseja gerenciar:\n> **Categorias:** \`${catCount || 0}\` | **Texturas:** \`${texCount || 0}\`` },
                         { type: 14 },
-                        { type: 1, components: [
-                            { type: 2, style: 2, label: 'Categorias', custom_id: 'manage_categories' },
-                            { type: 2, style: 2, label: 'Texturas', custom_id: 'manage_textures' },
-                            { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }
-                        ]}
+                        {
+                            type: 1, components: [
+                                { type: 2, style: 2, label: 'Categorias', custom_id: 'manage_categories' },
+                                { type: 2, style: 2, label: 'Texturas', custom_id: 'manage_textures' },
+                                { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }
+                            ]
+                        }
                     ]
                 };
                 return await interaction.editReply({ components: [container], flags: 32768 });
@@ -129,15 +131,17 @@ async function interactionHandler(interaction) {
                         { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
                         { type: 10, content: `## 🔑 GERAR KEY\n> Selecione o tipo de permissão para a nova chave:\n\n### 📝 Tipos Disponíveis:\n> - **Padrão:** Todas as texturas + Encurtador Obrigatório.\n> - **Acesso Total:** Todas as texturas + Download Direto.\n> - **Por Categoria:** Apenas uma categoria + Download Direto.\n> - **Por Textura:** Apenas uma textura + Download Direto.` },
                         { type: 14 },
-                        { type: 1, components: [{
-                            type: 3, custom_id: 'gen_key_type_select', placeholder: 'Selecione o tipo de acesso...',
-                            options: [
-                                { label: 'Padrão', value: 'standard', emoji: { name: '🔗' } },
-                                { label: 'Acesso Total', value: 'all', emoji: { name: '🌐' } },
-                                { label: 'Por Categoria', value: 'category', emoji: { name: '🏷️' } },
-                                { label: 'Por Textura', value: 'texture', emoji: { name: '🎨' } }
-                            ]
-                        }]},
+                        {
+                            type: 1, components: [{
+                                type: 3, custom_id: 'gen_key_type_select', placeholder: 'Selecione o tipo de acesso...',
+                                options: [
+                                    { label: 'Padrão', value: 'standard', emoji: { name: '🔗' } },
+                                    { label: 'Acesso Total', value: 'all', emoji: { name: '🌐' } },
+                                    { label: 'Por Categoria', value: 'category', emoji: { name: '🏷️' } },
+                                    { label: 'Por Textura', value: 'texture', emoji: { name: '🎨' } }
+                                ]
+                            }]
+                        },
                         { type: 14 },
                         { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'group_keys_return' }] }
                     ]
@@ -178,24 +182,28 @@ async function interactionHandler(interaction) {
                 }
                 if (type === 'category') {
                     const { data: cats } = await supabase.from('categories').select('*');
-                    const container = { type: 17, accent_color: 0xc773ff, components: [
-                        { type: 9, components: [{ type: 10, content: `## 🏷️ SELECIONE A CATEGORIA\n> Escolha para qual categoria deseja gerar o acesso premium.` }], accessory: { type: 11, media: { url: serverIcon } } },
-                        { type: 14 },
-                        { type: 1, components: [{ type: 3, custom_id: 'gen_key_category_select', placeholder: 'Selecione uma categoria...', options: (cats || []).map(c => ({ label: c.name, value: c.name })) }] },
-                        { type: 14 },
-                        { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'generate_key' }] }
-                    ]};
+                    const container = {
+                        type: 17, accent_color: 0xc773ff, components: [
+                            { type: 9, components: [{ type: 10, content: `## 🏷️ SELECIONE A CATEGORIA\n> Escolha para qual categoria deseja gerar o acesso premium.` }], accessory: { type: 11, media: { url: serverIcon } } },
+                            { type: 14 },
+                            { type: 1, components: [{ type: 3, custom_id: 'gen_key_category_select', placeholder: 'Selecione uma categoria...', options: (cats || []).map(c => ({ label: c.name, value: c.name })) }] },
+                            { type: 14 },
+                            { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'generate_key' }] }
+                        ]
+                    };
                     return await interaction.editReply({ components: [container], flags: 32768 });
                 }
                 if (type === 'texture') {
                     const { data: texs } = await supabase.from('textures').select('*');
-                    const container = { type: 17, accent_color: 0xc773ff, components: [
-                        { type: 9, components: [{ type: 10, content: `## 🎨 SELECIONE A TEXTURA\n> Escolha para qual textura específica deseja gerar o acesso.` }], accessory: { type: 11, media: { url: serverIcon } } },
-                        { type: 14 },
-                        { type: 1, components: [{ type: 3, custom_id: 'gen_key_texture_select', placeholder: 'Selecione uma textura...', options: (texs || []).slice(0, 25).map(t => ({ label: t.name, value: t.id })) }] },
-                        { type: 14 },
-                        { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'generate_key' }] }
-                    ]};
+                    const container = {
+                        type: 17, accent_color: 0xc773ff, components: [
+                            { type: 9, components: [{ type: 10, content: `## 🎨 SELECIONE A TEXTURA\n> Escolha para qual textura específica deseja gerar o acesso.` }], accessory: { type: 11, media: { url: serverIcon } } },
+                            { type: 14 },
+                            { type: 1, components: [{ type: 3, custom_id: 'gen_key_texture_select', placeholder: 'Selecione uma textura...', options: (texs || []).slice(0, 25).map(t => ({ label: t.name, value: t.id })) }] },
+                            { type: 14 },
+                            { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'generate_key' }] }
+                        ]
+                    };
                     return await interaction.editReply({ components: [container], flags: 32768 });
                 }
             }
@@ -254,36 +262,32 @@ async function interactionHandler(interaction) {
                 const createdAt = k.created_at ? `<t:${Math.floor(new Date(k.created_at).getTime() / 1000)}:f>` : '`N/A`';
                 const expiresToUse = k.expires_to_use_at ? `<t:${Math.floor(new Date(k.expires_to_use_at).getTime() / 1000)}:f>` : '`N/A`';
                 const expiresAt = k.expires_at ? `<t:${Math.floor(new Date(k.expires_at).getTime() / 1000)}:f>` : (k.duration === 'permanente' ? '`Nunca`' : '`N/A`');
-                
+
                 const details = [
                     `## 🔑 DETALHES DA KEY`,
                     `> **Key:** \`${k.key}\``,
                     `> **Tipo:** \`${k.permissions_type || 'standard'}\` (\`${k.permissions_value || 'all'}\`)`,
                     `> **Duração:** \`${k.duration}\``,
                     `> **Status:** ${k.is_used ? '🔴 Resgatada' : '🟢 Disponível'}`,
-                    `> **Gerada por:** <@${k.generated_by}> (\`${k.generated_by_tag || 'N/A'}\`)`,
+                    `> **Gerada por:** <@${k.generated_by}> (\`${k.generated_by || 'N/A'}\`)`,
                     `> **Criada em:** ${createdAt}`,
                     k.is_used ? `> **Usada por (HWID):** \`${k.used_by || 'N/A'}\`` : `> **Prazo para Resgate:** ${expiresToUse}`,
                     k.is_used ? `> **Expira em:** ${expiresAt}` : '',
                     k.generated_ip ? `> **IP do Gerador:** \`${k.generated_ip}\`` : ''
                 ].filter(line => line !== '').join('\n');
 
-                const container = { type: 17, accent_color: 0xc773ff, components: [
-                    { type: 9, components: [{ type: 10, content: details }], accessory: { type: 11, media: { url: serverIcon } } },
-                    { type: 14 },
-                    { type: 1, components: [{ type: 2, style: 4, label: 'Excluir', custom_id: `delete_key_${k.id}` }, { type: 2, style: 2, label: 'Voltar', custom_id: 'list_keys' }] }
-                ]};
+                const container = {
+                    type: 17, accent_color: 0xc773ff, components: [
+                        { type: 9, components: [{ type: 10, content: details }], accessory: { type: 11, media: { url: serverIcon } } },
+                        { type: 14 },
+                        { type: 1, components: [{ type: 2, style: 4, label: 'Excluir', custom_id: `delete_key_${k.id}` }, { type: 2, style: 2, label: 'Voltar', custom_id: 'list_keys' }] }
+                    ]
+                };
                 return await interaction.editReply({ components: [container], flags: 32768 });
             }
 
             if (cid === 'select_user') {
-                const { data: u } = await supabase.from('users').select('*').eq('id', interaction.values[0]).maybeSingle();
-                if (!u) return;
-                const container = { type: 17, accent_color: 0xc773ff, components: [
-                    { type: 9, components: [{ type: 10, content: `## 👤 USUÁRIO\n> **HWID:** \`${u.hwid}\` \n> **Status:** ${u.is_blacklisted ? '🔴 BAN' : '🟢 OK'}` }], accessory: { type: 11, media: { url: serverIcon } } },
-                    { type: 1, components: [{ type: 2, style: u.is_blacklisted ? 3 : 4, label: u.is_blacklisted ? 'Desbanir' : 'Banir', custom_id: `toggle_ban_${u.id}` }, { type: 2, style: 2, label: 'Voltar', custom_id: 'manage_users' }] }
-                ]};
-                return await interaction.editReply({ components: [container], flags: 32768 });
+                return await showUserProfile(interaction, interaction.values[0]);
             }
         }
 
@@ -337,6 +341,20 @@ async function interactionHandler(interaction) {
                 const { data: cats } = await supabase.from('categories').select('*');
                 return await interaction.editReply({ components: [{ type: 17, accent_color: 0xff4444, components: [{ type: 9, components: [{ type: 10, content: `## 🗑️ REMOVER CATEGORIA\n> Cuidado: Remover uma categoria não apaga as texturas dela, mas elas ficarão sem categoria vinculada.` }], accessory: { type: 11, media: { url: serverIcon } } }, { type: 14 }, { type: 1, components: [{ type: 3, custom_id: 'remove_category_select', placeholder: 'Selecione uma categoria para excluir...', options: (cats || []).map(c => ({ label: c.name, value: c.id })) }] }, { type: 14 }, { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_categories' }] }] }], flags: 32768 });
             }
+            if (cid === 'search_users_btn') {
+                const modal = new ModalBuilder().setCustomId('modal_search_users').setTitle('Pesquisar Usuário');
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder()
+                            .setCustomId('search_query')
+                            .setLabel('ID, Tag, HWID ou IP')
+                            .setPlaceholder('Ex: 971163..., bolt, 04ffa..., 127.0...')
+                            .setStyle(TextInputStyle.Short)
+                            .setRequired(true)
+                    )
+                );
+                return await interaction.showModal(modal);
+            }
             if (cid === 'manage_categories') return await showCategoriesPanel(interaction);
             if (cid === 'manage_textures') {
                 const { data: textures } = await supabase.from('textures').select('*');
@@ -345,19 +363,24 @@ async function interactionHandler(interaction) {
             if (cid === 'group_content') {
                 const { count: catCount } = await supabase.from('categories').select('*', { count: 'exact', head: true });
                 const { count: texCount } = await supabase.from('textures').select('*', { count: 'exact', head: true });
-                const container = { type: 17, accent_color: 0xc773ff, components: [
-                    { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
-                    { type: 10, content: `## GERENCIAR CONTEÚDO\n> **Categorias:** \`${catCount || 0}\` | **Texturas:** \`${texCount || 0}\`` },
-                    { type: 14 },
-                    { type: 1, components: [{ type: 2, style: 2, label: 'Categorias', custom_id: 'manage_categories' }, { type: 2, style: 2, label: 'Texturas', custom_id: 'manage_textures' }, { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }] }
-                ]};
+                const container = {
+                    type: 17, accent_color: 0xc773ff, components: [
+                        { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
+                        { type: 10, content: `## GERENCIAR CONTEÚDO\n> **Categorias:** \`${catCount || 0}\` | **Texturas:** \`${texCount || 0}\`` },
+                        { type: 14 },
+                        { type: 1, components: [{ type: 2, style: 2, label: 'Categorias', custom_id: 'manage_categories' }, { type: 2, style: 2, label: 'Texturas', custom_id: 'manage_textures' }, { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }] }
+                    ]
+                };
                 return await interaction.editReply({ components: [container], flags: 32768 });
             }
             if (cid === 'group_keys_return' || cid === 'list_keys_back') return await showKeysAndUsersPanel(interaction);
             if (cid.startsWith('toggle_ban_')) {
-                const { data: u } = await supabase.from('users').select('*').eq('id', cid.replace('toggle_ban_', '')).single();
+                const userId = cid.replace('toggle_ban_', '');
+                const { data: u } = await supabase.from('users').select('*').eq('id', userId).single();
+                if (!u) return;
                 await supabase.from('users').update({ is_blacklisted: !u.is_blacklisted }).eq('id', u.id);
-                return await showUsersPanel(interaction);
+                // Em vez de voltar pra lista, mostra o perfil atualizado
+                return await showUserProfile(interaction, userId);
             }
             if (cid.startsWith('delete_key_')) {
                 await supabase.from('keys').delete().eq('id', cid.replace('delete_key_', ''));
@@ -369,29 +392,35 @@ async function interactionHandler(interaction) {
         if (interaction.isModalSubmit()) {
             const cid = interaction.customId;
 
+            if (cid === 'modal_search_users') {
+                const query = interaction.fields.getTextInputValue('search_query');
+                return await showSearchResults(interaction, query);
+            }
+
             if (cid.startsWith('modal_gen_key_duration_')) {
                 const parts = cid.split('_');
                 const type = parts[4]; // standard, all, category, texture
                 const item = parts[5]; // null, catName, or texID
                 const duration = interaction.fields.getTextInputValue('duration_input');
-                
+
                 const config = await getVersionCached();
                 const key = `BOLT-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
-                
+
                 let expiresToUseAt = new Date();
                 expiresToUseAt.setHours(expiresToUseAt.getHours() + 24);
 
-                const data = { 
-                    key, 
+                const data = {
+                    key,
                     duration: duration,
                     is_used: false,
                     permissions_type: type === 'standard' ? 'standard' : 'premium',
                     permissions_value: item !== 'null' ? item : 'all',
                     generated_by: interaction.user.id,
                     generated_by_tag: interaction.user.tag,
-                    expires_to_use_at: expiresToUseAt.toISOString()
+                    expires_to_use_at: expiresToUseAt.toISOString(),
+                    generated_ip: null // No Discord interaction, IP is null or tracker not available directly
                 };
-                
+
                 if (type === 'texture') {
                     const { data: tex } = await supabase.from('textures').select('name').eq('id', item).maybeSingle();
                     data.permissions_value = tex?.name || item;
@@ -467,35 +496,132 @@ async function interactionHandler(interaction) {
             ]
         };
         try {
-            await (interaction.deferred || interaction.replied ? 
-                interaction.editReply({ components: [errorContainer], flags: 64 | 32768 }) : 
+            await (interaction.deferred || interaction.replied ?
+                interaction.editReply({ components: [errorContainer], flags: 64 | 32768 }) :
                 interaction.reply({ components: [errorContainer], flags: 64 | 32768 }));
-        } catch (e) {}
+        } catch (e) { }
     }
 }
 
 async function showCategoriesPanel(interaction) {
     const { data: cats } = await supabase.from('categories').select('*');
-    const container = { type: 17, accent_color: 0xc773ff, components: [
-        { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
-        { type: 10, content: `## GESTÃO DE CATEGORIAS\n> **Categorias cadastradas:** \`${cats?.length || 0}\`\n\n${(cats || []).map(c => `• ${c.name}`).join('\n') || '*Nenhuma.*'}` },
-        { type: 14 },
-        { type: 1, components: [{ type: 2, style: 2, label: 'Criar', custom_id: 'create_category' }, { type: 2, style: 2, label: 'Editar', custom_id: 'edit_category_btn' }, { type: 2, style: 2, label: 'Remover', custom_id: 'remove_category_btn' }, { type: 2, style: 2, label: 'Voltar', custom_id: 'group_content' }] }
-    ]};
+    const container = {
+        type: 17, accent_color: 0xc773ff, components: [
+            { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
+            { type: 10, content: `## GESTÃO DE CATEGORIAS\n> **Categorias cadastradas:** \`${cats?.length || 0}\`\n\n${(cats || []).map(c => `• ${c.name}`).join('\n') || '*Nenhuma.*'}` },
+            { type: 14 },
+            { type: 1, components: [{ type: 2, style: 2, label: 'Criar', custom_id: 'create_category' }, { type: 2, style: 2, label: 'Editar', custom_id: 'edit_category_btn' }, { type: 2, style: 2, label: 'Remover', custom_id: 'remove_category_btn' }, { type: 2, style: 2, label: 'Voltar', custom_id: 'group_content' }] }
+        ]
+    };
     return await (interaction.deferred || interaction.replied ? interaction.editReply({ components: [container], flags: 32768 }) : interaction.reply({ components: [container], flags: 32768 }));
 }
 
 async function showUsersPanel(interaction) {
-    const { data: users } = await supabase.from('users').select('*').limit(20);
+    const { data: users } = await supabase.from('users').select('*').order('updated_at', { ascending: false }).limit(20);
     const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
-    const container = { type: 17, accent_color: 0xc773ff, components: [
-        { type: 9, components: [{ type: 10, content: `## 👤 GESTÃO DE USUÁRIOS\n> Visualize e gerencie os usuários vinculados ao sistema.` }], accessory: { type: 11, media: { url: serverIcon } } },
-        { type: 14 },
-        { type: 1, components: [{ type: 3, custom_id: 'select_user', placeholder: 'Selecione um usuário para gerenciar...', options: (users || []).map(u => ({ label: `${u.discord_tag || 'Unknown'} (HWID: ${u.hwid.substring(0,6)}...)`, value: u.id })) }] },
-        { type: 14 },
-        { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'group_keys_return' }] }
-    ]};
+    const container = {
+        type: 17, accent_color: 0xc773ff, components: [
+            { type: 9, components: [{ type: 10, content: `## 👤 GESTÃO DE USUÁRIOS\n> Visualize e gerencie os usuários vinculados ao sistema.` }], accessory: { type: 11, media: { url: serverIcon } } },
+            { type: 14 },
+            { type: 1, components: [{ type: 3, custom_id: 'select_user', placeholder: 'Selecione um usuário para gerenciar...', options: (users || []).map(u => ({ label: `${u.discord_tag || 'Unknown'} (HWID: ${u.hwid.substring(0, 6)}...)`, value: u.id })) }] },
+            { type: 14 },
+            {
+                type: 1, components: [
+                    { type: 2, style: 2, label: 'Pesquisar', custom_id: 'search_users_btn' },
+                    { type: 2, style: 2, label: 'Voltar', custom_id: 'group_keys_return' }
+                ]
+            }
+        ]
+    };
     return await (interaction.deferred || interaction.replied ? interaction.editReply({ components: [container], flags: 32768 }) : interaction.reply({ components: [container], flags: 32768 }));
+}
+
+async function showUserProfile(interaction, userId) {
+    const { data: u } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
+    if (!u) return;
+
+    const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+
+    // Contagens e histórico paralelos
+    const [genRes, usedRes, lastGenRes, lastUsedRes] = await Promise.all([
+        supabase.from('keys').select('*', { count: 'exact', head: true }).eq('generated_by', u.discord_id),
+        supabase.from('keys').select('*', { count: 'exact', head: true }).eq('used_by', u.hwid),
+        supabase.from('keys').select('*').eq('generated_by', u.discord_id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('keys').select('*').eq('used_by', u.hwid).order('updated_at', { ascending: false }).limit(1).maybeSingle()
+    ]);
+
+    let inServer = '❓ Desconhecido';
+    let userAvatar = serverIcon;
+    try {
+        const member = await interaction.guild.members.fetch(u.discord_id).catch(() => null);
+        if (member) {
+            inServer = '✅ Sim';
+            userAvatar = member.user.displayAvatarURL({ extension: 'png' });
+        } else {
+            inServer = '❌ Não';
+        }
+    } catch (e) { }
+
+    const userDetails = [
+        `## 👤 DETALHES DO USUÁRIO`,
+        `> **Usuário:** <@${u.discord_id}> (\`${u.discord_id || 'N/A'}\`)`,
+        `> **HWID:** \`${u.hwid}\``,
+        `> **Último IP:** \`${u.last_ip || 'N/A'}\``,
+        `> **Status:** ${u.is_blacklisted ? '🔴 BANIDO' : '🟢 ATIVO'}`,
+        `> **No Servidor:** ${inServer}`,
+        `\n### 📊 Estatísticas`,
+        `> **Keys Geradas:** \`${genRes.count || 0}\``,
+        `> **Keys Usadas:** \`${usedRes.count || 0}\``,
+        `> **Última Key Gerada:** \`${lastGenRes.data?.key || 'Nenhuma'}\``,
+        `> **Última Key Usada:** \`${u.last_key_used || lastUsedRes.data?.key || 'Nenhuma'}\``
+    ].join('\n');
+
+    const container = {
+        type: 17, accent_color: u.is_blacklisted ? 0xff4444 : 0xc773ff, components: [
+            { type: 9, components: [{ type: 10, content: userDetails }], accessory: { type: 11, media: { url: userAvatar } } },
+            { type: 14 },
+            {
+                type: 1, components: [
+                    { type: 2, style: u.is_blacklisted ? 3 : 4, label: u.is_blacklisted ? 'Desbanir' : 'Banir', custom_id: `toggle_ban_${u.id}` },
+                    { type: 2, style: 2, label: 'Voltar', custom_id: 'manage_users' }
+                ]
+            }
+        ]
+    };
+    return await interaction.editReply({ components: [container], flags: 32768 });
+}
+
+async function showSearchResults(interaction, searchTerm) {
+    // Busca inteligente
+    const { data: users, error } = await supabase
+        .from('users')
+        .select('*')
+        .or(`discord_id.eq.${searchTerm},discord_tag.ilike.%${searchTerm}%,hwid.ilike.%${searchTerm}%,last_ip.ilike.%${searchTerm}%`)
+        .limit(25);
+
+    const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+
+    if (error || !users || users.length === 0) {
+        const errorContainer = {
+            type: 17, accent_color: 0xff4444, components: [
+                { type: 9, components: [{ type: 10, content: `## 🔍 SEM RESULTADOS\n> Não encontrei nenhum usuário com o termo: \`${searchTerm}\`` }], accessory: { type: 11, media: { url: serverIcon } } },
+                { type: 14 },
+                { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_users' }] }
+            ]
+        };
+        return await interaction.editReply({ components: [errorContainer], flags: 32768 });
+    }
+
+    const container = {
+        type: 17, accent_color: 0xc773ff, components: [
+            { type: 9, components: [{ type: 10, content: `## 🔍 RESULTADOS DA PESQUISA\n> Encontrados: \`${users.length}\` usuário(s) para \`${searchTerm}\`` }], accessory: { type: 11, media: { url: serverIcon } } },
+            { type: 14 },
+            { type: 1, components: [{ type: 3, custom_id: 'select_user', placeholder: 'Selecione o resultado...', options: users.map(u => ({ label: `${u.discord_tag || 'Unknown'} (HWID: ${u.hwid.substring(0, 6)}...)`, value: u.id })) }] },
+            { type: 14 },
+            { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_users' }] }
+        ]
+    };
+    return await interaction.editReply({ components: [container], flags: 32768 });
 }
 
 async function showKeysList(interaction) {
@@ -503,25 +629,29 @@ async function showKeysList(interaction) {
     const used = keys?.filter(k => k.is_used).length || 0;
     const fresh = keys?.filter(k => !k.is_used).length || 0;
     const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
-    const container = { type: 17, accent_color: 0xc773ff, components: [
-        { type: 9, components: [{ type: 10, content: `## 📋 LISTA DE KEYS\n> **Uso:** 🔴 \`${used}\` Usadas | 🟢 \`${fresh}\` Livres\n> Selecione uma key para ver detalhes completos.` }], accessory: { type: 11, media: { url: serverIcon } } },
-        { type: 14 },
-        { type: 1, components: [{ type: 3, custom_id: 'manage_keys_select', placeholder: 'Selecione uma key...', options: (keys || []).map(k => ({ label: k.key, value: k.id, emoji: { name: k.is_used ? '🔴' : '🟢' } })) }] },
-        { type: 14 },
-        { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'group_keys_return' }] }
-    ]};
+    const container = {
+        type: 17, accent_color: 0xc773ff, components: [
+            { type: 9, components: [{ type: 10, content: `## 📋 LISTA DE KEYS\n> **Uso:** 🔴 \`${used}\` Usadas | 🟢 \`${fresh}\` Livres\n> Selecione uma key para ver detalhes completos.` }], accessory: { type: 11, media: { url: serverIcon } } },
+            { type: 14 },
+            { type: 1, components: [{ type: 3, custom_id: 'manage_keys_select', placeholder: 'Selecione uma key...', options: (keys || []).map(k => ({ label: k.key, value: k.id, emoji: { name: k.is_used ? '🔴' : '🟢' } })) }] },
+            { type: 14 },
+            { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'group_keys_return' }] }
+        ]
+    };
     return await (interaction.deferred || interaction.replied ? interaction.editReply({ components: [container], flags: 32768 }) : interaction.reply({ components: [container], flags: 32768 }));
 }
 
 async function showKeysAndUsersPanel(interaction) {
     const { count: k } = await supabase.from('keys').select('*', { count: 'exact', head: true });
     const { count: b } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('is_blacklisted', true);
-    const container = { type: 17, accent_color: 0xc773ff, components: [
-        { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
-        { type: 10, content: `## KEYS E USUÁRIOS\n> **Keys:** \`${k || 0}\` | **Blacklist:** \`${b || 0}\`` },
-        { type: 14 },
-        { type: 1, components: [{ type: 2, style: 2, label: 'Gerar Key', custom_id: 'generate_key' }, { type: 2, style: 2, label: 'Lista Keys', custom_id: 'list_keys' }, { type: 2, style: 2, label: 'Usuários', custom_id: 'manage_users' }, { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }] }
-    ]};
+    const container = {
+        type: 17, accent_color: 0xc773ff, components: [
+            { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
+            { type: 10, content: `## KEYS E USUÁRIOS\n> **Keys:** \`${k || 0}\` | **Blacklist:** \`${b || 0}\`` },
+            { type: 14 },
+            { type: 1, components: [{ type: 2, style: 2, label: 'Gerar Key', custom_id: 'generate_key' }, { type: 2, style: 2, label: 'Lista Keys', custom_id: 'list_keys' }, { type: 2, style: 2, label: 'Usuários', custom_id: 'manage_users' }, { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }] }
+        ]
+    };
     return await (interaction.deferred || interaction.replied ? interaction.editReply({ components: [container], flags: 32768 }) : interaction.reply({ components: [container], flags: 32768 }));
 }
 
@@ -530,5 +660,5 @@ module.exports.warmVersionCache = async () => {
     try {
         const { data } = await supabase.from('versions').select('*').eq('global_id', 'global').maybeSingle();
         if (data) _versionCache = { data, ts: Date.now() };
-    } catch (_) {}
+    } catch (_) { }
 };

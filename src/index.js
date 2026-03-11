@@ -52,9 +52,15 @@ const downloadTickets = new Map(); // token -> { texture_id, hwid, ip, timestamp
 
 // Helper para pegar IP limpo
 const getClientIp = (req) => {
-    if (req.ip) return req.ip.split(':').pop(); // Simplifica pra IPv4 se vier no formato IPv6
-    const forwarded = req.headers['x-forwarded-for'];
-    const ip = forwarded ? forwarded.split(',')[0] : (req.socket?.remoteAddress || req.connection?.remoteAddress || '');
+    // Ordem: CF-Connecting-IP -> X-Forwarded-For -> X-Real-IP -> req.ip
+    const ip = req.headers['cf-connecting-ip'] || 
+               req.headers['x-forwarded-for']?.split(',')[0] || 
+               req.headers['x-real-ip'] || 
+               req.ip || 
+               req.socket?.remoteAddress || '';
+    
+    // Se for IPv6 mapeado de IPv4 (::ffff:127.0.0.1), extrai apenas o IPv4
+    if (ip.includes('::ffff:')) return ip.split(':').pop();
     return ip.trim();
 };
 

@@ -45,8 +45,9 @@ app.use(cors({
 app.use(express.json());
 app.set('trust proxy', 1); // Confiar no proxy (Discloud/Heroku) para pegar IP real
 
-// --- CONTROLE DE DOWNLOADS MONETIZADOS (Memory Store) ---
+// --- CONTROLE DE DOWNLOADS E KEYS (Memory Store) ---
 const pendingDownloads = new Map(); // hwid_textureId -> { status, timestamp, ip }
+const keyCooldowns = new Map();    // ip -> timestamp
 
 // Helper para pegar IP limpo
 const getClientIp = (req) => {
@@ -220,6 +221,22 @@ app.post('/api/redeem-key', async (req, res) => {
         console.error(e);
         res.status(500).json({ error: 'Erro interno ao gerar key.' });
     }
+});
+
+// Helper para verificar cooldown de IP antes de gerar key
+app.use(['/api/generate-key', '/api/redeem-key'], (req, res, next) => {
+    const ip = getClientIp(req);
+    const now = Date.now();
+    const lastGen = keyCooldowns.get(ip);
+
+    // Cooldown de 60 segundos entre gerações do mesmo IP
+    if (lastGen && (now - lastGen < 60000)) {
+        const remaining = Math.ceil((60000 - (now - lastGen)) / 1000);
+        return res.status(429).json({ error: `Aguarde ${remaining}s para gerar uma nova chave.` });
+    }
+
+    keyCooldowns.set(ip, now);
+    next();
 });
 
 // Login / Validar Key

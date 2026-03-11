@@ -174,8 +174,24 @@ async function interactionHandler(interaction) {
 
                     const shortenerInput = new TextInputBuilder()
                         .setCustomId('shortener_input')
-                        .setLabel('Link do Encurtador')
-                        .setPlaceholder('Ex: https://link.com')
+                        .setLabel('Link do Encurtador (Keys)')
+                        .setPlaceholder('Ex: https://linkvertise.com/...')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true);
+
+                    modal.addComponents(new ActionRowBuilder().addComponents(shortenerInput));
+                    return await interaction.showModal(modal);
+                }
+
+                if (value === 'manage_download_shortener') {
+                    const modal = new ModalBuilder()
+                        .setCustomId('modal_download_shortener')
+                        .setTitle('Encurtador de Download');
+
+                    const shortenerInput = new TextInputBuilder()
+                        .setCustomId('shortener_input')
+                        .setLabel('Link do Encurtador (Texturas)')
+                        .setPlaceholder('Ex: https://linkvertise.com/...')
                         .setStyle(TextInputStyle.Short)
                         .setRequired(true);
 
@@ -419,9 +435,20 @@ async function interactionHandler(interaction) {
                     return await interaction.editReply({ content: '❌ Usuário não encontrado.', components: [], flags: 64 });
                 }
 
+                // Busca o histórico de chaves e downloads
+                const { data: userKeys, count: totalKeys } = await supabase.from('keys').select('key, created_at, duration', { count: 'exact' }).eq('used_by', hwid).order('created_at', { ascending: false }).limit(10);
+                const { data: userDownloads, count: totalDownloads } = await supabase.from('download_history').select('texture_id, downloaded_at, textures(name)', { count: 'exact' }).eq('hwid', hwid).order('downloaded_at', { ascending: false }).limit(10);
+
                 const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                 const createdTs = Math.floor(new Date(userData.created_at).getTime() / 1000) || 0;
-                const updatedTs = Math.floor(new Date(userData.updated_at).getTime() / 1000) || 0;
+
+                let keyHistoryText = userKeys?.length > 0 
+                    ? userKeys.map(k => `\`${k.key.replace('BOLT-', '')}\` (${k.duration}) - <t:${Math.floor(new Date(k.created_at).getTime()/1000)}:R>`).join('\n')
+                    : 'Nenhuma chave usada.';
+
+                let downloadHistoryText = userDownloads?.length > 0
+                    ? userDownloads.map(d => `\`${d.textures?.name || 'Textura Excluída'}\` - <t:${Math.floor(new Date(d.downloaded_at).getTime()/1000)}:R>`).join('\n')
+                    : 'Nenhum download registrado.';
 
                 const container = {
                     type: 17,
@@ -431,7 +458,7 @@ async function interactionHandler(interaction) {
                             type: 9,
                             components: [{
                                 type: 10,
-                                content: `## 👤 INFORMAÇÕES DO USUÁRIO\n> **Status:** ${userData.is_blacklisted ? '🚫 **BANIDO**' : '✅ Ativo'}\n\n**Discord:** ${userData.discord_tag || 'Não vinculado'}\n**Discord ID:** \`${userData.discord_id || 'N/A'}\`\n**HWID:** \`${userData.hwid}\`\n**Último IP:** \`${userData.last_ip || 'N/A'}\`\n**Última Key Usada:** \`${userData.last_key_used || 'N/A'}\`\n**Última Key Gerada:** \`${userData.last_generated_key || 'Nenhuma'}\`\n**Total de Instalações:** \`${userData.total_installs}\`\n**Criado em:** <t:${createdTs}:R>\n**Atualizado em:** <t:${updatedTs}:R>`
+                                content: `## 👤 INFORMAÇÕES DO USUÁRIO\n> **Status:** ${userData.is_blacklisted ? '🚫 **BANIDO**' : '✅ Ativo'}\n\n**Discord:** ${userData.discord_tag || 'Não vinculado'}\n**ID:** \`${userData.discord_id || 'N/A'}\` | **HWID:** \`${userData.hwid.slice(0, 15)}...\`\n**IP:** \`${userData.last_ip || 'N/A'}\` | **Installs:** \`${userData.total_installs}\`\n**Total Chaves:** \`${totalKeys || 0}\` | **Total Downloads:** \`${totalDownloads || 0}\` \n**Criado em:** <t:${createdTs}:R>\n\n### 📋 ÚLTIMAS 10 KEYS\n${keyHistoryText}\n\n### 📥 ÚLTIMOS 10 DOWNLOADS\n${downloadHistoryText}`
                             }],
                             accessory: { type: 11, media: { url: serverIcon } }
                         },
@@ -689,7 +716,9 @@ async function interactionHandler(interaction) {
                     versionData?.key_use_deadline || undefined, 
                     versionData?.target_folder_name || undefined, 
                     versionData?.stumble_guys_version || undefined, 
-                    versionData?.stumble_cups_version || undefined
+                    versionData?.stumble_cups_version || undefined,
+                    versionData?.update_url || undefined,
+                    versionData?.download_shortener || undefined
                 );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
@@ -730,7 +759,9 @@ async function interactionHandler(interaction) {
                     versionData?.key_use_deadline || undefined, 
                     versionData?.target_folder_name || undefined, 
                     versionData?.stumble_guys_version || undefined, 
-                    versionData?.stumble_cups_version || undefined
+                    versionData?.stumble_cups_version || undefined,
+                    versionData?.update_url || undefined,
+                    versionData?.download_shortener || undefined
                 );
                 await interaction.followUp({ components: [successContainer], flags: 32768 + 64 });
                 return await interaction.editReply({ ...panel, flags: 32768 });
@@ -770,7 +801,6 @@ async function interactionHandler(interaction) {
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_name').setLabel('Nome').setValue(texture.name).setStyle(TextInputStyle.Short)),
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_category').setLabel('Categoria').setValue(texture.category).setStyle(TextInputStyle.Short)),
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_version').setLabel('Versão Atual').setValue(texture.version || '1.0').setStyle(TextInputStyle.Short)),
-                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_shortener').setLabel('Link Encurtador (Opcional)').setValue(texture.shortener_url || '').setStyle(TextInputStyle.Short).setRequired(false)),
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('edit_profile').setLabel('Foto Perfil').setValue(texture.profile_image).setStyle(TextInputStyle.Short))
                 );
                 return await interaction.showModal(modal);
@@ -1149,7 +1179,8 @@ async function interactionHandler(interaction) {
                     data?.target_folder_name, 
                     data?.stumble_guys_version, 
                     data?.stumble_cups_version,
-                    data?.update_url
+                    data?.update_url,
+                    data?.download_shortener
                 );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
@@ -1169,7 +1200,8 @@ async function interactionHandler(interaction) {
                     data?.target_folder_name || undefined, 
                     data?.stumble_guys_version || undefined, 
                     data?.stumble_cups_version || undefined,
-                    data?.update_url || undefined
+                    data?.update_url || undefined,
+                    data?.download_shortener || undefined
                 );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
@@ -1189,7 +1221,8 @@ async function interactionHandler(interaction) {
                     data?.target_folder_name || undefined, 
                     data?.stumble_guys_version || undefined, 
                     data?.stumble_cups_version || undefined,
-                    data?.update_url || undefined
+                    data?.update_url || undefined,
+                    data?.download_shortener || undefined
                 );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
@@ -1209,7 +1242,29 @@ async function interactionHandler(interaction) {
                     data?.target_folder_name || undefined, 
                     data?.stumble_guys_version || undefined, 
                     data?.stumble_cups_version || undefined,
-                    data?.update_url || undefined
+                    data?.update_url || undefined,
+                    data?.download_shortener || undefined
+                );
+                return await interaction.editReply({ ...panel, flags: 32768 });
+            }
+
+            if (interaction.customId === 'modal_download_shortener') {
+                const newShortener = interaction.fields.getTextInputValue('shortener_input');
+                await supabase.from('versions').upsert({ global_id: 'global', download_shortener: newShortener }, { onConflict: 'global_id' });
+                invalidateVersionCache();
+                const data = await getVersionCached();
+
+                const panel = createMainPanel(
+                    interaction.guild, 
+                    data?.version || undefined, 
+                    data?.key_shortener || undefined, 
+                    data?.default_access_time || undefined, 
+                    data?.key_use_deadline || undefined, 
+                    data?.target_folder_name || undefined, 
+                    data?.stumble_guys_version || undefined, 
+                    data?.stumble_cups_version || undefined,
+                    data?.update_url || undefined,
+                    data?.download_shortener || undefined
                 );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
@@ -1229,7 +1284,8 @@ async function interactionHandler(interaction) {
                     data?.target_folder_name || undefined, 
                     data?.stumble_guys_version || undefined, 
                     data?.stumble_cups_version || undefined,
-                    data?.update_url || undefined
+                    data?.update_url || undefined,
+                    data?.download_shortener || undefined
                 );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
@@ -1249,7 +1305,8 @@ async function interactionHandler(interaction) {
                     data?.target_folder_name || undefined, 
                     data?.stumble_guys_version || undefined, 
                     data?.stumble_cups_version || undefined,
-                    data?.update_url || undefined
+                    data?.update_url || undefined,
+                    data?.download_shortener || undefined
                 );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
@@ -1269,7 +1326,8 @@ async function interactionHandler(interaction) {
                     data?.target_folder_name || undefined, 
                     data?.stumble_guys_version || undefined, 
                     data?.stumble_cups_version || undefined,
-                    data?.update_url || undefined
+                    data?.update_url || undefined,
+                    data?.download_shortener || undefined
                 );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
@@ -1290,7 +1348,8 @@ async function interactionHandler(interaction) {
                     data?.target_folder_name || undefined, 
                     data?.stumble_guys_version || undefined, 
                     data?.stumble_cups_version || undefined,
-                    data?.update_url || undefined
+                    data?.update_url || undefined,
+                    data?.download_shortener || undefined
                 );
 
                 return await interaction.editReply({ ...panel, flags: 32768 });
@@ -1322,14 +1381,12 @@ async function interactionHandler(interaction) {
                 const name = interaction.fields.getTextInputValue('edit_name');
                 const category = interaction.fields.getTextInputValue('edit_category');
                 const version = interaction.fields.getTextInputValue('edit_version');
-                const shortener = interaction.fields.getTextInputValue('edit_shortener');
                 const profile = interaction.fields.getTextInputValue('edit_profile');
 
                 await supabase.from('textures').update({
                     name,
                     category,
                     version,
-                    shortener_url: shortener || null,
                     profile_image: profile || null
                 }).eq('id', textureId);
 
@@ -1465,7 +1522,8 @@ async function interactionHandler(interaction) {
                     data?.target_folder_name || undefined, 
                     data?.stumble_guys_version || undefined, 
                     data?.stumble_cups_version || undefined,
-                    config?.update_url || undefined
+                    config?.update_url || undefined,
+                    config?.download_shortener || undefined
                 );
 
                 await interaction.followUp({ components: [successContainer], flags: 64 + 32768 });

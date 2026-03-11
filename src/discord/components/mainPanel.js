@@ -1,4 +1,4 @@
-const createMainPanel = (guild, version = '1.0', keyShortener = 'Não definido', accessTime = '4h', useDeadline = '24h', targetFolderName = 'StumbleCups', sgVersion = '1.0', scVersion = '1.0', updateUrl = 'Não definido') => {
+const createMainPanel = (guild, version = '1.0', keyShortener = 'Não definido', accessTime = '4h', useDeadline = '24h', targetFolderName = 'StumbleCups', sgVersion = '1.0', scVersion = '1.0', updateUrl = 'Não definido', downloadShortener = 'Não definido') => {
     const serverIcon = guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
 
     // Construção do Container Principal (Estilo V2 Nativo)
@@ -31,7 +31,7 @@ const createMainPanel = (guild, version = '1.0', keyShortener = 'Não definido',
             // Informações (Text Display direto no container, pois Section exige accessory)
             {
                 type: 10,
-                content: `> **Servidor:** ${guild.name}\n> **Versão Atual:** \`${version}\`\n> **Versão StumbleGuys:** \`${sgVersion}\` | **Versão StumbleCups:** \`${scVersion}\`\n> **Encurtador Key:** \`${keyShortener}\`\n> **Atualizar App:** \`${updateUrl}\`\n> **Pasta Alvo:** \`${targetFolderName}\`\n> **Tempo de Acesso:** \`${accessTime}\`\n> **Prazo de Uso:** \`${useDeadline}\`\n> -# Selecione uma categoria abaixo para iniciar o gerenciamento.`
+                content: `> **Servidor:** ${guild.name}\n> **Versão Atual:** \`${version}\`\n> **Versão StumbleGuys:** \`${sgVersion}\` | **Versão StumbleCups:** \`${scVersion}\`\n> **Encurtador Key:** \`${keyShortener}\`\n> **Encurtador Download:** \`${downloadShortener}\`\n> **Atualizar App:** \`${updateUrl}\`\n> **Pasta Alvo:** \`${targetFolderName}\`\n> **Tempo de Acesso:** \`${accessTime}\`\n> **Prazo de Uso:** \`${useDeadline}\`\n> -# Selecione uma categoria abaixo para iniciar o gerenciamento.`
             },
             { type: 14 }, // SEPARATOR
             // Menu de Seleção (Action Row = Type 1)
@@ -41,7 +41,7 @@ const createMainPanel = (guild, version = '1.0', keyShortener = 'Não definido',
                     {
                         type: 3, // STRING SELECT
                         custom_id: 'main_select',
-                        placeholder: 'Selecione uma categoria...',
+                        placeholder: 'Configurar encurtadores e sistema...',
                         options: [
                             { label: 'Versão App', description: 'Alterar versão do aplicativo', value: 'manage_version', emoji: { name: '🚀' } },
                             { label: 'Link Atualização', description: 'Url de download do app novo', value: 'manage_update_url', emoji: { name: '📥' } },
@@ -54,7 +54,8 @@ const createMainPanel = (guild, version = '1.0', keyShortener = 'Não definido',
                             { label: 'Arquivos Originais', description: 'Links de remoção (Cups)', value: 'manage_original_links', emoji: { name: '🛡️' } },
                             { label: 'Keys', description: 'Ver todas as keys geradas', value: 'list_keys', emoji: { name: '📋' } },
                             { label: 'Usuários', description: 'Gerenciar usuários e blacklist', value: 'manage_users', emoji: { name: '👥' } },
-                            { label: 'Encurtador', description: 'Link da key', value: 'manage_shortener', emoji: { name: '🔗' } },
+                            { label: 'Encurtador Key', description: 'Link do encurtador para as keys', value: 'manage_shortener', emoji: { name: '🔑' } },
+                            { label: 'Encurtador Download', description: 'Link do encurtador para as texturas', value: 'manage_download_shortener', emoji: { name: '📥' } },
                             { label: 'Categorias', description: 'Gerenciar categorias de texturas', value: 'manage_categories', emoji: { name: '🏷️' } },
                             { label: 'Texturas', description: 'Abrir catálogo', value: 'manage_textures', emoji: { name: '🎨' } }
                         ]

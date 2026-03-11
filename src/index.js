@@ -48,6 +48,7 @@ app.set('trust proxy', 1); // Confiar no proxy (Discloud/Heroku) para pegar IP r
 // --- CONTROLE DE DOWNLOADS E KEYS (Memory Store) ---
 const pendingDownloads = new Map(); // hwid_textureId -> { status, timestamp, ip }
 const keyCooldowns = new Map();    // ip -> timestamp
+const downloadTickets = new Map(); // token -> { texture_id, hwid, ip, timestamp }
 
 // Helper para pegar IP limpo
 const getClientIp = (req) => {
@@ -426,6 +427,68 @@ if (RUN_MODE === 'API' || RUN_MODE === 'ALL') {
 
 app.get('/', (req, res) => res.send('API Online 💜'));
 
+// --- SISTEMA DE DOWNLOAD SEGURO (TICKET ÚNICO) ---
+app.get('/api/request-download-token', async (req, res) => {
+    try {
+        const { texture_id, hwid } = req.query;
+        if (!texture_id || !hwid) return res.status(400).json({ error: 'Faltam parâmetros.' });
+
+        const crypto = require('crypto');
+        const token = crypto.randomBytes(16).toString('hex');
+        const ip = getClientIp(req);
+
+        // Salva ticket no banco para segurança (persistência)
+        await supabase.from('download_tickets').insert({
+            token: token,
+            texture_id: texture_id,
+            hwid: hwid,
+            ip: ip
+        });
+
+        res.json({ success: true, token });
+    } catch (e) {
+        res.status(500).json({ error: 'Erro ao preparar download.' });
+    }
+});
+
+app.get('/api/verify-download', async (req, res) => {
+    try {
+        const { token, hwid } = req.query;
+        if (!token) return res.status(400).json({ error: 'Token obrigatório.' });
+
+        // 1. Verifica e consome o ticket imediatamente
+        const { data: ticket, error } = await supabase
+            .from('download_tickets')
+            .delete()
+            .eq('token', token)
+            .select()
+            .maybeSingle();
+
+        if (error || !ticket) {
+            return res.status(403).json({ error: 'Ticket de download expirado ou inválido.' });
+        }
+
+        // 2. Registra o histórico
+        await supabase.from('download_history').insert({
+            hwid: ticket.hwid,
+            texture_id: ticket.texture_id,
+            ip: getClientIp(req)
+        });
+
+        // 3. Busca a textura
+        const { data: texture } = await supabase.from('textures').select('*').eq('id', ticket.texture_id).maybeSingle();
+        if (!texture) return res.status(404).json({ error: 'Textura não encontrada.' });
+
+        res.json({
+            success: true,
+            p1: texture.download_url,
+            p2: texture.download_url_part2
+        });
+    } catch (e) {
+        res.status(500).json({ error: 'Erro ao processar download.' });
+    }
+});
+
 // --- TAREFA DE LIMPEZA AUTOMÁTICA EM SEGUNDO PLANO ---
 setInterval(async () => {
         try {
@@ -448,7 +511,17 @@ setInterval(async () => {
                 .lt('expires_at', now)
                 .select();
 
-            // Limpar downloads pendentes na memória
+            // Limpar chaves que não expiram via tempo (se você quiser deletar as 'permanente' após meses, faria aqui)
+            // Por enquanto, o sistema foca em chaves com prazo.
+
+            // 1. Limpar tickets de download antigos (ex: mais de 1 hora)
+            const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
+            await supabase.from('download_tickets').delete().lt('created_at', oneHourAgo);
+
+            // 2. Limpar solicitações de key antigas (tickets do site de keys)
+            await supabase.from('key_requests').delete().lt('created_at', oneHourAgo);
+
+            // 3. Limpar downloads pendentes na memória
             const nowMs = Date.now();
             for (const [key, value] of pendingDownloads.entries()) {
                 if (nowMs - value.timestamp > 600000) {

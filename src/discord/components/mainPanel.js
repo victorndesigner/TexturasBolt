@@ -38,11 +38,11 @@ const createMainPanel = (guild, version = '1.0', keyShortener = 'Não definido',
                         custom_id: 'main_select',
                         placeholder: 'Selecione uma categoria...',
                         options: [
-                            { label: 'Estilo & Perfil', description: 'Banner padrão, Perfil e Visual', value: 'group_style', emoji: { name: '🎨' } },
-                            { label: 'Links & Encurtadores', description: 'Discord, Updates e Encurtadores', value: 'group_links', emoji: { name: '🔗' } },
-                            { label: 'Sistema & Pastas', description: 'Versões, Prazos e Pastas', value: 'group_system', emoji: { name: '⚙️' } },
+                            { label: 'Estilo e Perfil', description: 'Banner padrão, Perfil e Visual', value: 'group_style', emoji: { name: '🎨' } },
+                            { label: 'Links e Encurtadores', description: 'Discord, Updates e Encurtadores', value: 'group_links', emoji: { name: '🔗' } },
+                            { label: 'Sistema e Pastas', description: 'Versões, Prazos e Pastas', value: 'group_system', emoji: { name: '⚙️' } },
                             { label: 'Conteúdo', description: 'Categorias e Catálogo de Texturas', value: 'group_content', emoji: { name: '📦' } },
-                            { label: 'Keys & Usuários', description: 'Gerar Keys, Blacklist e Usuarios', value: 'group_keys', emoji: { name: '🔑' } }
+                            { label: 'Keys e Usuários', description: 'Gerar Keys, Blacklist e Usuarios', value: 'group_keys', emoji: { name: '🔑' } }
                         ]
                     }
                 ]

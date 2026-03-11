@@ -235,13 +235,15 @@ async function interactionHandler(interaction) {
                 }
 
                 if (value === 'group_content') {
+                    const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                     const panel = {
                         type: 17,
                         accent_color: 0xc773ff,
                         components: [
                             {
                                 type: 9,
-                                components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\nEscolha o que deseja gerenciar:` }]
+                                components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\nEscolha o que deseja gerenciar:` }],
+                                accessory: { type: 11, media: { url: serverIcon } }
                             },
                             {
                                 type: 1,
@@ -257,13 +259,15 @@ async function interactionHandler(interaction) {
                 }
 
                 if (value === 'group_keys') {
+                    const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                     const panel = {
                         type: 17,
                         accent_color: 0xc773ff,
                         components: [
                             {
                                 type: 9,
-                                components: [{ type: 10, content: `## KEYS & USUÁRIOS\nGerenciamento de acessos:` }]
+                                components: [{ type: 10, content: `## KEYS e USUÁRIOS\nGerenciamento de acessos:` }],
+                                accessory: { type: 11, media: { url: serverIcon } }
                             },
                             {
                                 type: 1,

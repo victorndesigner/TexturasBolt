@@ -306,7 +306,17 @@ async function interactionHandler(interaction) {
             if (cid === 'back_to_main' || cid === 'update_panel') {
                 const { count: c } = await supabase.from('categories').select('*', { count: 'exact', head: true });
                 const { count: t } = await supabase.from('textures').select('*', { count: 'exact', head: true });
-                return await interaction.editReply({ ...createMainPanel(interaction.guild, c || 0, t || 0), flags: 32768 });
+                const v = await getVersionCached();
+                return await interaction.editReply({ ...createMainPanel(interaction.guild, v?.version, v?.key_shortener, v?.default_access_time, v?.key_use_deadline, v?.target_folder_name, v?.stumble_guys_version, v?.stumble_cups_version, v?.update_url, v?.download_shortener), flags: 32768 });
+            }
+            if (cid === 'exit_panel') {
+                try {
+                    await interaction.deleteReply();
+                } catch (e) {
+                    // Se não puder deletar o original, tenta apenas esconder os botões
+                    await interaction.editReply({ components: [], flags: 32768 });
+                }
+                return;
             }
             if (cid === 'create_category') {
                 const modal = new ModalBuilder().setCustomId('modal_create_category').setTitle('Nova Categoria');
@@ -353,7 +363,7 @@ async function interactionHandler(interaction) {
                 const { count: texCount } = await supabase.from('textures').select('*', { count: 'exact', head: true });
                 const container = { type: 17, accent_color: 0xc773ff, components: [
                     { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
-                    { type: 9, components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\n> **Categorias:** \`${catCount || 0}\` | **Texturas:** \`${texCount || 0}\`` }], accessory: { type: 11, media: { url: serverIcon } } },
+                    { type: 9, components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\n> **Categorias:** \`${catCount || 0}\` | **Texturas:** \`${texCount || 0}\`` }] },
                     { type: 14 },
                     { type: 1, components: [{ type: 2, style: 2, label: 'Categorias', custom_id: 'manage_categories' }, { type: 2, style: 2, label: 'Texturas', custom_id: 'manage_textures' }, { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }] }
                 ]};
@@ -375,10 +385,9 @@ async function interactionHandler(interaction) {
 
 async function showCategoriesPanel(interaction) {
     const { data: cats } = await supabase.from('categories').select('*');
-    const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
     const container = { type: 17, accent_color: 0xc773ff, components: [
         { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
-        { type: 9, components: [{ type: 10, content: `## GESTÃO DE CATEGORIAS\n> **Categorias cadastradas:** \`${cats?.length || 0}\`\n\n${(cats || []).map(c => `• ${c.name}`).join('\n') || '*Nenhuma.*'}` }], accessory: { type: 11, media: { url: serverIcon } } },
+        { type: 9, components: [{ type: 10, content: `## GESTÃO DE CATEGORIAS\n> **Categorias cadastradas:** \`${cats?.length || 0}\`\n\n${(cats || []).map(c => `• ${c.name}`).join('\n') || '*Nenhuma.*'}` }] },
         { type: 14 },
         { type: 1, components: [{ type: 2, style: 2, label: 'Criar', custom_id: 'create_category' }, { type: 2, style: 2, label: 'Editar', custom_id: 'edit_category_btn' }, { type: 2, style: 2, label: 'Remover', custom_id: 'remove_category_btn' }, { type: 2, style: 2, label: 'Voltar', custom_id: 'group_content' }] }
     ]};
@@ -387,9 +396,8 @@ async function showCategoriesPanel(interaction) {
 
 async function showUsersPanel(interaction) {
     const { data: users } = await supabase.from('users').select('*').limit(20);
-    const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
     const container = { type: 17, accent_color: 0xc773ff, components: [
-        { type: 9, components: [{ type: 10, content: `## GESTÃO DE USUÁRIOS` }], accessory: { type: 11, media: { url: serverIcon } } },
+        { type: 9, components: [{ type: 10, content: `## GESTÃO DE USUÁRIOS` }] },
         { type: 14 },
         { type: 1, components: [{ type: 3, custom_id: 'select_user', options: (users || []).map(u => ({ label: `HWID: ${u.hwid.substring(0,10)}...`, value: u.id })) }] },
         { type: 14 },
@@ -402,9 +410,8 @@ async function showKeysList(interaction) {
     const { data: keys } = await supabase.from('keys').select('*').limit(24);
     const used = keys?.filter(k => k.current_uses > 0).length || 0;
     const fresh = keys?.filter(k => k.current_uses === 0).length || 0;
-    const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
     const container = { type: 17, accent_color: 0xc773ff, components: [
-        { type: 9, components: [{ type: 10, content: `## LISTA DE KEYS\n> **Uso:** 🔴 \`${used}\` Usadas | 🟢 \`${fresh}\` Livres` }], accessory: { type: 11, media: { url: serverIcon } } },
+        { type: 9, components: [{ type: 10, content: `## LISTA DE KEYS\n> **Uso:** 🔴 \`${used}\` Usadas | 🟢 \`${fresh}\` Livres` }] },
         { type: 14 },
         { type: 1, components: [{ type: 3, custom_id: 'manage_keys_select', options: (keys || []).map(k => ({ label: k.key, value: k.id, emoji: { name: k.current_uses > 0 ? '🔴' : '🟢' } })) }] },
         { type: 14 },
@@ -416,10 +423,9 @@ async function showKeysList(interaction) {
 async function showKeysAndUsersPanel(interaction) {
     const { count: k } = await supabase.from('keys').select('*', { count: 'exact', head: true });
     const { count: b } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('is_blacklisted', true);
-    const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
     const container = { type: 17, accent_color: 0xc773ff, components: [
         { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
-        { type: 9, components: [{ type: 10, content: `## KEYS E USUÁRIOS\n> **Keys:** \`${k || 0}\` | **Blacklist:** \`${b || 0}\`` }], accessory: { type: 11, media: { url: serverIcon } } },
+        { type: 9, components: [{ type: 10, content: `## KEYS E USUÁRIOS\n> **Keys:** \`${k || 0}\` | **Blacklist:** \`${b || 0}\`` }] },
         { type: 14 },
         { type: 1, components: [{ type: 2, style: 2, label: 'Gerar Key', custom_id: 'generate_key' }, { type: 2, style: 2, label: 'Lista Keys', custom_id: 'list_keys' }, { type: 2, style: 2, label: 'Usuários', custom_id: 'manage_users' }, { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }] }
     ]};

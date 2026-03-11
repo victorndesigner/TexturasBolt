@@ -13,14 +13,19 @@ const createTexturePanel = (guild, textures = []) => {
                         type: 10,
                         content: `## 🎨 GERENCIAR TEXTURAS\n> ## Catálogo de Texturas bolttexturas`
                     }
-                ],
-                            accessory: { type: 11, media: { url: typeof serverIcon !== "undefined" ? serverIcon : (typeof guildIcon !== "undefined" ? guildIcon : "https://cdn.discordapp.com/embed/avatars/0.png") } }
+                ],
+                accessory: { type: 11, media: { url: serverIcon } }
             },
             { type: 14 }, // SEPARATOR
-            // Stats (Text Display direto)
+            // Stats Section
             {
-                type: 10,
-                content: `> **Servidor:** ${guild.name}\n> **Total de Texturas:** \`${textures.length}\`\n> -# Selecione uma textura abaixo para editar.`
+                type: 9,
+                components: [
+                    {
+                        type: 10,
+                        content: `> **Servidor:** ${guild.name}\n> **Total de Texturas:** \`${textures.length}\`\n> -# Selecione uma textura abaixo para editar.`
+                    }
+                ]
             },
             { type: 14 }, // SEPARATOR
             // Select Menu
@@ -47,7 +52,7 @@ const createTexturePanel = (guild, textures = []) => {
                 components: [
                     {
                         type: 2,
-                        style: 2, // Green
+                        style: 2,
                         label: 'Atualização',
                         custom_id: 'update_textures_btn',
                     },
@@ -67,7 +72,7 @@ const createTexturePanel = (guild, textures = []) => {
                         type: 2,
                         style: 2,
                         label: 'Voltar',
-                        custom_id: 'group_content_return',
+                        custom_id: 'group_content'
                     }
                 ]
             }

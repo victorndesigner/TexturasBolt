@@ -31,7 +31,7 @@ const createMainPanel = (guild, version = '1.0', keyShortener = 'Não definido',
             // Informações (Text Display direto no container, pois Section exige accessory)
             {
                 type: 10,
-                content: `> **Servidor:** ${guild.name}\n> **Versão Atual:** \`${version}\`\n> **Versão SG/Reviver:** \`${sgVersion}\` | **Versão Cups:** \`${scVersion}\`\n> **Encurtador Key:** \`${keyShortener}\`\n> **Update URL:** \`${updateUrl}\`\n> **Pasta Alvo:** \`${targetFolderName}\`\n> **Tempo de Acesso:** \`${accessTime}\`\n> **Prazo de Uso:** \`${useDeadline}\`\n> -# Selecione uma categoria abaixo para iniciar o gerenciamento.`
+                content: `> **Servidor:** ${guild.name}\n> **Versão Atual:** \`${version}\`\n> **Versão StumbleGuys:** \`${sgVersion}\` | **Versão StumbleCups:** \`${scVersion}\`\n> **Encurtador Key:** \`${keyShortener}\`\n> **Atualizar App:** \`${updateUrl}\`\n> **Pasta Alvo:** \`${targetFolderName}\`\n> **Tempo de Acesso:** \`${accessTime}\`\n> **Prazo de Uso:** \`${useDeadline}\`\n> -# Selecione uma categoria abaixo para iniciar o gerenciamento.`
             },
             { type: 14 }, // SEPARATOR
             // Menu de Seleção (Action Row = Type 1)

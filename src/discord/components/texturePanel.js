@@ -13,11 +13,7 @@ const createTexturePanel = (guild, textures = []) => {
                         type: 10,
                         content: `## 🎨 GERENCIAR TEXTURAS\n> ## Catálogo de Texturas bolttexturas`
                     }
-                ],
-                accessory: {
-                    type: 11,
-                    media: { url: serverIcon }
-                }
+                ]
             },
             { type: 14 }, // SEPARATOR
             // Stats (Text Display direto)
@@ -70,7 +66,7 @@ const createTexturePanel = (guild, textures = []) => {
                         type: 2,
                         style: 2,
                         label: 'Voltar',
-                        custom_id: 'back_to_main',
+                        custom_id: 'group_content_return',
                     }
                 ]
             }

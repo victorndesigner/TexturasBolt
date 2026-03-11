@@ -21,8 +21,7 @@ module.exports = async (interaction) => {
                     components: [{ 
                         type: 10, 
                         content: `## 🚫 ACESSO RESTRITO\n> Este comando é exclusivo para a administração.\n> Para gerar suas chaves, utilize o **Painel de key no servidor oficial do bolttexturas**.` 
-                    }],
-                    accessory: { type: 11, media: { url: serverIcon } }
+                    }]
                 },
                 { type: 14 },
                 {

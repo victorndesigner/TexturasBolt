@@ -21,8 +21,7 @@ async function setupKeysPanel(interaction) {
                     components: [{ 
                         type: 10, 
                         content: `## 🚫 ACESSO RESTRITO\n> Este comando é exclusivo para a administração.\n> Para gerar suas chaves, utilize o **Painel de key no servidor oficial do bolttexturas**.` 
-                    }],
-                    accessory: { type: 11, media: { url: serverIcon } }
+                    }]
                 },
                 { type: 14 },
                 {
@@ -57,11 +56,7 @@ async function setupKeysPanel(interaction) {
                                 type: 10, // TEXT DISPLAY
                                 content: `## 🔑 Key Textura [v1.0]\n> Para continuar, clique no botão abaixo e gere seu acesso às texturas.\n> -# Esse processo é necessário para a chave de acesso ao sistema.`
                             }
-                        ],
-                        accessory: {
-                            type: 11, // MEDIA
-                            media: { url: guildIcon }
-                        }
+                        ]
                     },
                     { type: 14 }, // SEPARATOR
                     {
@@ -87,8 +82,7 @@ async function setupKeysPanel(interaction) {
             accent_color: 0xc773ff,
             components: [{
                 type: 9,
-                components: [{ type: 10, content: `## ✅ Painel de Key criado.\n> O painel foi configurado neste canal com sucesso.` }],
-                accessory: { type: 11, media: { url: guildIcon } }
+                components: [{ type: 10, content: `## ✅ Painel de Key criado.\n> O painel foi configurado neste canal com sucesso.` }]
             }]
         };
         return interaction.editReply({ components: [confirmContainer], flags: 64 | MessageFlags.IsComponentsV2 });
@@ -152,11 +146,7 @@ async function handleKeyGeneration(interaction) {
                         type: 10,
                         content: `## 🔐 Próxima Etapa\n> Clique no link abaixo para validar seu acesso.\n> Você será redirecionado para pegar sua Key exclusiva vinculada a **${interaction.user.tag}**.`
                     }
-                ],
-                accessory: {
-                    type: 11,
-                    media: { url: guildIcon }
-                }
+                ]
             },
             { type: 14 },
             {

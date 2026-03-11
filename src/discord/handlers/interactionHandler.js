@@ -45,8 +45,7 @@ async function interactionHandler(interaction) {
                 components: [{ 
                     type: 10, 
                     content: `## 🚫 ACESSO NEGADO\n> Apenas administradores podem interagir com o painel.\n> -# Se você precisa de acesso, contate o dono do servidor.` 
-                }],
-                accessory: { type: 11, media: { url: serverIcon } }
+                }]
             }]
         };
 
@@ -236,51 +235,59 @@ async function interactionHandler(interaction) {
 
                 if (value === 'group_content') {
                     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
-                    const panel = {
+                    const container = {
                         type: 17,
                         accent_color: 0xc773ff,
                         components: [
                             {
-                                type: 9,
-                                components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\nEscolha o que deseja gerenciar:` }],
-                                accessory: { type: 11, media: { url: serverIcon } }
+                                type: 12,
+                                items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }]
                             },
+                            {
+                                type: 9,
+                                components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\nEscolha o que deseja gerenciar:` }]
+                            },
+                            { type: 14 },
                             {
                                 type: 1,
                                 components: [
-                                    { type: 2, style: 1, label: 'Categorias', custom_id: 'manage_categories', emoji: { name: '🏷️' } },
-                                    { type: 2, style: 1, label: 'Texturas', custom_id: 'manage_textures', emoji: { name: '🎨' } },
+                                    { type: 2, style: 2, label: 'Categorias', custom_id: 'manage_categories' },
+                                    { type: 2, style: 2, label: 'Texturas', custom_id: 'manage_textures' },
                                     { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }
                                 ]
                             }
                         ]
                     };
-                    return await interaction.editReply({ ...panel, flags: 32768 });
+                    return await interaction.editReply({ components: [container], flags: 32768 });
                 }
 
                 if (value === 'group_keys') {
                     const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
-                    const panel = {
+                    const container = {
                         type: 17,
                         accent_color: 0xc773ff,
                         components: [
                             {
-                                type: 9,
-                                components: [{ type: 10, content: `## KEYS e USUÁRIOS\nGerenciamento de acessos:` }],
-                                accessory: { type: 11, media: { url: serverIcon } }
+                                type: 12,
+                                items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }]
                             },
+                            {
+                                type: 9,
+                                components: [{ type: 10, content: `## KEYS E USUÁRIOS\nGerenciamento de acessos e permissões:` }]
+                            },
+                            { type: 14 },
                             {
                                 type: 1,
                                 components: [
-                                    { type: 2, style: 1, label: 'Gerar Key', custom_id: 'generate_key', emoji: { name: '➕' } },
-                                    { type: 2, style: 1, label: 'Listar Keys', custom_id: 'list_keys', emoji: { name: '📋' } },
-                                    { type: 2, style: 1, label: 'Usuários/Blacklist', custom_id: 'manage_users', emoji: { name: '👥' } },
+                                    { type: 2, style: 2, label: 'Gerar Key', custom_id: 'generate_key' },
+                                    { type: 2, style: 2, label: 'Listar Keys', custom_id: 'list_keys' },
+                                    { type: 2, style: 2, label: 'Usuários/Blacklist', custom_id: 'manage_users' },
                                     { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }
                                 ]
                             }
                         ]
                     };
-                    return await interaction.editReply({ ...panel, flags: 32768 });
+                    return await interaction.editReply({ components: [container], flags: 32768 });
                 }
 
                 if (value === 'manage_time') {
@@ -324,8 +331,7 @@ async function interactionHandler(interaction) {
                         components: [
                             {
                                 type: 9,
-                                components: [{ type: 10, content: `## 🔑 GERAR KEY\n> Selecione o tipo de permissão para a nova chave:` }],
-                                accessory: { type: 11, media: { url: serverIcon } }
+                                components: [{ type: 10, content: `## 🔑 GERAR KEY\n> Selecione o tipo de permissão para a nova chave:` }]
                             },
                             { type: 14 }, // SEPARADOR (AGORA NO LUGAR CERTO)
                             {
@@ -391,8 +397,7 @@ async function interactionHandler(interaction) {
                                 components: [{
                                     type: 10,
                                     content: `## 🖼️ FOTO DE PERFIL GLOBAL\n> Aguardando sua imagem no chat...\n\nVocê tem **30 segundos** para enviar uma foto ou um link de imagem no chat para definir como o perfil padrão no App.`
-                                }],
-                                accessory: { type: 11, media: { url: serverIcon } }
+                                }]
                             }
                         ]
                     };
@@ -417,8 +422,7 @@ async function interactionHandler(interaction) {
                             accent_color: 0x00ff88, // Verde Bolt
                             components: [{
                                 type: 9,
-                                components: [{ type: 10, content: `## ✅ SUCESSO!\n> Foto de perfil global atualizada.\n\nEsta imagem aparecerá agora em todas as texturas que não possuem uma miniatura própria.` }],
-                                accessory: { type: 11, media: { url: url } }
+                                components: [{ type: 10, content: `## ✅ SUCESSO!\n> Foto de perfil global atualizada.\n\nEsta imagem aparecerá agora em todas as texturas que não possuem uma miniatura própria.` }]
                             }]
                         };
 
@@ -462,8 +466,7 @@ async function interactionHandler(interaction) {
                         accent_color: 0xff0000,
                         components: [{
                             type: 9,
-                            components: [{ type: 10, content: `## ❌ ERRO!\n> Key não encontrada no banco de dados.` }],
-                            accessory: { type: 11, media: { url: serverIcon } }
+                            components: [{ type: 10, content: `## ❌ ERRO!\n> Key não encontrada no banco de dados.` }]
                         }]
                     };
                     return interaction.followUp({ components: [errContainer], flags: 64 + 32768 });
@@ -495,8 +498,7 @@ async function interactionHandler(interaction) {
                             components: [{
                                 type: 10,
                                 content: `## 🔑 DETALHES DA KEY\n${timeContent}\n> **Permissão:** \`${permissionText}\``
-                            }],
-                            accessory: { type: 11, media: { url: serverIcon } }
+                            }]
                         },
                         {
                             type: 1,
@@ -543,8 +545,7 @@ async function interactionHandler(interaction) {
                             components: [{
                                 type: 10,
                                 content: `## 👤 INFORMAÇÕES DO USUÁRIO\n> **Status:** ${userData.is_blacklisted ? '🚫 **BANIDO**' : '✅ Ativo'}\n\n**Discord:** ${userData.discord_tag || 'Não vinculado'}\n**ID:** \`${userData.discord_id || 'N/A'}\` | **HWID:** \`${userData.hwid.slice(0, 15)}...\`\n**IP:** \`${userData.last_ip || 'N/A'}\` | **Installs:** \`${userData.total_installs}\`\n**Total Chaves:** \`${totalKeys || 0}\` | **Total Downloads:** \`${totalDownloads || 0}\` \n**Criado em:** <t:${createdTs}:R>\n\n### 📋 ÚLTIMAS 10 KEYS\n${keyHistoryText}\n\n### 📥 ÚLTIMOS 10 DOWNLOADS\n${downloadHistoryText}`
-                            }],
-                            accessory: { type: 11, media: { url: serverIcon } }
+                            }]
                         },
                         { type: 14 },
                         {
@@ -581,8 +582,7 @@ async function interactionHandler(interaction) {
                             components: [{ 
                                 type: 10, 
                                 content: `## ⚙️ GERENCIAR: ${texture.name}\n> **Categoria:** \`${texture.category}\`\n> **Versão:** \`${texture.version || '1.0'}\`\n> **Status:** ${texture.is_updated ? '✅ Atualizada' : '❌ Desatualizada'}\n\nEscolha o que deseja configurar abaixo:` 
-                            }],
-                            accessory: { type: 11, media: { url: texture.profile_image || serverIcon } }
+                            }]
                         },
                         {
                             type: 1,
@@ -615,8 +615,7 @@ async function interactionHandler(interaction) {
                     accent_color: 0x00ff88,
                     components: [{
                         type: 9,
-                        components: [{ type: 10, content: `## ✅ REMOVIDO!\n> Textura removida com sucesso do catálogo.` }],
-                        accessory: { type: 11, media: { url: serverIcon } }
+                        components: [{ type: 10, content: `## ✅ REMOVIDO!\n> Textura removida com sucesso do catálogo.` }]
                     }]
                 };
                 await interaction.followUp({ components: [successContainer], flags: 64 + 32768 });
@@ -649,7 +648,7 @@ async function interactionHandler(interaction) {
                     const container = {
                         type: 17, accent_color: 0xc773ff,
                         components: [
-                            { type: 9, components: [{ type: 10, content: `## 🔑 GERAR POR CATEGORIA\n> Escolha a categoria:` }], accessory: { type: 11, media: { url: interaction.guild.iconURL() } } },
+                            { type: 9, components: [{ type: 10, content: `## 🔑 GERAR POR CATEGORIA\n> Escolha a categoria:` }] },
                             {
                                 type: 1, components: [{
                                     type: 3, custom_id: 'gen_key_value_cat_select', placeholder: 'Selecione a categoria...',
@@ -666,7 +665,7 @@ async function interactionHandler(interaction) {
                     const container = {
                         type: 17, accent_color: 0xc773ff,
                         components: [
-                            { type: 9, components: [{ type: 10, content: `## 🔑 GERAR POR TEXTURA\n> Escolha a textura:` }], accessory: { type: 11, media: { url: interaction.guild.iconURL() } } },
+                            { type: 9, components: [{ type: 10, content: `## 🔑 GERAR POR TEXTURA\n> Escolha a textura:` }] },
                             {
                                 type: 1, components: [{
                                     type: 3, custom_id: 'gen_key_value_tex_select', placeholder: 'Selecione a textura...',
@@ -722,8 +721,7 @@ async function interactionHandler(interaction) {
                     components: [
                         {
                             type: 9,
-                            components: [{ type: 10, content: `## 🔄 ATUALIZAÇÃO EM MASSA\n> Escolha uma opção para gerenciar o status de todas as texturas.` }],
-                            accessory: { type: 11, media: { url: serverIcon } }
+                            components: [{ type: 10, content: `## 🔄 ATUALIZAÇÃO EM MASSA\n> Escolha uma opção para gerenciar o status de todas as texturas.` }]
                         },
                         {
                             type: 1,
@@ -766,8 +764,7 @@ async function interactionHandler(interaction) {
                                 components: [{ 
                                     type: 10, 
                                     content: `## ⚙️ GERENCIAR: ${texture.name}\n> **Categoria:** \`${texture.category}\`\n> **Versão:** \`${texture.version || '1.0'}\`\n> **Status:** ${texture.is_updated ? '✅ Atualizada' : '❌ Desatualizada'}\n\nEscolha o que deseja configurar abaixo:` 
-                                }],
-                                accessory: { type: 11, media: { url: texture.profile_image || serverIcon } }
+                                }]
                             },
                             {
                                 type: 1,
@@ -829,8 +826,7 @@ async function interactionHandler(interaction) {
                             components: [{
                                 type: 10,
                                 content: `## ✅ KEY EXCLUÍDA COM SUCESSO!\n> A chave foi removida permanentemente do banco de dados.`
-                            }],
-                            accessory: { type: 11, media: { url: serverIcon } }
+                            }]
                         }
                     ]
                 };
@@ -915,8 +911,7 @@ async function interactionHandler(interaction) {
                                 components: [{
                                     type: 10,
                                     content: `## ❌ NENHUMA TEXTURA PARA REMOVER!\n> Não há texturas cadastradas para serem removidas.`
-                                }],
-                                accessory: { type: 11, media: { url: serverIcon } }
+                                }]
                             },
                             {
                                 type: 1,
@@ -934,8 +929,7 @@ async function interactionHandler(interaction) {
                     components: [
                         {
                             type: 9,
-                            components: [{ type: 10, content: `## 🗑️ REMOVER TEXTURA\n> Escolha uma textura abaixo para remover.` }],
-                            accessory: { type: 11, media: { url: serverIcon } }
+                            components: [{ type: 10, content: `## 🗑️ REMOVER TEXTURA\n> Escolha uma textura abaixo para remover.` }]
                         },
                         {
                             type: 1,
@@ -985,8 +979,7 @@ async function interactionHandler(interaction) {
                     components: [
                         {
                             type: 9,
-                            components: [{ type: 10, content: `## 🗑️ REMOVER CATEGORIA\n> Escolha uma categoria abaixo para remover.` }],
-                            accessory: { type: 11, media: { url: serverIcon } }
+                            components: [{ type: 10, content: `## 🗑️ REMOVER CATEGORIA\n> Escolha uma categoria abaixo para remover.` }]
                         },
                         {
                             type: 1,
@@ -1013,6 +1006,65 @@ async function interactionHandler(interaction) {
             if (interaction.customId === 'manage_categories') {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
                 return await showCategoriesPanel(interaction);
+            }
+
+            if (interaction.customId === 'group_content_return') {
+                if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
+                const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                const container = {
+                    type: 17,
+                    accent_color: 0xc773ff,
+                    components: [
+                        {
+                            type: 12,
+                            items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }]
+                        },
+                        {
+                            type: 9,
+                            components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\nEscolha o que deseja gerenciar:` }]
+                        },
+                        { type: 14 },
+                        {
+                            type: 1,
+                            components: [
+                                { type: 2, style: 2, label: 'Categorias', custom_id: 'manage_categories' },
+                                { type: 2, style: 2, label: 'Texturas', custom_id: 'manage_textures' },
+                                { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }
+                            ]
+                        }
+                    ]
+                };
+                return await interaction.editReply({ components: [container], flags: 32768 });
+            }
+
+            if (interaction.customId === 'group_keys_return') {
+                if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
+                const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                const container = {
+                    type: 17,
+                    accent_color: 0xc773ff,
+                    components: [
+                        {
+                            type: 12,
+                            items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }]
+                        },
+                        {
+                            type: 9,
+                            components: [{ type: 10, content: `## KEYS E USUÁRIOS\nGerenciamento de acessos e permissões:` }]
+                        },
+                        { type: 14 },
+                        {
+                            type: 1,
+                            components: [
+                                { type: 2, style: 2, label: 'Gerar Key', custom_id: 'generate_key' },
+                                { type: 2, style: 2, label: 'Listar Keys', custom_id: 'list_keys' },
+                                { type: 2, style: 2, label: 'Usuários/Blacklist', custom_id: 'manage_users' },
+                                { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }
+                            ]
+                        }
+                    ]
+                };
+                return await interaction.editReply({ components: [container], flags: 32768 });
             }
 
 
@@ -1043,8 +1095,7 @@ async function interactionHandler(interaction) {
                         components: [{
                             type: 10,
                             content: `## ${userData.is_blacklisted ? '🚫 USUÁRIO BANIDO' : '✅ BAN REMOVIDO'}\n> **Discord:** ${userData.discord_tag || 'Não vinculado'}\n> **HWID:** \`${userData.hwid}\`\n> **Status:** ${userData.is_blacklisted ? '**BANIDO**' : 'Ativo'}`
-                        }],
-                        accessory: { type: 11, media: { url: serverIcon } }
+                        }]
                     }]
                 };
 
@@ -1076,8 +1127,7 @@ async function interactionHandler(interaction) {
                         accent_color: 0x00ff88,
                         components: [{
                             type: 9,
-                            components: [{ type: 10, content: `## ✅ CATEGORIA REMOVIDA\n> A categoria **${catName}** foi removida.\n> Texturas associadas foram movidas para 'Geral'.` }],
-                            accessory: { type: 11, media: { url: serverIcon } }
+                            components: [{ type: 10, content: `## ✅ CATEGORIA REMOVIDA\n> A categoria **${catName}** foi removida.\n> Texturas associadas foram movidas para 'Geral'.` }]
                         }]
                     };
                     await interaction.followUp({ components: [successContainer], flags: 64 + 32768 });
@@ -1095,8 +1145,7 @@ async function interactionHandler(interaction) {
                         accent_color: 0x00ff88,
                         components: [{
                             type: 9,
-                            components: [{ type: 10, content: '## ✅ ATUALIZADO\n> Todas as texturas foram marcadas como **Atualizadas**.' }],
-                            accessory: { type: 11, media: { url: serverIcon } }
+                            components: [{ type: 10, content: '## ✅ ATUALIZADO\n> Todas as texturas foram marcadas como **Atualizadas**.' }]
                         }]
                     };
                     return await interaction.update({ components: [ok], flags: 64 + 32768 });
@@ -1109,8 +1158,7 @@ async function interactionHandler(interaction) {
                         accent_color: 0xff0000,
                         components: [{
                             type: 9,
-                            components: [{ type: 10, content: '## ❌ DESATUALIZADO\n> Todas as texturas foram marcadas como **Desatualizadas**.' }],
-                            accessory: { type: 11, media: { url: serverIcon } }
+                            components: [{ type: 10, content: '## ❌ DESATUALIZADO\n> Todas as texturas foram marcadas como **Desatualizadas**.' }]
                         }]
                     };
                     return await interaction.update({ components: [ok], flags: 64 + 32768 });
@@ -1125,8 +1173,7 @@ async function interactionHandler(interaction) {
                             accent_color: 0xff0000,
                             components: [{
                                 type: 9,
-                                components: [{ type: 10, content: '## ❌ ERRO\n> Nenhuma categoria encontrada.' }],
-                                accessory: { type: 11, media: { url: serverIcon } }
+                                components: [{ type: 10, content: '## ❌ ERRO\n> Nenhuma categoria encontrada.' }]
                             }]
                         };
                         return await interaction.update({ components: [err], flags: 64 + 32768 });
@@ -1138,8 +1185,7 @@ async function interactionHandler(interaction) {
                         components: [
                             {
                                 type: 9,
-                                components: [{ type: 10, content: '## ✅ ATUALIZAR CATEGORIA\n> Escolha uma ou mais categorias para marcar como **Atualizadas**.' }],
-                                accessory: { type: 11, media: { url: serverIcon } }
+                                components: [{ type: 10, content: '## ✅ ATUALIZAR CATEGORIA\n> Escolha uma ou mais categorias para marcar como **Atualizadas**.' }]
                             },
                             {
                                 type: 1,
@@ -1168,8 +1214,7 @@ async function interactionHandler(interaction) {
                             accent_color: 0xff0000,
                             components: [{
                                 type: 9,
-                                components: [{ type: 10, content: '## ❌ ERRO\n> Nenhuma categoria encontrada.' }],
-                                accessory: { type: 11, media: { url: serverIcon } }
+                                components: [{ type: 10, content: '## ❌ ERRO\n> Nenhuma categoria encontrada.' }]
                             }]
                         };
                         return await interaction.update({ components: [err], flags: 64 + 32768 });
@@ -1181,8 +1226,7 @@ async function interactionHandler(interaction) {
                         components: [
                             {
                                 type: 9,
-                                components: [{ type: 10, content: '## ❌ DESATUALIZAR CATEGORIA\n> Escolha uma ou mais categorias para marcar como **Desatualizadas**.' }],
-                                accessory: { type: 11, media: { url: serverIcon } }
+                                components: [{ type: 10, content: '## ❌ DESATUALIZAR CATEGORIA\n> Escolha uma ou mais categorias para marcar como **Desatualizadas**.' }]
                             },
                             {
                                 type: 1,
@@ -1212,8 +1256,7 @@ async function interactionHandler(interaction) {
                     accent_color: 0x00ff88,
                     components: [{
                         type: 9,
-                        components: [{ type: 10, content: `## ✅ ATUALIZADO\n> Categorias marcadas como **Atualizadas**:\n\n${selected.map(c => `> - ${c}`).join('\n')}` }],
-                        accessory: { type: 11, media: { url: serverIcon } }
+                        components: [{ type: 10, content: `## ✅ ATUALIZADO\n> Categorias marcadas como **Atualizadas**:\n\n${selected.map(c => `> - ${c}`).join('\n')}` }]
                     }]
                 };
                 return await interaction.update({ components: [ok], flags: 64 + 32768 });
@@ -1228,8 +1271,7 @@ async function interactionHandler(interaction) {
                     accent_color: 0xff0000,
                     components: [{
                         type: 9,
-                        components: [{ type: 10, content: `## ❌ DESATUALIZADO\n> Categorias marcadas como **Desatualizadas**:\n\n${selected.map(c => `> - ${c}`).join('\n')}` }],
-                        accessory: { type: 11, media: { url: serverIcon } }
+                        components: [{ type: 10, content: `## ❌ DESATUALIZADO\n> Categorias marcadas como **Desatualizadas**:\n\n${selected.map(c => `> - ${c}`).join('\n')}` }]
                     }]
                 };
                 return await interaction.update({ components: [ok], flags: 64 + 32768 });
@@ -1611,8 +1653,7 @@ async function interactionHandler(interaction) {
                         accent_color: 0xff0000,
                         components: [{
                             type: 9,
-                            components: [{ type: 10, content: `## ❌ SEM RESULTADOS\n> Nenhum usuário encontrado para **${term}**.` }],
-                            accessory: { type: 11, media: { url: serverIcon } }
+                            components: [{ type: 10, content: `## ❌ SEM RESULTADOS\n> Nenhum usuário encontrado para **${term}**.` }]
                         }, {
                             type: 1,
                             components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_users' }]
@@ -1627,8 +1668,7 @@ async function interactionHandler(interaction) {
                     components: [
                         {
                             type: 9,
-                            components: [{ type: 10, content: `## 🔍 RESULTADOS DA PESQUISA\n> Termo: **${term}**\n> Foram encontrados **${results.length}** usuários.` }],
-                            accessory: { type: 11, media: { url: serverIcon } }
+                            components: [{ type: 10, content: `## 🔍 RESULTADOS DA PESQUISA\n> Termo: **${term}**\n> Foram encontrados **${results.length}** usuários.` }]
                         },
                         {
                             type: 1,
@@ -1688,8 +1728,7 @@ async function interactionHandler(interaction) {
                         components: [{
                             type: 10,
                             content: `## ✅ KEY GERADA!\n> **Key:** \`${key}\`\n> **Tipo:** \`${type}\`${value !== 'all' && value !== 'standard' ? ` (\`${value}\`)` : ''}\n> **Duração:** \`${duration}\`\n\nAcesse o encurtador para liberar o acesso.`
-                        }],
-                        accessory: { type: 11, media: { url: serverIcon } }
+                        }]
                     }]
                 };
 
@@ -1719,8 +1758,7 @@ async function interactionHandler(interaction) {
             accent_color: 0xff0000,
             components: [{
                 type: 9,
-                components: [{ type: 10, content: `## ❌ ERRO INTERNO\n> Houve um problema ao processar seu comando.\n> -# Erro: \`${error.message || 'Desconhecido'}\`` }],
-                accessory: { type: 11, media: { url: serverIcon } }
+                components: [{ type: 10, content: `## ❌ ERRO INTERNO\n> Houve um problema ao processar seu comando.\n> -# Erro: \`${error.message || 'Desconhecido'}\`` }]
             }]
         };
 
@@ -1745,13 +1783,16 @@ async function showKeysList(interaction) {
             accent_color: 0xc773ff,
             components: [
                 {
+                    type: 12,
+                    items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }]
+                },
+                {
                     type: 9,
-                    components: [{ type: 10, content: `## 📋 LISTA DE KEYS\n> ❌ Nenhuma chave gerada até o momento.` }],
-                    accessory: { type: 11, media: { url: serverIcon } }
+                    components: [{ type: 10, content: `## LISTA DE KEYS\n> Nenhuma chave gerada até o momento.` }]
                 },
                 {
                     type: 1,
-                    components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main', emoji: { name: '⬅️' } }]
+                    components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'group_keys_return' }]
                 }
             ]
         };
@@ -1763,9 +1804,12 @@ async function showKeysList(interaction) {
         accent_color: 0xc773ff,
         components: [
             {
+                type: 12,
+                items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }]
+            },
+            {
                 type: 9,
-                components: [{ type: 10, content: `## 📋 LISTA DE KEYS\n> Selecione uma chave abaixo para gerenciar.` }],
-                accessory: { type: 11, media: { url: serverIcon } }
+                components: [{ type: 10, content: `## LISTA DE KEYS\n> Selecione uma chave abaixo para gerenciar.` }]
             },
             {
                 type: 1,
@@ -1783,7 +1827,6 @@ async function showKeysList(interaction) {
                                 label: k.key.replace('BOLT-', ''),
                                 description: `Exp: ${k.duration} | ${accessLabel}${pVal} | ${k.is_used ? 'USADA' : 'SOLTA'}`,
                                 value: k.id.toString(),
-                                emoji: { name: k.is_used ? '🔴' : '🟢' }
                             };
                         })
                     }
@@ -1793,7 +1836,7 @@ async function showKeysList(interaction) {
                 type: 1,
                 components: [
                     { type: 2, style: 2, label: 'Atualizar', custom_id: 'list_keys_back', },
-                    { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main', }
+                    { type: 2, style: 2, label: 'Voltar', custom_id: 'group_keys_return', }
                 ]
             }
         ]
@@ -1817,30 +1860,29 @@ async function showCategoriesPanel(interaction) {
         type: 17,
         accent_color: 0xc773ff,
         components: [
-            // Cabeçalho
+            {
+                type: 12,
+                items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }]
+            },
             {
                 type: 9,
-                components: [{ type: 10, content: `## 🏷️ GESTÃO DE CATEGORIAS\n> Liste, crie ou remova categorias para organizar suas texturas.` }],
-                accessory: { type: 11, media: { url: serverIcon } }
+                components: [{ type: 10, content: `## GESTÃO DE CATEGORIAS\nOrganize suas texturas por categorias:` }]
             },
-            { type: 14 }, // SEPARADOR 1
-
-            // Lista de Categorias
+            { type: 14 },
             {
                 type: 10,
                 content: categories && categories.length > 0
-                    ? `### 📋 Categorias cadastradas:\n` + categories.map(c => `- \`${c.name}\`${c.description ? ` (${c.description})` : ''}`).join('\n')
-                    : `### 📋 Categorias cadastradas:\n> *- Nenhuma categoria cadastrada.*`
+                    ? `### Categorias cadastradas:\n` + categories.map(c => `- \`${c.name}\`${c.description ? ` (${c.description})` : ''}`).join('\n')
+                    : `### Categorias cadastradas:\n> *- Nenhuma categoria cadastrada.*`
             },
-            { type: 14 }, // SEPARADOR 2
+            { type: 14 },
 
-            // Botões de Ação
             {
                 type: 1,
                 components: [
                     { type: 2, style: 2, label: 'Criar', custom_id: 'create_category' },
                     { type: 2, style: 2, label: 'Remover', custom_id: 'remove_category_btn' },
-                    { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }
+                    { type: 2, style: 2, label: 'Voltar', custom_id: 'group_content_return' }
                 ]
             }
         ]
@@ -1862,16 +1904,19 @@ async function showUsersPanel(interaction) {
         accent_color: 0xc773ff,
         components: [
             {
+                type: 12,
+                items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }]
+            },
+            {
                 type: 9,
-                components: [{ type: 10, content: `## 👥 GESTÃO DE USUÁRIOS\n> Gerencie usuários, visualize informações e controle a blacklist.` }],
-                accessory: { type: 11, media: { url: serverIcon } }
+                components: [{ type: 10, content: `## GESTÃO DE USUÁRIOS\nGerencie usuários, visualize informações e controle a blacklist.` }]
             },
             { type: 14 },
             {
                 type: 10,
                 content: users && users.length > 0
-                    ? `### 📊 Total de usuários: **${users.length}**\n> Selecione um usuário abaixo ou use a pesquisa.`
-                    : `### 📊 Nenhum usuário registrado ainda.`
+                    ? `### Total de usuários: **${users.length}**\n> Selecione um usuário abaixo ou use a pesquisa.`
+                    : `### Nenhum usuário registrado ainda.`
             },
             { type: 14 }
         ]
@@ -1886,9 +1931,8 @@ async function showUsersPanel(interaction) {
                 placeholder: 'Selecione um usuário...',
                 options: users.map(u => ({
                     label: u.discord_tag || `HWID: ${u.hwid.substring(0, 12)}...`,
-                    description: `IP: ${u.last_ip || 'N/A'} | Installs: ${u.total_installs}`,
-                    value: u.hwid,
-                    emoji: { name: u.is_blacklisted ? '🚫' : '✅' }
+                    description: `IP: ${u.last_ip || 'N/A'} | Installs: ${u.total_installs} | Status: ${u.is_blacklisted ? 'BANIDO' : 'Ativo'}`,
+                    value: u.hwid
                 }))
             }]
         });
@@ -1898,7 +1942,7 @@ async function showUsersPanel(interaction) {
         type: 1,
         components: [
             { type: 2, style: 2, label: 'Pesquisar', custom_id: 'search_user' },
-            { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }
+            { type: 2, style: 2, label: 'Voltar', custom_id: 'group_keys_return' }
         ]
     });
 

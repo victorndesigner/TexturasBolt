@@ -507,21 +507,21 @@ app.get('/api/verify-download', async (req, res) => {
     }
 });
 
-// --- TAREFA DE LIMPEZA AUTOMÁTICA EM SEGUNDO PLANO ---
+// --- TAREFA DE LIMPEZA AUTOMÁTICA EM SEGUNDO PLANO (A cada 1 minuto) ---
 setInterval(async () => {
         try {
             const now = new Date().toISOString();
             
-            // Limpar keys não usadas expiradas
-            const { data: unusedDeleted } = await supabase
+            // 1. Limpar keys NÃO USADAS que passaram do prazo de resgate
+            const { data: unusedDeleted, error: err1 } = await supabase
                 .from('keys')
                 .delete()
                 .eq('is_used', false)
                 .lt('expires_to_use_at', now)
                 .select();
 
-            // Limpar keys usadas expiradas
-            const { data: usedDeleted } = await supabase
+            // 2. Limpar keys USADAS que a sessão já expirou
+            const { data: usedDeleted, error: err2 } = await supabase
                 .from('keys')
                 .delete()
                 .eq('is_used', true)
@@ -529,20 +529,20 @@ setInterval(async () => {
                 .lt('expires_at', now)
                 .select();
 
-            // Limpar chaves que não expiram via tempo (se você quiser deletar as 'permanente' após meses, faria aqui)
-            // Por enquanto, o sistema foca em chaves com prazo.
+            if (err1) console.error('🔴 [Limpeza] Erro ao deletar keys não usadas:', err1.message);
+            if (err2) console.error('🔴 [Limpeza] Erro ao deletar keys usadas:', err2.message);
 
-            // 1. Limpar tickets de download antigos (ex: mais de 1 hora)
+            // 3. Limpar tickets de download antigos (+1 hora)
             const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
             await supabase.from('download_tickets').delete().lt('created_at', oneHourAgo);
 
-            // 2. Limpar solicitações de key antigas (tickets do site de keys)
+            // 4. Limpar solicitações de key antigas (+1 hora)
             await supabase.from('key_requests').delete().lt('created_at', oneHourAgo);
 
-            // 3. Limpar downloads pendentes na memória
+            // 5. Limpar downloads pendentes na memória (Mapa interno)
             const nowMs = Date.now();
             for (const [key, value] of pendingDownloads.entries()) {
-                if (nowMs - value.timestamp > 600000) {
+                if (nowMs - value.timestamp > 600000) { // 10 min
                     pendingDownloads.delete(key);
                 }
             }
@@ -550,9 +550,11 @@ setInterval(async () => {
             const u = unusedDeleted?.length || 0;
             const s = usedDeleted?.length || 0;
             if (u + s > 0) {
-                console.log(`🧹 [Limpeza] Foram removidas ${u + s} chaves (Resgate: ${u} | Sessão: ${s})`);
+                console.log(`🧹 [Limpeza] Sucesso: Removidas ${u + s} chaves expiradas (Resgate: ${u} | Sessão: ${s})`);
             }
-        } catch (e) { }
+        } catch (e) {
+            console.error('🔴 [Limpeza] Erro crítico na tarefa de background:', e);
+        }
     }, 60000);
 
 // Evento Ready

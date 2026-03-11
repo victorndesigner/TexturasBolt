@@ -49,12 +49,16 @@ async function interactionHandler(interaction) {
         } else if (interaction.isButton() || interaction.isStringSelectMenu()) {
             const cid = interaction.customId || '';
             const val = interaction.values?.[0] || '';
-            const trigger = val || cid;
             
-            const modalTriggers = ['group_style', 'group_links', 'group_system', 'manage_original_links', 'create_category', 'edit_category_select', 'create_texture', 'texture_manage_select', 'manage_time', 'manage_use_deadline', 'manage_folder', 'manage_profile_global', 'gen_key_type_select', 'gen_key_category_select', 'gen_key_texture_select'];
-            const isModal = modalTriggers.some(mt => trigger === mt || trigger.startsWith(mt));
+            const modalTriggers = ['group_style', 'group_links', 'group_system', 'manage_original_links', 'create_category', 'create_texture', 'manage_time', 'manage_use_deadline', 'manage_folder', 'manage_profile_global'];
+            let shouldShowModal = modalTriggers.some(mt => cid === mt || cid.startsWith(mt));
+
+            // Casos especiais de Selects que abrem modais dependendo do valor
+            if (cid === 'gen_key_type_select' && (val === 'standard' || val === 'all')) shouldShowModal = true;
+            if (cid === 'gen_key_category_select' || cid === 'gen_key_texture_select') shouldShowModal = true;
+            if (cid === 'edit_category_select' || cid === 'texture_manage_select') shouldShowModal = true;
             
-            if (!isModal) {
+            if (!shouldShowModal) {
                 try { await interaction.deferUpdate(); } catch (e) { console.error('Defer Error:', e); }
             }
         }
@@ -175,8 +179,10 @@ async function interactionHandler(interaction) {
                 if (type === 'category') {
                     const { data: cats } = await supabase.from('categories').select('*');
                     const container = { type: 17, accent_color: 0xc773ff, components: [
-                        { type: 9, components: [{ type: 10, content: `## 🏷️ SELECIONE A CATEGORIA` }], accessory: { type: 11, media: { url: serverIcon } } },
-                        { type: 1, components: [{ type: 3, custom_id: 'gen_key_category_select', options: (cats || []).map(c => ({ label: c.name, value: c.name })) }] },
+                        { type: 9, components: [{ type: 10, content: `## 🏷️ SELECIONE A CATEGORIA\n> Escolha para qual categoria deseja gerar o acesso premium.` }], accessory: { type: 11, media: { url: serverIcon } } },
+                        { type: 14 },
+                        { type: 1, components: [{ type: 3, custom_id: 'gen_key_category_select', placeholder: 'Selecione uma categoria...', options: (cats || []).map(c => ({ label: c.name, value: c.name })) }] },
+                        { type: 14 },
                         { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'generate_key' }] }
                     ]};
                     return await interaction.editReply({ components: [container], flags: 32768 });
@@ -184,8 +190,10 @@ async function interactionHandler(interaction) {
                 if (type === 'texture') {
                     const { data: texs } = await supabase.from('textures').select('*');
                     const container = { type: 17, accent_color: 0xc773ff, components: [
-                        { type: 9, components: [{ type: 10, content: `## 🎨 SELECIONE A TEXTURA` }], accessory: { type: 11, media: { url: serverIcon } } },
-                        { type: 1, components: [{ type: 3, custom_id: 'gen_key_texture_select', options: (texs || []).map(t => ({ label: t.name, value: t.id })) }] },
+                        { type: 9, components: [{ type: 10, content: `## 🎨 SELECIONE A TEXTURA\n> Escolha para qual textura específica deseja gerar o acesso.` }], accessory: { type: 11, media: { url: serverIcon } } },
+                        { type: 14 },
+                        { type: 1, components: [{ type: 3, custom_id: 'gen_key_texture_select', placeholder: 'Selecione uma textura...', options: (texs || []).slice(0, 25).map(t => ({ label: t.name, value: t.id })) }] },
+                        { type: 14 },
                         { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'generate_key' }] }
                     ]};
                     return await interaction.editReply({ components: [container], flags: 32768 });
@@ -242,8 +250,27 @@ async function interactionHandler(interaction) {
             if (cid === 'manage_keys_select') {
                 const { data: k } = await supabase.from('keys').select('*').eq('id', interaction.values[0]).maybeSingle();
                 if (!k) return;
+
+                const createdAt = k.created_at ? `<t:${Math.floor(new Date(k.created_at).getTime() / 1000)}:f>` : '`N/A`';
+                const expiresToUse = k.expires_to_use_at ? `<t:${Math.floor(new Date(k.expires_to_use_at).getTime() / 1000)}:f>` : '`N/A`';
+                const expiresAt = k.expires_at ? `<t:${Math.floor(new Date(k.expires_at).getTime() / 1000)}:f>` : (k.duration === 'permanente' ? '`Nunca`' : '`N/A`');
+                
+                const details = [
+                    `## 🔑 DETALHES DA KEY`,
+                    `> **Key:** \`${k.key}\``,
+                    `> **Tipo:** \`${k.permissions_type || 'standard'}\` (\`${k.permissions_value || 'all'}\`)`,
+                    `> **Duração:** \`${k.duration}\``,
+                    `> **Status:** ${k.is_used ? '🔴 Resgatada' : '🟢 Disponível'}`,
+                    `> **Gerada por:** <@${k.generated_by}> (\`${k.generated_by_tag || 'N/A'}\`)`,
+                    `> **Criada em:** ${createdAt}`,
+                    k.is_used ? `> **Usada por (HWID):** \`${k.used_by || 'N/A'}\`` : `> **Prazo para Resgate:** ${expiresToUse}`,
+                    k.is_used ? `> **Expira em:** ${expiresAt}` : '',
+                    k.generated_ip ? `> **IP do Gerador:** \`${k.generated_ip}\`` : ''
+                ].filter(line => line !== '').join('\n');
+
                 const container = { type: 17, accent_color: 0xc773ff, components: [
-                    { type: 9, components: [{ type: 10, content: `## 🔑 DETALHES DA KEY\n> **Key:** \`${k.key}\`\n> **Duração:** \`${k.duration}\`\n> **Resgate:** ${k.is_used ? '✅ Sim' : '⏳ Não'}` }], accessory: { type: 11, media: { url: serverIcon } } },
+                    { type: 9, components: [{ type: 10, content: details }], accessory: { type: 11, media: { url: serverIcon } } },
+                    { type: 14 },
                     { type: 1, components: [{ type: 2, style: 4, label: 'Excluir', custom_id: `delete_key_${k.id}` }, { type: 2, style: 2, label: 'Voltar', custom_id: 'list_keys' }] }
                 ]};
                 return await interaction.editReply({ components: [container], flags: 32768 });
@@ -286,7 +313,7 @@ async function interactionHandler(interaction) {
             }
             if (cid === 'edit_category_btn') {
                 const { data: cats } = await supabase.from('categories').select('*');
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0xc773ff, components: [{ type: 9, components: [{ type: 10, content: `## 📝 EDITAR CATEGORIA` }], accessory: { type: 11, media: { url: serverIcon } } }, { type: 1, components: [{ type: 3, custom_id: 'edit_category_select', options: (cats || []).map(c => ({ label: c.name, value: c.id })) }] }, { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_categories' }] }] }], flags: 32768 });
+                return await interaction.editReply({ components: [{ type: 17, accent_color: 0xc773ff, components: [{ type: 9, components: [{ type: 10, content: `## 📝 EDITAR CATEGORIA\n> Selecione a categoria que deseja modificar.` }], accessory: { type: 11, media: { url: serverIcon } } }, { type: 14 }, { type: 1, components: [{ type: 3, custom_id: 'edit_category_select', placeholder: 'Selecione uma categoria...', options: (cats || []).map(c => ({ label: c.name, value: c.id })) }] }, { type: 14 }, { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_categories' }] }] }], flags: 32768 });
             }
             if (cid === 'create_texture') {
                 const modal = new ModalBuilder().setCustomId('modal_create_texture').setTitle('Nova Textura');
@@ -300,15 +327,15 @@ async function interactionHandler(interaction) {
             }
             if (cid === 'edit_texture_btn') {
                 const { data: texs } = await supabase.from('textures').select('*');
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0xc773ff, components: [{ type: 9, components: [{ type: 10, content: `## 🎨 EDITAR TEXTURA` }], accessory: { type: 11, media: { url: serverIcon } } }, { type: 1, components: [{ type: 3, custom_id: 'texture_manage_select', options: (texs || []).map(t => ({ label: t.name, value: t.id })) }] }, { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_textures' }] }] }], flags: 32768 });
+                return await interaction.editReply({ components: [{ type: 17, accent_color: 0xc773ff, components: [{ type: 9, components: [{ type: 10, content: `## 🎨 EDITAR TEXTURA\n> Selecione a textura que deseja modificar.` }], accessory: { type: 11, media: { url: serverIcon } } }, { type: 14 }, { type: 1, components: [{ type: 3, custom_id: 'texture_manage_select', placeholder: 'Selecione uma textura...', options: (texs || []).slice(0, 25).map(t => ({ label: t.name, value: t.id })) }] }, { type: 14 }, { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_textures' }] }] }], flags: 32768 });
             }
             if (cid === 'remove_texture_btn') {
                 const { data: texs } = await supabase.from('textures').select('*');
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0xff4444, components: [{ type: 9, components: [{ type: 10, content: `## 🗑️ REMOVER TEXTURA` }], accessory: { type: 11, media: { url: serverIcon } } }, { type: 1, components: [{ type: 3, custom_id: 'remove_texture_select', options: (texs || []).map(t => ({ label: t.name, value: t.id })) }] }, { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_textures' }] }] }], flags: 32768 });
+                return await interaction.editReply({ components: [{ type: 17, accent_color: 0xff4444, components: [{ type: 9, components: [{ type: 10, content: `## 🗑️ REMOVER TEXTURA\n> Cuidado: Esta ação é irreversível!` }], accessory: { type: 11, media: { url: serverIcon } } }, { type: 14 }, { type: 1, components: [{ type: 3, custom_id: 'remove_texture_select', placeholder: 'Selecione uma textura para excluir...', options: (texs || []).slice(0, 25).map(t => ({ label: t.name, value: t.id })) }] }, { type: 14 }, { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_textures' }] }] }], flags: 32768 });
             }
             if (cid === 'remove_category_btn') {
                 const { data: cats } = await supabase.from('categories').select('*');
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0xff4444, components: [{ type: 9, components: [{ type: 10, content: `## 🗑️ REMOVER CATEGORIA` }], accessory: { type: 11, media: { url: serverIcon } } }, { type: 1, components: [{ type: 3, custom_id: 'remove_category_select', options: (cats || []).map(c => ({ label: c.name, value: c.id })) }] }, { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_categories' }] }] }], flags: 32768 });
+                return await interaction.editReply({ components: [{ type: 17, accent_color: 0xff4444, components: [{ type: 9, components: [{ type: 10, content: `## 🗑️ REMOVER CATEGORIA\n> Cuidado: Remover uma categoria não apaga as texturas dela, mas elas ficarão sem categoria vinculada.` }], accessory: { type: 11, media: { url: serverIcon } } }, { type: 14 }, { type: 1, components: [{ type: 3, custom_id: 'remove_category_select', placeholder: 'Selecione uma categoria para excluir...', options: (cats || []).map(c => ({ label: c.name, value: c.id })) }] }, { type: 14 }, { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_categories' }] }] }], flags: 32768 });
             }
             if (cid === 'manage_categories') return await showCategoriesPanel(interaction);
             if (cid === 'manage_textures') {
@@ -460,10 +487,11 @@ async function showCategoriesPanel(interaction) {
 
 async function showUsersPanel(interaction) {
     const { data: users } = await supabase.from('users').select('*').limit(20);
+    const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
     const container = { type: 17, accent_color: 0xc773ff, components: [
-        { type: 10, content: `## GESTÃO DE USUÁRIOS` },
+        { type: 9, components: [{ type: 10, content: `## 👤 GESTÃO DE USUÁRIOS\n> Visualize e gerencie os usuários vinculados ao sistema.` }], accessory: { type: 11, media: { url: serverIcon } } },
         { type: 14 },
-        { type: 1, components: [{ type: 3, custom_id: 'select_user', options: (users || []).map(u => ({ label: `HWID: ${u.hwid.substring(0,10)}...`, value: u.id })) }] },
+        { type: 1, components: [{ type: 3, custom_id: 'select_user', placeholder: 'Selecione um usuário para gerenciar...', options: (users || []).map(u => ({ label: `${u.discord_tag || 'Unknown'} (HWID: ${u.hwid.substring(0,6)}...)`, value: u.id })) }] },
         { type: 14 },
         { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'group_keys_return' }] }
     ]};
@@ -471,13 +499,14 @@ async function showUsersPanel(interaction) {
 }
 
 async function showKeysList(interaction) {
-    const { data: keys } = await supabase.from('keys').select('*').limit(24);
+    const { data: keys } = await supabase.from('keys').select('*').order('created_at', { ascending: false }).limit(24);
     const used = keys?.filter(k => k.is_used).length || 0;
     const fresh = keys?.filter(k => !k.is_used).length || 0;
+    const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
     const container = { type: 17, accent_color: 0xc773ff, components: [
-        { type: 10, content: `## LISTA DE KEYS\n> **Uso:** 🔴 \`${used}\` Usadas | 🟢 \`${fresh}\` Livres` },
+        { type: 9, components: [{ type: 10, content: `## 📋 LISTA DE KEYS\n> **Uso:** 🔴 \`${used}\` Usadas | 🟢 \`${fresh}\` Livres\n> Selecione uma key para ver detalhes completos.` }], accessory: { type: 11, media: { url: serverIcon } } },
         { type: 14 },
-        { type: 1, components: [{ type: 3, custom_id: 'manage_keys_select', options: (keys || []).map(k => ({ label: k.key, value: k.id, emoji: { name: k.is_used ? '🔴' : '🟢' } })) }] },
+        { type: 1, components: [{ type: 3, custom_id: 'manage_keys_select', placeholder: 'Selecione uma key...', options: (keys || []).map(k => ({ label: k.key, value: k.id, emoji: { name: k.is_used ? '🔴' : '🟢' } })) }] },
         { type: 14 },
         { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'group_keys_return' }] }
     ]};

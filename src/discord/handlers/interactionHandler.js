@@ -245,7 +245,8 @@ async function interactionHandler(interaction) {
                             },
                             {
                                 type: 9,
-                                components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\nEscolha o que deseja gerenciar:` }]
+                                components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\nEscolha o que deseja gerenciar:` }],
+                                accessory: { type: 11, media: { url: serverIcon } }
                             },
                             { type: 14 },
                             {
@@ -273,7 +274,8 @@ async function interactionHandler(interaction) {
                             },
                             {
                                 type: 9,
-                                components: [{ type: 10, content: `## KEYS E USUÁRIOS\nGerenciamento de acessos e permissões:` }]
+                                components: [{ type: 10, content: `## KEYS E USUÁRIOS\nGerenciamento de acessos e permissões:` }],
+                                accessory: { type: 11, media: { url: serverIcon } }
                             },
                             { type: 14 },
                             {
@@ -331,7 +333,8 @@ async function interactionHandler(interaction) {
                         components: [
                             {
                                 type: 9,
-                                components: [{ type: 10, content: `## 🔑 GERAR KEY\n> Selecione o tipo de permissão para a nova chave:` }]
+                                components: [{ type: 10, content: `## 🔑 GERAR KEY\n> Selecione o tipo de permissão para a nova chave:` }],
+                                accessory: { type: 11, media: { url: serverIcon } }
                             },
                             { type: 14 }, // SEPARADOR (AGORA NO LUGAR CERTO)
                             {
@@ -397,7 +400,8 @@ async function interactionHandler(interaction) {
                                 components: [{
                                     type: 10,
                                     content: `## 🖼️ FOTO DE PERFIL GLOBAL\n> Aguardando sua imagem no chat...\n\nVocê tem **30 segundos** para enviar uma foto ou um link de imagem no chat para definir como o perfil padrão no App.`
-                                }]
+                                }],
+                                accessory: { type: 11, media: { url: serverIcon } }
                             }
                         ]
                     };
@@ -498,7 +502,8 @@ async function interactionHandler(interaction) {
                             components: [{
                                 type: 10,
                                 content: `## 🔑 DETALHES DA KEY\n${timeContent}\n> **Permissão:** \`${permissionText}\``
-                            }]
+                            }],
+                            accessory: { type: 11, media: { url: serverIcon } }
                         },
                         {
                             type: 1,
@@ -545,7 +550,8 @@ async function interactionHandler(interaction) {
                             components: [{
                                 type: 10,
                                 content: `## 👤 INFORMAÇÕES DO USUÁRIO\n> **Status:** ${userData.is_blacklisted ? '🚫 **BANIDO**' : '✅ Ativo'}\n\n**Discord:** ${userData.discord_tag || 'Não vinculado'}\n**ID:** \`${userData.discord_id || 'N/A'}\` | **HWID:** \`${userData.hwid.slice(0, 15)}...\`\n**IP:** \`${userData.last_ip || 'N/A'}\` | **Installs:** \`${userData.total_installs}\`\n**Total Chaves:** \`${totalKeys || 0}\` | **Total Downloads:** \`${totalDownloads || 0}\` \n**Criado em:** <t:${createdTs}:R>\n\n### 📋 ÚLTIMAS 10 KEYS\n${keyHistoryText}\n\n### 📥 ÚLTIMOS 10 DOWNLOADS\n${downloadHistoryText}`
-                            }]
+                            }],
+                            accessory: { type: 11, media: { url: serverIcon } }
                         },
                         { type: 14 },
                         {
@@ -582,7 +588,8 @@ async function interactionHandler(interaction) {
                             components: [{ 
                                 type: 10, 
                                 content: `## ⚙️ GERENCIAR: ${texture.name}\n> **Categoria:** \`${texture.category}\`\n> **Versão:** \`${texture.version || '1.0'}\`\n> **Status:** ${texture.is_updated ? '✅ Atualizada' : '❌ Desatualizada'}\n\nEscolha o que deseja configurar abaixo:` 
-                            }]
+                            }],
+                            accessory: { type: 11, media: { url: serverIcon } }
                         },
                         {
                             type: 1,
@@ -648,7 +655,7 @@ async function interactionHandler(interaction) {
                     const container = {
                         type: 17, accent_color: 0xc773ff,
                         components: [
-                            { type: 9, components: [{ type: 10, content: `## 🔑 GERAR POR CATEGORIA\n> Escolha a categoria:` }] },
+                            { type: 9, components: [{ type: 10, content: `## 🔑 GERAR POR CATEGORIA\n> Escolha a categoria:` }], accessory: { type: 11, media: { url: serverIcon } } },
                             {
                                 type: 1, components: [{
                                     type: 3, custom_id: 'gen_key_value_cat_select', placeholder: 'Selecione a categoria...',
@@ -665,7 +672,7 @@ async function interactionHandler(interaction) {
                     const container = {
                         type: 17, accent_color: 0xc773ff,
                         components: [
-                            { type: 9, components: [{ type: 10, content: `## 🔑 GERAR POR TEXTURA\n> Escolha a textura:` }] },
+                            { type: 9, components: [{ type: 10, content: `## 🔑 GERAR POR TEXTURA\n> Escolha a textura:` }], accessory: { type: 11, media: { url: serverIcon } } },
                             {
                                 type: 1, components: [{
                                     type: 3, custom_id: 'gen_key_value_tex_select', placeholder: 'Selecione a textura...',
@@ -721,7 +728,8 @@ async function interactionHandler(interaction) {
                     components: [
                         {
                             type: 9,
-                            components: [{ type: 10, content: `## 🔄 ATUALIZAÇÃO EM MASSA\n> Escolha uma opção para gerenciar o status de todas as texturas.` }]
+                            components: [{ type: 10, content: `## 🔄 ATUALIZAÇÃO EM MASSA\n> Escolha uma opção para gerenciar o status de todas as texturas.` }],
+                            accessory: { type: 11, media: { url: serverIcon } }
                         },
                         {
                             type: 1,
@@ -764,7 +772,8 @@ async function interactionHandler(interaction) {
                                 components: [{ 
                                     type: 10, 
                                     content: `## ⚙️ GERENCIAR: ${texture.name}\n> **Categoria:** \`${texture.category}\`\n> **Versão:** \`${texture.version || '1.0'}\`\n> **Status:** ${texture.is_updated ? '✅ Atualizada' : '❌ Desatualizada'}\n\nEscolha o que deseja configurar abaixo:` 
-                                }]
+                                }],
+                                accessory: { type: 11, media: { url: serverIcon } }
                             },
                             {
                                 type: 1,
@@ -826,7 +835,8 @@ async function interactionHandler(interaction) {
                             components: [{
                                 type: 10,
                                 content: `## ✅ KEY EXCLUÍDA COM SUCESSO!\n> A chave foi removida permanentemente do banco de dados.`
-                            }]
+                            }],
+                            accessory: { type: 11, media: { url: serverIcon } }
                         }
                     ]
                 };
@@ -911,7 +921,8 @@ async function interactionHandler(interaction) {
                                 components: [{
                                     type: 10,
                                     content: `## ❌ NENHUMA TEXTURA PARA REMOVER!\n> Não há texturas cadastradas para serem removidas.`
-                                }]
+                                }],
+                                accessory: { type: 11, media: { url: serverIcon } }
                             },
                             {
                                 type: 1,
@@ -929,7 +940,8 @@ async function interactionHandler(interaction) {
                     components: [
                         {
                             type: 9,
-                            components: [{ type: 10, content: `## 🗑️ REMOVER TEXTURA\n> Escolha uma textura abaixo para remover.` }]
+                            components: [{ type: 10, content: `## 🗑️ REMOVER TEXTURA\n> Escolha uma textura abaixo para remover.` }],
+                            accessory: { type: 11, media: { url: serverIcon } }
                         },
                         {
                             type: 1,
@@ -979,7 +991,8 @@ async function interactionHandler(interaction) {
                     components: [
                         {
                             type: 9,
-                            components: [{ type: 10, content: `## 🗑️ REMOVER CATEGORIA\n> Escolha uma categoria abaixo para remover.` }]
+                            components: [{ type: 10, content: `## 🗑️ REMOVER CATEGORIA\n> Escolha uma categoria abaixo para remover.` }],
+                            accessory: { type: 11, media: { url: serverIcon } }
                         },
                         {
                             type: 1,
@@ -1021,7 +1034,8 @@ async function interactionHandler(interaction) {
                         },
                         {
                             type: 9,
-                            components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\nEscolha o que deseja gerenciar:` }]
+                            components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\nEscolha o que deseja gerenciar:` }],
+                            accessory: { type: 11, media: { url: serverIcon } }
                         },
                         { type: 14 },
                         {
@@ -1050,7 +1064,8 @@ async function interactionHandler(interaction) {
                         },
                         {
                             type: 9,
-                            components: [{ type: 10, content: `## KEYS E USUÁRIOS\nGerenciamento de acessos e permissões:` }]
+                            components: [{ type: 10, content: `## KEYS E USUÁRIOS\nGerenciamento de acessos e permissões:` }],
+                            accessory: { type: 11, media: { url: serverIcon } }
                         },
                         { type: 14 },
                         {
@@ -1185,7 +1200,8 @@ async function interactionHandler(interaction) {
                         components: [
                             {
                                 type: 9,
-                                components: [{ type: 10, content: '## ✅ ATUALIZAR CATEGORIA\n> Escolha uma ou mais categorias para marcar como **Atualizadas**.' }]
+                                components: [{ type: 10, content: '## ✅ ATUALIZAR CATEGORIA\n> Escolha uma ou mais categorias para marcar como **Atualizadas**.' }],
+                                accessory: { type: 11, media: { url: serverIcon } }
                             },
                             {
                                 type: 1,
@@ -1226,7 +1242,8 @@ async function interactionHandler(interaction) {
                         components: [
                             {
                                 type: 9,
-                                components: [{ type: 10, content: '## ❌ DESATUALIZAR CATEGORIA\n> Escolha uma ou mais categorias para marcar como **Desatualizadas**.' }]
+                                components: [{ type: 10, content: '## ❌ DESATUALIZAR CATEGORIA\n> Escolha uma ou mais categorias para marcar como **Desatualizadas**.' }],
+                                accessory: { type: 11, media: { url: serverIcon } }
                             },
                             {
                                 type: 1,
@@ -1668,7 +1685,8 @@ async function interactionHandler(interaction) {
                     components: [
                         {
                             type: 9,
-                            components: [{ type: 10, content: `## 🔍 RESULTADOS DA PESQUISA\n> Termo: **${term}**\n> Foram encontrados **${results.length}** usuários.` }]
+                            components: [{ type: 10, content: `## 🔍 RESULTADOS DA PESQUISA\n> Termo: **${term}**\n> Foram encontrados **${results.length}** usuários.` }],
+                            accessory: { type: 11, media: { url: serverIcon } }
                         },
                         {
                             type: 1,
@@ -1788,7 +1806,8 @@ async function showKeysList(interaction) {
                 },
                 {
                     type: 9,
-                    components: [{ type: 10, content: `## LISTA DE KEYS\n> Nenhuma chave gerada até o momento.` }]
+                    components: [{ type: 10, content: `## LISTA DE KEYS\n> Nenhuma chave gerada até o momento.` }],
+                    accessory: { type: 11, media: { url: serverIcon } }
                 },
                 {
                     type: 1,
@@ -1809,7 +1828,8 @@ async function showKeysList(interaction) {
             },
             {
                 type: 9,
-                components: [{ type: 10, content: `## LISTA DE KEYS\n> Selecione uma chave abaixo para gerenciar.` }]
+                components: [{ type: 10, content: `## LISTA DE KEYS\n> Selecione uma chave abaixo para gerenciar.` }],
+                accessory: { type: 11, media: { url: serverIcon } }
             },
             {
                 type: 1,
@@ -1866,7 +1886,8 @@ async function showCategoriesPanel(interaction) {
             },
             {
                 type: 9,
-                components: [{ type: 10, content: `## GESTÃO DE CATEGORIAS\nOrganize suas texturas por categorias:` }]
+                components: [{ type: 10, content: `## GESTÃO DE CATEGORIAS\nOrganize suas texturas por categorias:` }],
+                accessory: { type: 11, media: { url: serverIcon } }
             },
             { type: 14 },
             {
@@ -1909,7 +1930,8 @@ async function showUsersPanel(interaction) {
             },
             {
                 type: 9,
-                components: [{ type: 10, content: `## GESTÃO DE USUÁRIOS\nGerencie usuários, visualize informações e controle a blacklist.` }]
+                components: [{ type: 10, content: `## GESTÃO DE USUÁRIOS\nGerencie usuários, visualize informações e controle a blacklist.` }],
+                accessory: { type: 11, media: { url: serverIcon } }
             },
             { type: 14 },
             {

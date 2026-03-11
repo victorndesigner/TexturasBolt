@@ -21,7 +21,8 @@ async function setupKeysPanel(interaction) {
                     components: [{ 
                         type: 10, 
                         content: `## 🚫 ACESSO RESTRITO\n> Este comando é exclusivo para a administração.\n> Para gerar suas chaves, utilize o **Painel de key no servidor oficial do bolttexturas**.` 
-                    }]
+                    }],
+                            accessory: { type: 11, media: { url: typeof serverIcon !== "undefined" ? serverIcon : (typeof guildIcon !== "undefined" ? guildIcon : "https://cdn.discordapp.com/embed/avatars/0.png") } }
                 },
                 { type: 14 },
                 {
@@ -54,7 +55,8 @@ async function setupKeysPanel(interaction) {
                         components: [
                             {
                                 type: 10, // TEXT DISPLAY
-                                content: `## 🔑 Key Textura [v1.0]\n> Para continuar, clique no botão abaixo e gere seu acesso às texturas.\n> -# Esse processo é necessário para a chave de acesso ao sistema.`
+                                content: `## 🔑 Key Textura [v1.0]\n> Para continuar, clique no botão abaixo e gere seu acesso às texturas.\n> -# Esse processo é necessário para a chave de acesso ao sistema.`,
+                            accessory: { type: 11, media: { url: typeof serverIcon !== "undefined" ? serverIcon : (typeof guildIcon !== "undefined" ? guildIcon : "https://cdn.discordapp.com/embed/avatars/0.png") } }
                             }
                         ]
                     },
@@ -146,7 +148,8 @@ async function handleKeyGeneration(interaction) {
                         type: 10,
                         content: `## 🔐 Próxima Etapa\n> Clique no link abaixo para validar seu acesso.\n> Você será redirecionado para pegar sua Key exclusiva vinculada a **${interaction.user.tag}**.`
                     }
-                ]
+                ],
+                            accessory: { type: 11, media: { url: typeof serverIcon !== "undefined" ? serverIcon : (typeof guildIcon !== "undefined" ? guildIcon : "https://cdn.discordapp.com/embed/avatars/0.png") } }
             },
             { type: 14 },
             {

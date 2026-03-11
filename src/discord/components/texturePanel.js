@@ -13,7 +13,8 @@ const createTexturePanel = (guild, textures = []) => {
                         type: 10,
                         content: `## 🎨 GERENCIAR TEXTURAS\n> ## Catálogo de Texturas bolttexturas`
                     }
-                ]
+                ],
+                            accessory: { type: 11, media: { url: typeof serverIcon !== "undefined" ? serverIcon : (typeof guildIcon !== "undefined" ? guildIcon : "https://cdn.discordapp.com/embed/avatars/0.png") } }
             },
             { type: 14 }, // SEPARATOR
             // Stats (Text Display direto)

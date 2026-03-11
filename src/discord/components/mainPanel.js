@@ -18,7 +18,8 @@ const createMainPanel = (guild, version = '1.0', keyShortener = 'Não definido',
                         type: 10,
                         content: `## 🛠️ PAINEL ADMINISTRATIVO\n> ### Sistema de Gerenciamento bolttexturas`
                     }
-                ]
+                ],
+                accessory: { type: 11, media: { url: serverIcon } }
             },
             { type: 14 },
             {

@@ -278,35 +278,8 @@ async function interactionHandler(interaction) {
                 }
 
                 if (value === 'group_keys') {
-                    const { count: keysCount } = await supabase.from('keys').select('*', { count: 'exact', head: true });
-                    const { count: blCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('is_blacklisted', true);
-                    const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
-                    const container = {
-                        type: 17,
-                        accent_color: 0xc773ff,
-                        components: [
-                            {
-                                type: 12,
-                                items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }]
-                            },
-                            {
-                                type: 9,
-                                components: [{ type: 10, content: `## KEYS E USUÁRIOS\n> Gerenciamento de acessos e permissões:\n> **Keys Geradas:** \`${keysCount || 0}\` | **Usuários na Blacklist:** \`${blCount || 0}\`` }],
-                                accessory: { type: 11, media: { url: serverIcon } }
-                            },
-                            { type: 14 },
-                            {
-                                type: 1,
-                                components: [
-                                    { type: 2, style: 2, label: 'Gerar Key', custom_id: 'generate_key' },
-                                    { type: 2, style: 2, label: 'Listar Keys', custom_id: 'list_keys' },
-                                    { type: 2, style: 2, label: 'Usuários/Blacklist', custom_id: 'manage_users' },
-                                    { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }
-                                ]
-                            }
-                        ]
-                    };
-                    return await interaction.editReply({ components: [container], flags: 32768 });
+                    if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
+                    return await showKeysAndUsersPanel(interaction);
                 }
 
                 if (value === 'manage_time') {
@@ -659,6 +632,7 @@ async function interactionHandler(interaction) {
 
             if (interaction.customId === 'gen_key_type_select') {
                 const type = interaction.values[0];
+                const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
 
                 if (type === 'standard') {
                     const modal = new ModalBuilder().setCustomId('modal_gen_key_final_standard').setTitle('Gerar Key (Padrão)');
@@ -847,8 +821,6 @@ async function interactionHandler(interaction) {
                 const keyId = interaction.customId.replace('delete_key_', '');
                 await supabase.from('keys').delete().eq('id', keyId);
 
-                const versionData = await getVersionCached();
-
                 const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
                 const successContainer = {
                     type: 17,
@@ -865,20 +837,8 @@ async function interactionHandler(interaction) {
                     ]
                 };
 
-                const panel = createMainPanel(
-                    interaction.guild,
-                    versionData?.version || undefined,
-                    versionData?.key_shortener || undefined,
-                    versionData?.default_access_time || undefined,
-                    versionData?.key_use_deadline || undefined,
-                    versionData?.target_folder_name || undefined,
-                    versionData?.stumble_guys_version || undefined,
-                    versionData?.stumble_cups_version || undefined,
-                    versionData?.update_url || undefined,
-                    versionData?.download_shortener || undefined
-                );
                 await interaction.followUp({ components: [successContainer], flags: 32768 + 64 });
-                return await interaction.editReply({ ...panel, flags: 32768 });
+                return await showKeysAndUsersPanel(interaction);
             }
 
             if (interaction.customId === 'exit_panel') {
@@ -1079,35 +1039,7 @@ async function interactionHandler(interaction) {
 
             if (interaction.customId === 'group_keys_return') {
                 if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
-                const { count: keysCount } = await supabase.from('keys').select('*', { count: 'exact', head: true });
-                const { count: blCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('is_blacklisted', true);
-                const serverIcon = interaction.guild.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
-                const container = {
-                    type: 17,
-                    accent_color: 0xc773ff,
-                    components: [
-                        {
-                            type: 12,
-                            items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }]
-                        },
-                        {
-                            type: 9,
-                            components: [{ type: 10, content: `## KEYS E USUÁRIOS\n> Gerenciamento de acessos e permissões:\n> **Keys Geradas:** \`${keysCount || 0}\` | **Usuários na Blacklist:** \`${blCount || 0}\`` }],
-                            accessory: { type: 11, media: { url: serverIcon } }
-                        },
-                        { type: 14 },
-                        {
-                            type: 1,
-                            components: [
-                                { type: 2, style: 2, label: 'Gerar Key', custom_id: 'generate_key' },
-                                { type: 2, style: 2, label: 'Listar Keys', custom_id: 'list_keys' },
-                                { type: 2, style: 2, label: 'Usuários/Blacklist', custom_id: 'manage_users' },
-                                { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }
-                            ]
-                        }
-                    ]
-                };
-                return await interaction.editReply({ components: [container], flags: 32768 });
+                return await showKeysAndUsersPanel(interaction);
             }
 
 
@@ -1181,11 +1113,7 @@ async function interactionHandler(interaction) {
                         }
                     ]
                 };
-                if (!interaction.deferred && !interaction.replied) {
-                    return await interaction.reply({ components: [container], flags: 32768 });
-                } else {
-                    return await interaction.editReply({ components: [container], flags: 32768 });
-                }
+                return await interaction.update({ components: [container], flags: 32768 });
             }
 
             if (interaction.customId === 'manage_users') {
@@ -1670,7 +1598,7 @@ async function showCategoriesPanel(interaction) {
                 type: 9,
                 components: [{ 
                     type: 10, 
-                    content: `## GESTÃO DE CATEGORIAS\n> Organize suas texturas por categorias:\n\n### Categorias cadastradas: (${catCount || 0})\n${catList}` 
+                    content: `## GESTÃO DE CATEGORIAS\n\n### Categorias cadastradas: (${catCount || 0})\n${catList}` 
                 }],
                 accessory: { type: 11, media: { url: serverIcon } }
             },

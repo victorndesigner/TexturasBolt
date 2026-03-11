@@ -28,7 +28,7 @@ async function interactionHandler(interaction) {
     const OWNER_ID = '971163830887514132';
     const isAdmin = !!interaction.member?.permissions?.has?.('Administrator');
     if (!isAdmin && interaction.user?.id !== OWNER_ID) {
-        const noPermissionContainer = { type: 17, accent_color: 0xff0000, components: [{ type: 9, components: [{ type: 10, content: `## 🚫 ACESSO NEGADO\n> Apenas administradores podem interagir com o painel.` }] }] };
+        const noPermissionContainer = { type: 17, accent_color: 0xff0000, components: [{ type: 9, components: [{ type: 10, content: `## 🚫 ACESSO NEGADO\n> Apenas administradores podem interagir com o painel.` }], accessory: { type: 11, media: { url: interaction.guild?.iconURL() || 'https://cdn.discordapp.com/embed/avatars/0.png' } } }] };
         if (interaction.isRepliable()) {
             if (interaction.deferred || interaction.replied) return await interaction.followUp({ components: [noPermissionContainer], flags: 32768 });
             else return await interaction.reply({ components: [noPermissionContainer], flags: 32768 });
@@ -43,6 +43,8 @@ async function interactionHandler(interaction) {
         _recentComponentActions.set(fp, Date.now());
     }
 
+    const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+
     // DEFER LOGIC
     if (!interaction.deferred && !interaction.replied) {
         if (interaction.isModalSubmit()) {
@@ -52,7 +54,6 @@ async function interactionHandler(interaction) {
             const val = interaction.values?.[0];
             const trigger = val || cid;
             
-            // IDs que mostram Modal NÃO podem ser deferidos
             const modalTriggers = ['group_style', 'group_links', 'group_system', 'manage_original_links', 'create_category', 'edit_category_select', 'create_texture', 'texture_manage_select', 'manage_time', 'manage_use_deadline', 'manage_folder', 'manage_profile_global'];
             const isModal = modalTriggers.some(mt => trigger === mt || trigger.startsWith(mt));
             
@@ -107,7 +108,7 @@ async function interactionHandler(interaction) {
                 const container = {
                     type: 17, accent_color: 0xc773ff, components: [
                         { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
-                        { type: 9, components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\n> Escolha o que deseja gerenciar:\n> **Categorias:** \`${catCount || 0}\` | **Texturas:** \`${texCount || 0}\`` }] },
+                        { type: 9, components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\n> Escolha o que deseja gerenciar:\n> **Categorias:** \`${catCount || 0}\` | **Texturas:** \`${texCount || 0}\`` }], accessory: { type: 11, media: { url: serverIcon } } },
                         { type: 14 },
                         { type: 1, components: [
                             { type: 2, style: 2, label: 'Categorias', custom_id: 'manage_categories' },
@@ -125,7 +126,7 @@ async function interactionHandler(interaction) {
                 const container = {
                     type: 17, accent_color: 0xc773ff, components: [
                         { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
-                        { type: 9, components: [{ type: 10, content: `## 🔑 GERAR KEY\n> Selecione o tipo de permissão para a nova chave:\n\n### 📝 Tipos Disponíveis:\n> - **Padrão:** Todas as texturas + Encurtador Obrigatório.\n> - **Acesso Total:** Todas as texturas + Download Direto.\n> - **Por Categoria:** Apenas uma categoria + Download Direto.\n> - **Por Textura:** Apenas uma textura + Download Direto.` }] },
+                        { type: 9, components: [{ type: 10, content: `## 🔑 GERAR KEY\n> Selecione o tipo de permissão para a nova chave:\n\n### 📝 Tipos Disponíveis:\n> - **Padrão:** Todas as texturas + Encurtador Obrigatório.\n> - **Acesso Total:** Todas as texturas + Download Direto.\n> - **Por Categoria:** Apenas uma categoria + Download Direto.\n> - **Por Textura:** Apenas uma textura + Download Direto.` }], accessory: { type: 11, media: { url: serverIcon } } },
                         { type: 14 },
                         { type: 1, components: [{
                             type: 3, custom_id: 'gen_key_type_select', placeholder: 'Selecione o tipo de acesso...',
@@ -167,13 +168,13 @@ async function interactionHandler(interaction) {
             if (cid === 'modal_group_style') {
                 const { data, error } = await supabase.from('versions').upsert({ global_id: 'global', profile_url: interaction.fields.getTextInputValue('profile_url_input'), default_banner_url: interaction.fields.getTextInputValue('default_banner_input') }).select().single();
                 if (!error) invalidateVersionCache(data);
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ ESTILO ATUALIZADO` }] }] }], flags: 32768 });
+                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ ESTILO ATUALIZADO` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
             }
 
             if (cid === 'modal_group_links') {
                 const { data, error } = await supabase.from('versions').upsert({ global_id: 'global', discord_url: interaction.fields.getTextInputValue('discord_url_input'), update_url: interaction.fields.getTextInputValue('update_url_input'), key_shortener: interaction.fields.getTextInputValue('key_shortener_input'), download_shortener: interaction.fields.getTextInputValue('dl_shortener_input') }).select().single();
                 if (!error) invalidateVersionCache(data);
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ LINKS ATUALIZADOS` }] }] }], flags: 32768 });
+                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ LINKS ATUALIZADOS` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
             }
 
             if (cid === 'modal_group_system') {
@@ -183,7 +184,7 @@ async function interactionHandler(interaction) {
                     global_id: 'global', version: interaction.fields.getTextInputValue('app_version_input'), stumble_guys_version: interaction.fields.getTextInputValue('sg_version_input'), stumble_cups_version: interaction.fields.getTextInputValue('sc_version_input'), target_folder_name: interaction.fields.getTextInputValue('folder_input'), default_access_time: parts[0] || '4h', key_use_deadline: parts[1] || '24h'
                 }).select().single();
                 if (!error) invalidateVersionCache(data);
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ SISTEMA ATUALIZADO` }] }] }], flags: 32768 });
+                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ SISTEMA ATUALIZADO` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
             }
 
             if (cid === 'modal_create_category') {
@@ -220,15 +221,15 @@ async function interactionHandler(interaction) {
                     const exp = dMs > 0 ? new Date(Date.now() + dMs).toISOString() : null;
                     const key = `BOLT-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
                     await supabase.from('keys').insert({ key, type: type === 'all' ? 'premium' : 'free', expires_at: exp, use_deadline: new Date(Date.now() + parseDuration(v?.key_use_deadline || '24h')).toISOString(), max_uses: 1, current_uses: 0, is_active: true });
-                    return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ KEY GERADA\n> **Key:** \`${key}\`\n> **Tipo:** \`${type === 'all' ? 'Acesso Total' : 'Padrão'}\`` }] }] }], flags: 32768 });
+                    return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ KEY GERADA\n> **Key:** \`${key}\`\n> **Tipo:** \`${type === 'all' ? 'Acesso Total' : 'Padrão'}\`` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
                 }
                 if (type === 'category') {
                     const { data: cats } = await supabase.from('categories').select('*');
-                    return await interaction.editReply({ components: [{ type: 17, accent_color: 0xc773ff, components: [{ type: 9, components: [{ type: 10, content: `## 🏷️ SELECIONE A CATEGORIA` }] }, { type: 1, components: [{ type: 3, custom_id: 'gen_key_category_select', options: (cats || []).map(c => ({ label: c.name, value: c.name })) }] }] }], flags: 32768 });
+                    return await interaction.editReply({ components: [{ type: 17, accent_color: 0xc773ff, components: [{ type: 9, components: [{ type: 10, content: `## 🏷️ SELECIONE A CATEGORIA` }], accessory: { type: 11, media: { url: serverIcon } } }, { type: 1, components: [{ type: 3, custom_id: 'gen_key_category_select', options: (cats || []).map(c => ({ label: c.name, value: c.name })) }] }] }], flags: 32768 });
                 }
                 if (type === 'texture') {
                     const { data: texs } = await supabase.from('textures').select('*');
-                    return await interaction.editReply({ components: [{ type: 17, accent_color: 0xc773ff, components: [{ type: 9, components: [{ type: 10, content: `## 🎨 SELECIONE A TEXTURA` }] }, { type: 1, components: [{ type: 3, custom_id: 'gen_key_texture_select', options: (texs || []).map(t => ({ label: t.name, value: t.name })) }] }] }], flags: 32768 });
+                    return await interaction.editReply({ components: [{ type: 17, accent_color: 0xc773ff, components: [{ type: 9, components: [{ type: 10, content: `## 🎨 SELECIONE A TEXTURA` }], accessory: { type: 11, media: { url: serverIcon } } }, { type: 1, components: [{ type: 3, custom_id: 'gen_key_texture_select', options: (texs || []).map(t => ({ label: t.name, value: t.name })) }] }] }], flags: 32768 });
                 }
             }
 
@@ -239,7 +240,7 @@ async function interactionHandler(interaction) {
                 if (cid === 'gen_key_category_select') data.allowed_category = interaction.values[0];
                 else data.allowed_texture = interaction.values[0];
                 await supabase.from('keys').insert(data);
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ KEY GERADA\n> **Key:** \`${key}\`` }] }] }], flags: 32768 });
+                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ KEY GERADA\n> **Key:** \`${key}\`` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
             }
 
             if (cid === 'texture_manage_select') {
@@ -282,7 +283,7 @@ async function interactionHandler(interaction) {
                 const { data: k } = await supabase.from('keys').select('*').eq('id', interaction.values[0]).maybeSingle();
                 if (!k) return;
                 const container = { type: 17, accent_color: 0xc773ff, components: [
-                    { type: 9, components: [{ type: 10, content: `## 🔑 DETALHES DA KEY\n> **Key:** \`${k.key}\`\n> **Expira:** \`${k.expires_at ? new Date(k.expires_at).toLocaleString() : 'Permanente'}\`` }] },
+                    { type: 9, components: [{ type: 10, content: `## 🔑 DETALHES DA KEY\n> **Key:** \`${k.key}\`\n> **Expira:** \`${k.expires_at ? new Date(k.expires_at).toLocaleString() : 'Permanente'}\`` }], accessory: { type: 11, media: { url: serverIcon } } },
                     { type: 1, components: [{ type: 2, style: 4, label: 'Excluir', custom_id: `delete_key_${k.id}` }, { type: 2, style: 2, label: 'Voltar', custom_id: 'list_keys' }] }
                 ]};
                 return await interaction.editReply({ components: [container], flags: 32768 });
@@ -292,7 +293,7 @@ async function interactionHandler(interaction) {
                 const { data: u } = await supabase.from('users').select('*').eq('id', interaction.values[0]).maybeSingle();
                 if (!u) return;
                 const container = { type: 17, accent_color: 0xc773ff, components: [
-                    { type: 9, components: [{ type: 10, content: `## 👤 USUÁRIO\n> **HWID:** \`${u.hwid}\` \n> **Status:** ${u.is_blacklisted ? '🔴 BAN' : '🟢 OK'}` }] },
+                    { type: 9, components: [{ type: 10, content: `## 👤 USUÁRIO\n> **HWID:** \`${u.hwid}\` \n> **Status:** ${u.is_blacklisted ? '🔴 BAN' : '🟢 OK'}` }], accessory: { type: 11, media: { url: serverIcon } } },
                     { type: 1, components: [{ type: 2, style: u.is_blacklisted ? 3 : 4, label: u.is_blacklisted ? 'Desbanir' : 'Banir', custom_id: `toggle_ban_${u.id}` }, { type: 2, style: 2, label: 'Voltar', custom_id: 'manage_users' }] }
                 ]};
                 return await interaction.editReply({ components: [container], flags: 32768 });
@@ -318,7 +319,7 @@ async function interactionHandler(interaction) {
             }
             if (cid === 'edit_category_btn') {
                 const { data: cats } = await supabase.from('categories').select('*');
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0xc773ff, components: [{ type: 9, components: [{ type: 10, content: `## 📝 EDITAR CATEGORIA` }] }, { type: 1, components: [{ type: 3, custom_id: 'edit_category_select', options: (cats || []).map(c => ({ label: c.name, value: c.id })) }] }, { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_categories' }] }] }], flags: 32768 });
+                return await interaction.editReply({ components: [{ type: 17, accent_color: 0xc773ff, components: [{ type: 9, components: [{ type: 10, content: `## 📝 EDITAR CATEGORIA` }], accessory: { type: 11, media: { url: serverIcon } } }, { type: 1, components: [{ type: 3, custom_id: 'edit_category_select', options: (cats || []).map(c => ({ label: c.name, value: c.id })) }] }, { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_categories' }] }] }], flags: 32768 });
             }
             if (cid === 'create_texture') {
                 const modal = new ModalBuilder().setCustomId('modal_create_texture').setTitle('Nova Textura');
@@ -332,15 +333,15 @@ async function interactionHandler(interaction) {
             }
             if (cid === 'edit_texture_btn') {
                 const { data: texs } = await supabase.from('textures').select('*');
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0xc773ff, components: [{ type: 9, components: [{ type: 10, content: `## 🎨 EDITAR TEXTURA` }] }, { type: 1, components: [{ type: 3, custom_id: 'texture_manage_select', options: (texs || []).map(t => ({ label: t.name, value: t.id })) }] }, { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_textures' }] }] }], flags: 32768 });
+                return await interaction.editReply({ components: [{ type: 17, accent_color: 0xc773ff, components: [{ type: 9, components: [{ type: 10, content: `## 🎨 EDITAR TEXTURA` }], accessory: { type: 11, media: { url: serverIcon } } }, { type: 1, components: [{ type: 3, custom_id: 'texture_manage_select', options: (texs || []).map(t => ({ label: t.name, value: t.id })) }] }, { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_textures' }] }] }], flags: 32768 });
             }
             if (cid === 'remove_texture_btn') {
                 const { data: texs } = await supabase.from('textures').select('*');
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0xff4444, components: [{ type: 9, components: [{ type: 10, content: `## 🗑️ REMOVER TEXTURA` }] }, { type: 1, components: [{ type: 3, custom_id: 'remove_texture_select', options: (texs || []).map(t => ({ label: t.name, value: t.id })) }] }, { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_textures' }] }] }], flags: 32768 });
+                return await interaction.editReply({ components: [{ type: 17, accent_color: 0xff4444, components: [{ type: 9, components: [{ type: 10, content: `## 🗑️ REMOVER TEXTURA` }], accessory: { type: 11, media: { url: serverIcon } } }, { type: 1, components: [{ type: 3, custom_id: 'remove_texture_select', options: (texs || []).map(t => ({ label: t.name, value: t.id })) }] }, { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_textures' }] }] }], flags: 32768 });
             }
             if (cid === 'remove_category_btn') {
                 const { data: cats } = await supabase.from('categories').select('*');
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0xff4444, components: [{ type: 9, components: [{ type: 10, content: `## 🗑️ REMOVER CATEGORIA` }] }, { type: 1, components: [{ type: 3, custom_id: 'remove_category_select', options: (cats || []).map(c => ({ label: c.name, value: c.id })) }] }, { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_categories' }] }] }], flags: 32768 });
+                return await interaction.editReply({ components: [{ type: 17, accent_color: 0xff4444, components: [{ type: 9, components: [{ type: 10, content: `## 🗑️ REMOVER CATEGORIA` }], accessory: { type: 11, media: { url: serverIcon } } }, { type: 1, components: [{ type: 3, custom_id: 'remove_category_select', options: (cats || []).map(c => ({ label: c.name, value: c.id })) }] }, { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'manage_categories' }] }] }], flags: 32768 });
             }
             if (cid === 'manage_categories') return await showCategoriesPanel(interaction);
             if (cid === 'manage_textures') {
@@ -352,7 +353,7 @@ async function interactionHandler(interaction) {
                 const { count: texCount } = await supabase.from('textures').select('*', { count: 'exact', head: true });
                 const container = { type: 17, accent_color: 0xc773ff, components: [
                     { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
-                    { type: 9, components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\n> **Categorias:** \`${catCount || 0}\` | **Texturas:** \`${texCount || 0}\`` }] },
+                    { type: 9, components: [{ type: 10, content: `## GERENCIAR CONTEÚDO\n> **Categorias:** \`${catCount || 0}\` | **Texturas:** \`${texCount || 0}\`` }], accessory: { type: 11, media: { url: serverIcon } } },
                     { type: 14 },
                     { type: 1, components: [{ type: 2, style: 2, label: 'Categorias', custom_id: 'manage_categories' }, { type: 2, style: 2, label: 'Texturas', custom_id: 'manage_textures' }, { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }] }
                 ]};
@@ -374,9 +375,10 @@ async function interactionHandler(interaction) {
 
 async function showCategoriesPanel(interaction) {
     const { data: cats } = await supabase.from('categories').select('*');
+    const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
     const container = { type: 17, accent_color: 0xc773ff, components: [
         { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
-        { type: 9, components: [{ type: 10, content: `## GESTÃO DE CATEGORIAS\n> **Categorias cadastradas:** \`${cats?.length || 0}\`\n\n${(cats || []).map(c => `• ${c.name}`).join('\n') || '*Nenhuma.*'}` }] },
+        { type: 9, components: [{ type: 10, content: `## GESTÃO DE CATEGORIAS\n> **Categorias cadastradas:** \`${cats?.length || 0}\`\n\n${(cats || []).map(c => `• ${c.name}`).join('\n') || '*Nenhuma.*'}` }], accessory: { type: 11, media: { url: serverIcon } } },
         { type: 14 },
         { type: 1, components: [{ type: 2, style: 2, label: 'Criar', custom_id: 'create_category' }, { type: 2, style: 2, label: 'Editar', custom_id: 'edit_category_btn' }, { type: 2, style: 2, label: 'Remover', custom_id: 'remove_category_btn' }, { type: 2, style: 2, label: 'Voltar', custom_id: 'group_content' }] }
     ]};
@@ -385,8 +387,9 @@ async function showCategoriesPanel(interaction) {
 
 async function showUsersPanel(interaction) {
     const { data: users } = await supabase.from('users').select('*').limit(20);
+    const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
     const container = { type: 17, accent_color: 0xc773ff, components: [
-        { type: 9, components: [{ type: 10, content: `## GESTÃO DE USUÁRIOS` }] },
+        { type: 9, components: [{ type: 10, content: `## GESTÃO DE USUÁRIOS` }], accessory: { type: 11, media: { url: serverIcon } } },
         { type: 14 },
         { type: 1, components: [{ type: 3, custom_id: 'select_user', options: (users || []).map(u => ({ label: `HWID: ${u.hwid.substring(0,10)}...`, value: u.id })) }] },
         { type: 14 },
@@ -399,8 +402,9 @@ async function showKeysList(interaction) {
     const { data: keys } = await supabase.from('keys').select('*').limit(24);
     const used = keys?.filter(k => k.current_uses > 0).length || 0;
     const fresh = keys?.filter(k => k.current_uses === 0).length || 0;
+    const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
     const container = { type: 17, accent_color: 0xc773ff, components: [
-        { type: 9, components: [{ type: 10, content: `## LISTA DE KEYS\n> **Uso:** 🔴 \`${used}\` Usadas | 🟢 \`${fresh}\` Livres` }] },
+        { type: 9, components: [{ type: 10, content: `## LISTA DE KEYS\n> **Uso:** 🔴 \`${used}\` Usadas | 🟢 \`${fresh}\` Livres` }], accessory: { type: 11, media: { url: serverIcon } } },
         { type: 14 },
         { type: 1, components: [{ type: 3, custom_id: 'manage_keys_select', options: (keys || []).map(k => ({ label: k.key, value: k.id, emoji: { name: k.current_uses > 0 ? '🔴' : '🟢' } })) }] },
         { type: 14 },
@@ -412,9 +416,10 @@ async function showKeysList(interaction) {
 async function showKeysAndUsersPanel(interaction) {
     const { count: k } = await supabase.from('keys').select('*', { count: 'exact', head: true });
     const { count: b } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('is_blacklisted', true);
+    const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
     const container = { type: 17, accent_color: 0xc773ff, components: [
         { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
-        { type: 9, components: [{ type: 10, content: `## KEYS E USUÁRIOS\n> **Keys:** \`${k || 0}\` | **Blacklist:** \`${b || 0}\`` }] },
+        { type: 9, components: [{ type: 10, content: `## KEYS E USUÁRIOS\n> **Keys:** \`${k || 0}\` | **Blacklist:** \`${b || 0}\`` }], accessory: { type: 11, media: { url: serverIcon } } },
         { type: 14 },
         { type: 1, components: [{ type: 2, style: 2, label: 'Gerar Key', custom_id: 'generate_key' }, { type: 2, style: 2, label: 'Lista Keys', custom_id: 'list_keys' }, { type: 2, style: 2, label: 'Usuários', custom_id: 'manage_users' }, { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }] }
     ]};

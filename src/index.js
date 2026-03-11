@@ -144,11 +144,13 @@ app.get('/api/request-token', async (req, res) => {
     try {
         const crypto = require('crypto');
         const token = crypto.randomBytes(16).toString('hex');
+        const ip = getClientIp(req);
         
         await supabase.from('key_requests').insert({
             token: token,
             user_id: 'PUBLIC_ACCESS',
-            user_tag: 'Visitante'
+            user_tag: 'Visitante',
+            ip: ip
         });
 
         res.json({ success: true, token });
@@ -188,6 +190,7 @@ app.post('/api/redeem-key', async (req, res) => {
                 duration: duration,
                 generated_by: request.user_id,
                 generated_by_tag: request.user_tag || null,
+                generated_ip: request.ip || getClientIp(req),
                 expires_to_use_at: expiresToUseAt.toISOString(),
                 permissions_type: 'standard',
                 permissions_value: null

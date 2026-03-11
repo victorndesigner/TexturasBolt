@@ -37,8 +37,8 @@ const createTexturePanel = (guild, textures = []) => {
                         disabled: textures.length === 0,
                         options: textures.length > 0 ? textures.slice(0, 25).map(t => ({
                             label: t.name,
-                            description: `Cat: ${t.category || 'Padrão'} | ID: ${t._id.toString().slice(-6)}`,
-                            value: t._id.toString(),
+                            description: `Cat: ${t.category || 'Padrão'} | ID: ${String(t.id).slice(-6)}`,
+                            value: String(t.id),
                             emoji: { name: '🔸' }
                         })) : [{ label: 'Vazio', value: 'null' }]
                     }

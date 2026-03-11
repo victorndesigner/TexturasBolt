@@ -35,7 +35,8 @@ module.exports = async (interaction) => {
             versionData.key_use_deadline || undefined, 
             versionData.target_folder_name || undefined, 
             versionData.stumble_guys_version || undefined, 
-            versionData.stumble_cups_version || undefined
+            versionData.stumble_cups_version || undefined,
+            versionData.update_url || undefined
         );
 
         // Painel PRINCIPAL deve ser comum (não efêmero) com flag de Components V2 (32768)

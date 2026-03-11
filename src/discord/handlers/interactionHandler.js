@@ -151,6 +151,22 @@ async function interactionHandler(interaction) {
                     return await interaction.showModal(modal);
                 }
 
+                if (value === 'manage_update_url') {
+                    const modal = new ModalBuilder()
+                        .setCustomId('modal_update_url')
+                        .setTitle('Link de Atualização do App');
+
+                    const urlInput = new TextInputBuilder()
+                        .setCustomId('url_input')
+                        .setLabel('Link de Download (YouTube/Direto)')
+                        .setPlaceholder('Ex: https://youtube.com/...')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true);
+
+                    modal.addComponents(new ActionRowBuilder().addComponents(urlInput));
+                    return await interaction.showModal(modal);
+                }
+
                 if (value === 'manage_shortener') {
                     const modal = new ModalBuilder()
                         .setCustomId('modal_shortener')
@@ -1124,7 +1140,17 @@ async function interactionHandler(interaction) {
                 invalidateVersionCache();
                 const data = await getVersionCached();
 
-                const panel = createMainPanel(interaction.guild, data?.version || '1.0', data?.key_shortener, data?.default_access_time, data?.key_use_deadline, data?.target_folder_name, data?.stumble_guys_version, data?.stumble_cups_version);
+                const panel = createMainPanel(
+                    interaction.guild, 
+                    data?.version || '1.0', 
+                    data?.key_shortener, 
+                    data?.default_access_time, 
+                    data?.key_use_deadline, 
+                    data?.target_folder_name, 
+                    data?.stumble_guys_version, 
+                    data?.stumble_cups_version,
+                    data?.update_url
+                );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
 
@@ -1142,7 +1168,28 @@ async function interactionHandler(interaction) {
                     data?.key_use_deadline || undefined, 
                     data?.target_folder_name || undefined, 
                     data?.stumble_guys_version || undefined, 
-                    data?.stumble_cups_version || undefined
+                    data?.stumble_cups_version || undefined,
+                    data?.update_url || undefined
+                );
+                return await interaction.editReply({ ...panel, flags: 32768 });
+            }
+
+            if (interaction.customId === 'modal_update_url') {
+                const newUpdateUrl = interaction.fields.getTextInputValue('url_input');
+                await supabase.from('versions').upsert({ global_id: 'global', update_url: newUpdateUrl }, { onConflict: 'global_id' });
+                invalidateVersionCache();
+                const data = await getVersionCached();
+
+                const panel = createMainPanel(
+                    interaction.guild, 
+                    data?.version || undefined, 
+                    data?.key_shortener || undefined, 
+                    data?.default_access_time || undefined, 
+                    data?.key_use_deadline || undefined, 
+                    data?.target_folder_name || undefined, 
+                    data?.stumble_guys_version || undefined, 
+                    data?.stumble_cups_version || undefined,
+                    data?.update_url || undefined
                 );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
@@ -1161,7 +1208,8 @@ async function interactionHandler(interaction) {
                     data?.key_use_deadline || undefined, 
                     data?.target_folder_name || undefined, 
                     data?.stumble_guys_version || undefined, 
-                    data?.stumble_cups_version || undefined
+                    data?.stumble_cups_version || undefined,
+                    data?.update_url || undefined
                 );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
@@ -1180,7 +1228,8 @@ async function interactionHandler(interaction) {
                     data?.key_use_deadline || undefined, 
                     data?.target_folder_name || undefined, 
                     data?.stumble_guys_version || undefined, 
-                    data?.stumble_cups_version || undefined
+                    data?.stumble_cups_version || undefined,
+                    data?.update_url || undefined
                 );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
@@ -1199,7 +1248,8 @@ async function interactionHandler(interaction) {
                     data?.key_use_deadline || undefined, 
                     data?.target_folder_name || undefined, 
                     data?.stumble_guys_version || undefined, 
-                    data?.stumble_cups_version || undefined
+                    data?.stumble_cups_version || undefined,
+                    data?.update_url || undefined
                 );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
@@ -1218,7 +1268,8 @@ async function interactionHandler(interaction) {
                     data?.key_use_deadline || undefined, 
                     data?.target_folder_name || undefined, 
                     data?.stumble_guys_version || undefined, 
-                    data?.stumble_cups_version || undefined
+                    data?.stumble_cups_version || undefined,
+                    data?.update_url || undefined
                 );
                 return await interaction.editReply({ ...panel, flags: 32768 });
             }
@@ -1238,7 +1289,8 @@ async function interactionHandler(interaction) {
                     data?.key_use_deadline || undefined, 
                     data?.target_folder_name || undefined, 
                     data?.stumble_guys_version || undefined, 
-                    data?.stumble_cups_version || undefined
+                    data?.stumble_cups_version || undefined,
+                    data?.update_url || undefined
                 );
 
                 return await interaction.editReply({ ...panel, flags: 32768 });
@@ -1410,9 +1462,10 @@ async function interactionHandler(interaction) {
                     config?.key_shortener || undefined, 
                     config?.default_access_time || undefined, 
                     config?.key_use_deadline || undefined, 
-                    config?.target_folder_name || undefined, 
-                    config?.stumble_guys_version || undefined, 
-                    config?.stumble_cups_version || undefined
+                    data?.target_folder_name || undefined, 
+                    data?.stumble_guys_version || undefined, 
+                    data?.stumble_cups_version || undefined,
+                    config?.update_url || undefined
                 );
 
                 await interaction.followUp({ components: [successContainer], flags: 64 + 32768 });

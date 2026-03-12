@@ -449,8 +449,14 @@ async function interactionHandler(interaction) {
             if (cid === 'modal_group_style') {
                 const profileUrl = interaction.fields.getTextInputValue('profile_url_input');
                 const bannerUrl = interaction.fields.getTextInputValue('default_banner_input');
-                const { data, error } = await supabase.from('versions').upsert({ global_id: 'global', profile_url: profileUrl, default_banner_url: bannerUrl }).select().single();
-                if (!error) invalidateVersionCache(data);
+                const { data, error } = await supabase.from('versions').update({ profile_url: profileUrl, default_banner_url: bannerUrl }).eq('global_id', 'global').select().single();
+                
+                if (error) {
+                    console.error('Erro ao salvar estilo:', error);
+                    return await interaction.followUp({ content: '❌ Erro ao salvar no banco de dados.', flags: 64 | 32768 });
+                }
+
+                invalidateVersionCache(data);
                 return await interaction.followUp({
                     components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ ESTILO ATUALIZADO\n> **Foto de Perfil (App):** ${profileUrl ? `[ver link](${profileUrl})` : '`Não alterada`'}\n> **Banner Padrão:** ${bannerUrl ? `[ver link](${bannerUrl})` : '`Não alterado`'}\n> -# As mudanças aparecem no App após o próximo login.` }], accessory: { type: 11, media: { url: serverIcon } } }] }],
                     flags: 64 | 32768
@@ -461,8 +467,14 @@ async function interactionHandler(interaction) {
                 const updateUrl = interaction.fields.getTextInputValue('update_url_input');
                 const keySh = interaction.fields.getTextInputValue('key_shortener_input');
                 const dlSh = interaction.fields.getTextInputValue('dl_shortener_input');
-                const { data, error } = await supabase.from('versions').upsert({ global_id: 'global', discord_url: discordUrl, update_url: updateUrl, key_shortener: keySh, download_shortener: dlSh }).select().single();
-                if (!error) invalidateVersionCache(data);
+                const { data, error } = await supabase.from('versions').update({ discord_url: discordUrl, update_url: updateUrl, key_shortener: keySh, download_shortener: dlSh }).eq('global_id', 'global').select().single();
+                
+                if (error) {
+                    console.error('Erro ao salvar links:', error);
+                    return await interaction.followUp({ content: '❌ Erro ao salvar no banco de dados.', flags: 64 | 32768 });
+                }
+
+                invalidateVersionCache(data);
                 return await interaction.followUp({
                     components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ LINKS ATUALIZADOS\n> **Discord:** ${discordUrl ? `[ver link](${discordUrl})` : '`—`'}\n> **Atualização:** ${updateUrl ? `[ver link](${updateUrl})` : '`—`'}\n> **Encurtador KEY:** ${keySh ? `\`${keySh}\`` : '`—`'}\n> **Encurtador Download:** ${dlSh ? `\`${dlSh}\`` : '`—`'}\n> -# Os links são aplicados imediatamente no App.` }], accessory: { type: 11, media: { url: serverIcon } } }] }],
                     flags: 64 | 32768
@@ -474,8 +486,7 @@ async function interactionHandler(interaction) {
                 const newVersion = interaction.fields.getTextInputValue('app_version_input');
                 const validationId = crypto.randomUUID ? crypto.randomUUID() : require('crypto').randomUUID();
 
-                const { data, error } = await supabase.from('versions').upsert({
-                    global_id: 'global',
+                const { data, error } = await supabase.from('versions').update({
                     version: newVersion,
                     validation_id: validationId,
                     stumble_guys_version: interaction.fields.getTextInputValue('sg_version_input'),
@@ -483,8 +494,14 @@ async function interactionHandler(interaction) {
                     target_folder_name: interaction.fields.getTextInputValue('folder_input'),
                     default_access_time: at || '4h',
                     key_use_deadline: ud || '24h'
-                }).select().single();
-                if (!error) invalidateVersionCache(data);
+                }).eq('global_id', 'global').select().single();
+                
+                if (error) {
+                    console.error('Erro ao salvar sistema:', error);
+                    return await interaction.followUp({ content: '❌ Erro ao salvar no banco de dados.', flags: 64 | 32768 });
+                }
+
+                invalidateVersionCache(data);
 
                 // Mandar nova versão + ID para o admin copiar (apenas éfemero)
                 return await interaction.followUp({

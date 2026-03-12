@@ -341,14 +341,6 @@ app.post('/api/validate', async (req, res) => {
             return res.status(403).json({ error: 'O prazo para resgatar esta key expirou. Gere uma nova.' });
         }
 
-        // --- ANTI-BURLA: Verificar se quem está resgatando é o gerador da key ---
-        // O App envia o discord_id do usuário que está resgatando
-        const redeemerDiscordId = req.body.discord_id;
-        if (keyData.generated_by && redeemerDiscordId && keyData.generated_by !== redeemerDiscordId) {
-            console.warn(`[ANTI-BURLA] Tentativa de resgate bloqueada! Key gerada por ${keyData.generated_by}, tentativa de ${redeemerDiscordId}`);
-            return res.status(403).json({ error: 'Esta key foi gerada por outro usuário. Cada um deve gerar a própria key.' });
-        }
-
         const { applyDuration } = require('./utils/durationParser');
         const expirationDate = applyDuration(now, keyData.duration);
 

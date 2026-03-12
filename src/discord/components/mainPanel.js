@@ -37,7 +37,8 @@ const createMainPanel = (guild, version = '1.0', keyShortener = 'Não definido',
                         options: [
                             { label: 'Estilo e Perfil', description: 'Banner padrão, Perfil e Visual', value: 'group_style', emoji: { name: '🎨' } },
                             { label: 'Links e Encurtadores', description: 'Discord, Updates e Encurtadores', value: 'group_links', emoji: { name: '🔗' } },
-                            { label: 'Sistema e Pastas', description: 'Versões, Prazos e Pastas', value: 'group_system', emoji: { name: '⚙️' } },
+                            { label: 'Versão do App', description: 'Gerenciar versão e gerar ID secreto', value: 'group_version', emoji: { name: '🆔' } },
+                            { label: 'Sistema e Pastas', description: 'Prazos e Pastas do Sistema', value: 'group_system', emoji: { name: '⚙️' } },
                             { label: 'Conteúdo', description: 'Categorias e Catálogo de Texturas', value: 'group_content', emoji: { name: '📦' } },
                             { label: 'Keys e Usuários', description: 'Gerar Keys, Blacklist e Usuarios', value: 'group_keys', emoji: { name: '🔑' } }
                         ]

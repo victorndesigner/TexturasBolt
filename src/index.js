@@ -385,18 +385,33 @@ app.post('/api/textures', async (req, res) => {
         const { data: config } = await supabase.from('versions').select('*').eq('global_id', 'global').maybeSingle();
 
         // --- VERIFICAÇÃO DE VALIDATION_ID (Segurança de Versão) ---
+        let validationMismatch = false;
         if (config?.validation_id && req.body.validation_id !== config.validation_id) {
-            return res.status(403).json({ error: 'ID de validação inválido.' });
+            validationMismatch = true;
+            // Só bloqueia se NÃO for a chamada inicial de check-up no login
+            if (key !== 'get_shortener') {
+                return res.status(403).json({ error: 'ID de validação inválido.' });
+            }
         }
 
         // Atalho para pegar encurtador e VERSAO no login
         if (key === 'get_shortener') {
+            const { data: cats } = await supabase.from('categories').select('name, version, target_folder, install_style');
+            const categoryConfigs = {};
+            (cats || []).forEach(c => {
+                categoryConfigs[c.name] = {
+                    version: c.version || '1.0',
+                    targetFolder: c.target_folder || 'StumbleCups',
+                    installStyle: c.install_style || 'cups'
+                };
+            });
+
             return res.json({
                 keyShortener: config?.key_shortener,
                 version: config?.version || '1.0',
-                stumbleGuysVersion: config?.stumble_guys_version || '1.0',
-                stumbleCupsVersion: config?.stumble_cups_version || '1.0',
-                keysChannelUrl: config?.keys_channel_url
+                keysChannelUrl: config?.keys_channel_url,
+                categoryConfigs, // Novo mapeamento dinâmico
+                validationMismatch
             });
         }
 

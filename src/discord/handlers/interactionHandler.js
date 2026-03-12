@@ -50,7 +50,7 @@ async function interactionHandler(interaction) {
             const cid = interaction.customId || '';
             const val = interaction.values?.[0] || '';
 
-            const modalTriggers = ['group_style', 'group_links', 'group_system', 'manage_original_links', 'create_category', 'create_texture', 'manage_time', 'manage_use_deadline', 'manage_folder', 'manage_profile_global', 'search_users_btn'];
+            const modalTriggers = ['group_style', 'group_links', 'group_version', 'group_system', 'manage_original_links', 'create_category', 'create_texture', 'manage_time', 'manage_use_deadline', 'manage_folder', 'manage_profile_global', 'search_users_btn'];
             let shouldShowModal = modalTriggers.some(mt => cid === mt || cid.startsWith(mt));
 
             // Casos especiais de Selects que abrem modais dependendo do valor
@@ -58,8 +58,8 @@ async function interactionHandler(interaction) {
             if (cid === 'gen_key_category_select' || cid === 'gen_key_texture_select') shouldShowModal = true;
             if (cid === 'edit_category_select' || cid === 'texture_manage_select') shouldShowModal = true;
 
-            // main_select: os valores group_style, group_links, group_system abrem modais
-            if (cid === 'main_select' && ['group_style', 'group_links', 'group_system'].includes(val)) shouldShowModal = true;
+            // main_select: os valores group_style, group_links, group_version abrem modais diretamente
+            if (cid === 'main_select' && ['group_style', 'group_links', 'group_version'].includes(val)) shouldShowModal = true;
 
             if (!shouldShowModal) {
                 try { await interaction.deferUpdate(); } catch (e) { console.error('Defer Error:', e); }
@@ -93,14 +93,21 @@ async function interactionHandler(interaction) {
                 return await interaction.showModal(modal);
             }
 
-            if (value === 'group_system') {
+            if (value === 'group_version') {
                 const config = await getVersionCached();
-                const modal = new ModalBuilder().setCustomId('modal_group_system').setTitle('Configurações do Sistema');
+                const modal = new ModalBuilder().setCustomId('modal_version_update').setTitle('Versão do App');
                 modal.addComponents(
-                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('app_version_input').setLabel('Versão App').setValue(config?.version || '1.0').setStyle(TextInputStyle.Short)),
-                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('sg_version_input').setLabel('Versão SG').setValue(config?.stumble_guys_version || '1.0').setStyle(TextInputStyle.Short)),
-                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('sc_version_input').setLabel('Versão SC').setValue(config?.stumble_cups_version || '1.0').setStyle(TextInputStyle.Short)),
-                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('folder_input').setLabel('Pasta Alvo').setValue(config?.target_folder_name || 'StumbleCups').setStyle(TextInputStyle.Short)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('app_version_input').setLabel('Nova Versão do App').setValue(config?.version || '1.0').setStyle(TextInputStyle.Short).setRequired(true))
+                );
+                return await interaction.showModal(modal);
+            }
+
+            if (value === 'group_system') return await showSystemPanel(interaction);
+
+            if (value === 'manage_prazos') {
+                const config = await getVersionCached();
+                const modal = new ModalBuilder().setCustomId('modal_prazos_globais').setTitle('Prazos de Acesso');
+                modal.addComponents(
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('time_input').setLabel('Acesso | Prazo').setValue(`${config?.default_access_time || '4h'} | ${config?.key_use_deadline || '24h'}`).setStyle(TextInputStyle.Short))
                 );
                 return await interaction.showModal(modal);
@@ -389,9 +396,54 @@ async function interactionHandler(interaction) {
                 // Em vez de voltar pra lista, mostra o perfil atualizado
                 return await showUserProfile(interaction, userId);
             }
+            if (cid === 'config_category_select') {
+                const catId = interaction.values[0];
+                const { data: cat } = await supabase.from('categories').select('*').eq('id', catId).single();
+                if (!cat) return;
+
+                const modal = new ModalBuilder().setCustomId(`modal_config_cat_${cat.id}`).setTitle(`Config: ${cat.name}`);
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_version').setLabel('Versão').setValue(cat.version || '1.0').setStyle(TextInputStyle.Short)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_folder').setLabel('Pasta Alvo').setValue(cat.target_folder || 'StumbleCups').setStyle(TextInputStyle.Short)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_style').setLabel('Estilo (stumble ou cups)').setValue(cat.install_style || 'cups').setStyle(TextInputStyle.Short))
+                );
+                return await interaction.showModal(modal);
+            }
+
             if (cid.startsWith('delete_key_')) {
                 await supabase.from('keys').delete().eq('id', cid.replace('delete_key_', ''));
                 return await showKeysAndUsersPanel(interaction);
+            }
+
+            if (cid.startsWith('confirm_version_update_')) {
+                const newVersion = cid.replace('confirm_version_update_', '');
+                const validationId = crypto.randomUUID ? crypto.randomUUID() : require('crypto').randomUUID();
+
+                const { data, error } = await supabase.from('versions').update({
+                    version: newVersion,
+                    validation_id: validationId
+                }).eq('global_id', 'global').select().single();
+
+                if (error) return await interaction.editReply({ content: '❌ Erro ao salvar no banco de dados.', components: [], flags: 64 | 32768 });
+                invalidateVersionCache(data);
+
+                const container = {
+                    type: 17, accent_color: 0x00ff88, components: [{
+                        type: 9, components: [{ type: 10, content: `## ✅ VERSÃO ATUALIZADA\n> **Nova Versão:** \`${newVersion}\`\n> **Novo ID Secreto:** Cole no código do App antes do build!\n\`\`\`\n${validationId}\n\`\`\`\n> -# Guarde este ID! Ele é necessário para o próximo build.` }],
+                        accessory: { type: 11, media: { url: serverIcon } }
+                    }]
+                };
+                return await interaction.editReply({ components: [container], flags: 64 | 32768 });
+            }
+
+            if (cid === 'cancel_version_update') {
+                const container = {
+                    type: 17, accent_color: 0xff4444, components: [{
+                        type: 9, components: [{ type: 10, content: `## ❌ ATUALIZAÇÃO CANCELADA\n> A versão do aplicativo não foi alterada.\n> O ID de validação permanece o mesmo.` }],
+                        accessory: { type: 11, media: { url: serverIcon } }
+                    }]
+                };
+                return await interaction.editReply({ components: [container], flags: 64 | 32768 });
             }
         }
 
@@ -480,46 +532,69 @@ async function interactionHandler(interaction) {
                     flags: 64 | 32768
                 });
             }
-            if (cid === 'modal_group_system') {
+            if (cid === 'modal_prazos_globais') {
                 const rawTime = interaction.fields.getTextInputValue('time_input');
                 const [at, ud] = rawTime.split('|').map(p => p.trim());
-                const newVersion = interaction.fields.getTextInputValue('app_version_input');
-                const validationId = crypto.randomUUID ? crypto.randomUUID() : require('crypto').randomUUID();
 
                 const { data, error } = await supabase.from('versions').update({
-                    version: newVersion,
-                    validation_id: validationId,
-                    stumble_guys_version: interaction.fields.getTextInputValue('sg_version_input'),
-                    stumble_cups_version: interaction.fields.getTextInputValue('sc_version_input'),
-                    target_folder_name: interaction.fields.getTextInputValue('folder_input'),
                     default_access_time: at || '4h',
                     key_use_deadline: ud || '24h'
                 }).eq('global_id', 'global').select().single();
                 
-                if (error) {
-                    console.error('Erro ao salvar sistema:', error);
-                    return await interaction.followUp({ content: '❌ Erro ao salvar no banco de dados.', flags: 64 | 32768 });
-                }
-
+                if (error) return await interaction.followUp({ content: '❌ Erro ao salvar no banco.', flags: 64 | 32768 });
                 invalidateVersionCache(data);
+                return await interaction.followUp({ content: '✅ Prazos globais atualizados.', flags: 64 | 32768 });
+            }
 
-                // Mandar nova versão + ID para o admin copiar (apenas éfemero)
-                return await interaction.followUp({
-                    components: [{
-                        type: 17, accent_color: 0xc773ff, components: [{
-                            type: 9, components: [{ type: 10, content: `## 🔏 ID DE VALIDAÇÃO GERADO\n> **Versão:** \`${newVersion}\`\n> **ID Secreto:** Cole no código do App antes do build!\n\`\`\`\n${validationId}\n\`\`\`` }],
-                            accessory: { type: 11, media: { url: serverIcon } }
-                        }]
-                    }],
-                    flags: 64 | 32768
-                });
+            if (cid.startsWith('modal_config_cat_')) {
+                const catId = cid.replace('modal_config_cat_', '');
+                const { error } = await supabase.from('categories').update({
+                    version: interaction.fields.getTextInputValue('cat_version'),
+                    target_folder: interaction.fields.getTextInputValue('cat_folder'),
+                    install_style: interaction.fields.getTextInputValue('cat_style')
+                }).eq('id', catId);
+
+                if (error) return await interaction.followUp({ content: '❌ Erro ao salvar categoria.', flags: 64 | 32768 });
+                return await interaction.followUp({ content: '✅ Configurações da categoria atualizadas.', flags: 64 | 32768 });
+            }
+
+            if (cid === 'modal_version_update') {
+                const newVersion = interaction.fields.getTextInputValue('app_version_input');
+                const container = {
+                    type: 17, accent_color: 0xffaa00, components: [
+                        { 
+                            type: 9, 
+                            components: [{ type: 10, content: `## ⚠️ CUIDADO: ALTERAR VERSÃO\n> Você está prestes a mudar a versão para: \`${newVersion}\`\n\n### 🛑 IMPACTO IMEDIATO:\n> 1. Um novo **ID de Validação** será gerado.\n> 2. O aplicativo atual de todos os usuários **parará de funcionar**.\n> 3. Você precisará buildar o App novamente com o novo ID.\n\n**Deseja prosseguir com a alteração?**` }],
+                            accessory: { type: 11, media: { url: serverIcon } } 
+                        },
+                        { type: 14 },
+                        {
+                            type: 1, components: [
+                                { type: 2, style: 4, label: 'Confirmar Alteração', custom_id: `confirm_version_update_${newVersion}` },
+                                { type: 2, style: 2, label: 'Recusar', custom_id: 'cancel_version_update' }
+                            ]
+                        }
+                    ]
+                };
+                return await interaction.followUp({ components: [container], flags: 64 | 32768 });
             }
             if (cid === 'modal_create_category') {
-                await supabase.from('categories').insert({ name: interaction.fields.getTextInputValue('cat_name'), icon_url: interaction.fields.getTextInputValue('cat_icon'), description: interaction.fields.getTextInputValue('cat_desc') });
+                await supabase.from('categories').insert({ 
+                    name: interaction.fields.getTextInputValue('cat_name'), 
+                    icon_url: interaction.fields.getTextInputValue('cat_icon'), 
+                    description: interaction.fields.getTextInputValue('cat_desc'),
+                    version: '1.0',
+                    target_folder: 'StumbleCups',
+                    install_style: 'cups'
+                });
                 return await showCategoriesPanel(interaction);
             }
             if (cid.startsWith('modal_edit_category_')) {
-                await supabase.from('categories').update({ name: interaction.fields.getTextInputValue('cat_name'), icon_url: interaction.fields.getTextInputValue('cat_icon'), description: interaction.fields.getTextInputValue('cat_desc') }).eq('id', cid.replace('modal_edit_category_', ''));
+                await supabase.from('categories').update({ 
+                    name: interaction.fields.getTextInputValue('cat_name'), 
+                    icon_url: interaction.fields.getTextInputValue('cat_icon'), 
+                    description: interaction.fields.getTextInputValue('cat_desc') 
+                }).eq('id', cid.replace('modal_edit_category_', ''));
                 return await showCategoriesPanel(interaction);
             }
             if (cid === 'modal_create_texture') {
@@ -533,29 +608,25 @@ async function interactionHandler(interaction) {
                 return await interaction.editReply({ ...createTexturePanel(interaction.guild, textures || []), flags: 32768 });
             }
             if (cid === 'modal_original_links') {
-                const { data, error } = await supabase.from('versions').upsert({ global_id: 'global', remove_url_part1: interaction.fields.getTextInputValue('orig_p1'), remove_url_part2: interaction.fields.getTextInputValue('orig_p2') }).select().single();
+                const { data, error } = await supabase.from('versions').update({ 
+                    remove_url_part1: interaction.fields.getTextInputValue('orig_p1'), 
+                    remove_url_part2: interaction.fields.getTextInputValue('orig_p2') 
+                }).eq('global_id', 'global').select().single();
+                
                 if (!error) invalidateVersionCache(data);
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ ARQUIVOS ATUALIZADOS` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
+                return await interaction.editReply({ 
+                    components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ ARQUIVOS ATUALIZADOS\n> Arquivos base para remoção foram atualizados.` }], accessory: { type: 11, media: { url: serverIcon } } }] }], 
+                    flags: 32768 
+                });
             }
         }
-    } catch (err) {
-        console.error('Erro no interactionHandler:', err);
-        const errorContainer = {
-            type: 17,
-            accent_color: 0xff0000,
-            components: [
-                {
-                    type: 9,
-                    components: [{ type: 10, content: `## ❌ ERRO DE INTERAÇÃO\n> Ocorreu um problema ao processar esta ação.\n> -# Detalhe: \`${err.message || 'Erro desconhecido'}\`` }],
-                    accessory: { type: 11, media: { url: serverIcon } }
-                }
-            ]
-        };
-        try {
-            await (interaction.deferred || interaction.replied ?
-                interaction.editReply({ components: [errorContainer], flags: 64 | 32768 }) :
-                interaction.reply({ components: [errorContainer], flags: 64 | 32768 }));
-        } catch (e) { }
+    } catch (e) {
+        console.error('Interaction Error:', e);
+        if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({ content: '❌ Ocorreu um erro ao processar sua solicitação.', flags: 64 | 32768 }).catch(() => { });
+        } else {
+            await interaction.followUp({ content: '❌ Ocorreu um erro ao completar a ação.', flags: 64 | 32768 }).catch(() => { });
+        }
     }
 }
 
@@ -585,6 +656,28 @@ async function showUsersPanel(interaction) {
                 type: 1, components: [
                     { type: 2, style: 2, label: 'Pesquisar', custom_id: 'search_users_btn' },
                     { type: 2, style: 2, label: 'Voltar', custom_id: 'group_keys_return' }
+                ]
+            }
+        ]
+    };
+    return await (interaction.deferred || interaction.replied ? interaction.editReply({ components: [container], flags: 32768 }) : interaction.reply({ components: [container], flags: 32768 }));
+}
+
+async function showSystemPanel(interaction) {
+    const { data: cats } = await supabase.from('categories').select('*').order('name');
+    const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+
+    const container = {
+        type: 17, accent_color: 0xc773ff, components: [
+            { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
+            { type: 9, components: [{ type: 10, content: `## ⚙️ PRAZOS E PASTAS\n> Gerencie os prazos globais de keys ou configure pastas e versões específicas para cada categoria.` }], accessory: { type: 11, media: { url: serverIcon } } },
+            { type: 14 },
+            { type: 1, components: [{ type: 3, custom_id: 'config_category_select', placeholder: 'Selecione uma categoria para configurar...', options: (cats || []).map(c => ({ label: `Configurar: ${c.name}`, value: c.id, description: `Versão: ${c.version || '1.0'} | Pasta: ${c.target_folder || '—'}` })) }] },
+            { type: 14 },
+            {
+                type: 1, components: [
+                    { type: 2, style: 2, label: 'Editar Prazos Globais', custom_id: 'manage_prazos' },
+                    { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }
                 ]
             }
         ]

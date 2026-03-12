@@ -58,6 +58,9 @@ async function interactionHandler(interaction) {
             if (cid === 'gen_key_category_select' || cid === 'gen_key_texture_select') shouldShowModal = true;
             if (cid === 'edit_category_select' || cid === 'texture_manage_select') shouldShowModal = true;
 
+            // main_select: os valores group_style, group_links, group_system abrem modais
+            if (cid === 'main_select' && ['group_style', 'group_links', 'group_system'].includes(val)) shouldShowModal = true;
+
             if (!shouldShowModal) {
                 try { await interaction.deferUpdate(); } catch (e) { console.error('Defer Error:', e); }
             }

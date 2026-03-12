@@ -555,7 +555,12 @@ async function interactionHandler(interaction) {
                 
                 if (error) return await interaction.followUp({ content: '❌ Erro ao salvar no banco.', flags: 64 | 32768 });
                 invalidateVersionCache(data);
-                return await interaction.followUp({ content: '✅ Prazos globais atualizados.', flags: 64 | 32768 });
+                
+                await interaction.followUp({ 
+                    components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ PRAZOS ATUALIZADOS\n> **Acesso:** \`${at}\` \n> **Prazo Resgate:** \`${ud}\` \n\nO painel foi atualizado com as novas configurações.` }], accessory: { type: 11, media: { url: serverIcon } } }] }], 
+                    flags: 64 | 32768 
+                });
+                return await showSystemPanel(interaction);
             }
 
             if (cid.startsWith('modal_config_cat_')) {

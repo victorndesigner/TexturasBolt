@@ -262,7 +262,7 @@ async function interactionHandler(interaction) {
                 const createdAt = k.created_at ? `<t:${Math.floor(new Date(k.created_at).getTime() / 1000)}:R>` : '`N/A`';
                 const expiresToUse = k.expires_to_use_at ? `<t:${Math.floor(new Date(k.expires_to_use_at).getTime() / 1000)}:R>` : '`N/A`';
                 const expiresAt = k.expires_at ? `<t:${Math.floor(new Date(k.expires_at).getTime() / 1000)}:R>` : (k.duration === 'permanente' ? '`Nunca`' : '`N/A`');
-                
+
                 let details = [
                     `## 🔑 DETALHES DA KEY`,
                     `> **Key:** \`${k.key}\``,
@@ -274,10 +274,10 @@ async function interactionHandler(interaction) {
                     k.is_used ? `> **Expira em:** ${expiresAt}` : `> **Prazo para Resgate:** ${expiresToUse}`,
                     k.generated_ip ? `> **IP do Gerador:** \`${k.generated_ip}\`` : ''
                 ].filter(line => line !== '').join('\n');
-                
+
                 // Adicionar campo de HWID se estiver usada
                 if (k.is_used && k.used_by) {
-                    details = details.replace('Expira em:', `**Usada por (HWID):** \`${k.used_by}\` \n> **Expira em:`);
+                    details = details.replace('> **Expira em:', `> **Usada por (HWID):** \`${k.used_by}\` \n> **Expira em:`);
                 }
 
                 const container = {

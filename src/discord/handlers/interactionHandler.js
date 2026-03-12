@@ -259,9 +259,9 @@ async function interactionHandler(interaction) {
                 const { data: k } = await supabase.from('keys').select('*').eq('id', interaction.values[0]).maybeSingle();
                 if (!k) return;
 
-                const createdAt = k.created_at ? `<t:${Math.floor(new Date(k.created_at).getTime() / 1000)}:f>` : '`N/A`';
-                const expiresToUse = k.expires_to_use_at ? `<t:${Math.floor(new Date(k.expires_to_use_at).getTime() / 1000)}:f> (<t:${Math.floor(new Date(k.expires_to_use_at).getTime() / 1000)}:R>)` : '`N/A`';
-                const expiresAt = k.expires_at ? `<t:${Math.floor(new Date(k.expires_at).getTime() / 1000)}:f> (<t:${Math.floor(new Date(k.expires_at).getTime() / 1000)}:R>)` : (k.duration === 'permanente' ? '`Nunca`' : '`N/A`');
+                const createdAt = k.created_at ? `<t:${Math.floor(new Date(k.created_at).getTime() / 1000)}:R>` : '`N/A`';
+                const expiresToUse = k.expires_to_use_at ? `<t:${Math.floor(new Date(k.expires_to_use_at).getTime() / 1000)}:R>` : '`N/A`';
+                const expiresAt = k.expires_at ? `<t:${Math.floor(new Date(k.expires_at).getTime() / 1000)}:R>` : (k.duration === 'permanente' ? '`Nunca`' : '`N/A`');
                 
                 let details = [
                     `## 🔑 DETALHES DA KEY`,

@@ -313,8 +313,11 @@ app.post('/api/validate', async (req, res) => {
                 permissions: permissions
             });
         }
-
         // Primeira vez usando a key (Resgate)
+        if (keyData.expires_to_use_at && now > new Date(keyData.expires_to_use_at)) {
+            return res.status(403).json({ error: 'O prazo para resgatar esta key expirou. Gere uma nova.' });
+        }
+
         const { applyDuration } = require('./utils/durationParser');
         const expirationDate = applyDuration(now, keyData.duration);
 

@@ -29,15 +29,23 @@ const app = express();
     } catch (_) {}
 })();
 
-// Configuração CORS para permitir acesso dos sites externos
+// Configuração CORS para permitir acesso dos sites externos e do App
 app.use(cors({
-    origin: [
-        'https://referrer.bolttexturas.site',
-        'https://bolttexturas.site',
-        'https://download.bolttexturas.site', // Domínio do site de confirmação
-        'http://localhost:3000',
-        'http://127.0.0.1:3000'
-    ],
+    origin: (origin, callback) => {
+        const allowedOrigins = [
+            'https://referrer.bolttexturas.site',
+            'https://bolttexturas.site',
+            'https://download.bolttexturas.site',
+            'http://localhost:3000',
+            'http://127.0.0.1:3000'
+        ];
+        // Permite requisições sem origem (como do App Electron ou server-to-server)
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('CORS bloqueou este domínio.'));
+        }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
@@ -388,8 +396,8 @@ app.post('/api/textures', async (req, res) => {
         let validationMismatch = false;
         if (config?.validation_id && req.body.validation_id !== config.validation_id) {
             validationMismatch = true;
-            // Só bloqueia se NÃO for a chamada inicial de check-up no login
-            if (key !== 'get_shortener') {
+            // Só bloqueia se NÃO for a chamada inicial de check-up no login (get_shortener)
+            if (key !== 'get_shortener' && key !== 'check_version') {
                 return res.status(403).json({ error: 'ID de validação inválido.' });
             }
         }

@@ -50,13 +50,13 @@ async function interactionHandler(interaction) {
             const cid = interaction.customId || '';
             const val = interaction.values?.[0] || '';
 
-            const modalTriggers = ['group_style', 'group_links', 'group_version', 'group_system', 'manage_original_links', 'create_category', 'create_texture', 'manage_time', 'manage_use_deadline', 'manage_folder', 'manage_profile_global', 'search_users_btn'];
+            const modalTriggers = ['group_style', 'group_links', 'group_version', 'group_system', 'manage_original_links', 'create_category', 'manage_prazos', 'create_texture', 'manage_time', 'manage_use_deadline', 'manage_folder', 'manage_profile_global', 'search_users_btn'];
             let shouldShowModal = modalTriggers.some(mt => cid === mt || cid.startsWith(mt));
 
             // Casos especiais de Selects que abrem modais dependendo do valor
             if (cid === 'gen_key_type_select' && (val === 'standard' || val === 'all')) shouldShowModal = true;
             if (cid === 'gen_key_category_select' || cid === 'gen_key_texture_select') shouldShowModal = true;
-            if (cid === 'edit_category_select' || cid === 'texture_manage_select') shouldShowModal = true;
+            if (cid === 'edit_category_select' || cid === 'texture_manage_select' || cid === 'config_category_select') shouldShowModal = true;
 
             // main_select: os valores group_style, group_links, group_version abrem modais diretamente
             if (cid === 'main_select' && ['group_style', 'group_links', 'group_version'].includes(val)) shouldShowModal = true;
@@ -250,6 +250,18 @@ async function interactionHandler(interaction) {
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_name').setLabel('Nome').setValue(cat.name).setStyle(TextInputStyle.Short)),
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_icon').setLabel('Ícone').setValue(cat.icon_url || '').setStyle(TextInputStyle.Short).setRequired(false)),
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_desc').setLabel('Descrição').setValue(cat.description || '').setStyle(TextInputStyle.Paragraph).setRequired(false))
+                );
+                return await interaction.showModal(modal);
+            }
+            
+            if (cid === 'config_category_select') {
+                const { data: cat } = await supabase.from('categories').select('*').eq('id', interaction.values[0]).single();
+                if (!cat) return;
+                const modal = new ModalBuilder().setCustomId(`modal_config_cat_${cat.id}`).setTitle(`Configurar: ${cat.name}`);
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_version').setLabel('Versão do Jogo').setValue(cat.version || '1.0').setStyle(TextInputStyle.Short)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_folder').setLabel('Pasta Alvo (ex: StumbleCups_Data)').setValue(cat.target_folder || '').setStyle(TextInputStyle.Short)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_style').setLabel('Estilo (stumble ou cups)').setValue(cat.install_style || 'stumble').setStyle(TextInputStyle.Short))
                 );
                 return await interaction.showModal(modal);
             }

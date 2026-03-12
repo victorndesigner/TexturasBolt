@@ -522,10 +522,11 @@ async function interactionHandler(interaction) {
                 }
 
                 invalidateVersionCache(data);
-                return await interaction.followUp({
+                await interaction.followUp({
                     components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ ESTILO ATUALIZADO\n> **Foto de Perfil (App):** ${profileUrl ? `[ver link](${profileUrl})` : '`Não alterada`'}\n> **Banner Padrão:** ${bannerUrl ? `[ver link](${bannerUrl})` : '`Não alterado`'}\n> -# As mudanças aparecem no App após o próximo login.` }], accessory: { type: 11, media: { url: serverIcon } } }] }],
                     flags: 64 | 32768
                 });
+                return await showSystemPanel(interaction); // Refresh para limpar o select
             }
             if (cid === 'modal_group_links') {
                 const discordUrl = interaction.fields.getTextInputValue('discord_url_input');
@@ -540,10 +541,11 @@ async function interactionHandler(interaction) {
                 }
 
                 invalidateVersionCache(data);
-                return await interaction.followUp({
+                await interaction.followUp({
                     components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ LINKS ATUALIZADOS\n> **Discord:** ${discordUrl ? `[ver link](${discordUrl})` : '`—`'}\n> **Atualização:** ${updateUrl ? `[ver link](${updateUrl})` : '`—`'}\n> **Encurtador KEY:** ${keySh ? `\`${keySh}\`` : '`—`'}\n> **Encurtador Download:** ${dlSh ? `\`${dlSh}\`` : '`—`'}\n> -# Os links são aplicados imediatamente no App.` }], accessory: { type: 11, media: { url: serverIcon } } }] }],
                     flags: 64 | 32768
                 });
+                return await showSystemPanel(interaction); // Refresh para limpar o select
             }
             if (cid === 'modal_prazos_globais') {
                 const rawTime = interaction.fields.getTextInputValue('time_input');
@@ -577,7 +579,8 @@ async function interactionHandler(interaction) {
                 }).eq('id', catId);
 
                 if (error) return await interaction.followUp({ content: '❌ Erro ao salvar categoria.', flags: 64 | 32768 });
-                return await interaction.followUp({ content: `✅ Configurações da categoria atualizadas. Status: **${isOnline ? 'ONLINE' : 'OFFLINE'}**`, flags: 64 | 32768 });
+                await interaction.followUp({ content: `✅ Configurações da categoria atualizadas. Status: **${isOnline ? 'ONLINE' : 'OFFLINE'}**`, flags: 64 | 32768 });
+                return await showSystemPanel(interaction); // Refresh para limpar o select
             }
 
             if (cid === 'modal_version_update') {
@@ -609,6 +612,7 @@ async function interactionHandler(interaction) {
                     target_folder: 'StumbleCups',
                     install_style: 'cups'
                 });
+                await interaction.followUp({ content: '✅ Categoria criada com sucesso!', flags: 64 | 32768 });
                 return await showCategoriesPanel(interaction);
             }
             if (cid.startsWith('modal_edit_category_')) {
@@ -617,6 +621,7 @@ async function interactionHandler(interaction) {
                     icon_url: interaction.fields.getTextInputValue('cat_icon'),
                     description: interaction.fields.getTextInputValue('cat_desc')
                 }).eq('id', cid.replace('modal_edit_category_', ''));
+                await interaction.followUp({ content: '✅ Categoria editada com sucesso!', flags: 64 | 32768 });
                 return await showCategoriesPanel(interaction);
             }
             if (cid === 'modal_create_texture') {

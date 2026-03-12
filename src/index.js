@@ -255,6 +255,13 @@ app.post('/api/validate', async (req, res) => {
 
         if (keyError || !keyData) return res.status(404).json({ error: 'Key inválida.' });
 
+        // --- VERIFICAÇÃO DE VALIDATION_ID (Segurança de Versão) ---
+        const { data: config } = await supabase.from('versions').select('*').eq('global_id', 'global').maybeSingle();
+        if (config?.validation_id && req.body.validation_id !== config.validation_id) {
+            console.warn(`[SEGURANÇA] Bloqueio de App: Validation ID incorreto. Esperado: ${config.validation_id}, Recebido: ${req.body.validation_id}`);
+            return res.status(403).json({ error: 'Aplicativo corrompido ou ID de validação inválido.' });
+        }
+
         // --- VERIFICAÇÃO DE BLACKLIST ---
         const { data: userData } = await supabase
             .from('users')
@@ -384,6 +391,11 @@ app.post('/api/textures', async (req, res) => {
 
     try {
         const { data: config } = await supabase.from('versions').select('*').eq('global_id', 'global').maybeSingle();
+
+        // --- VERIFICAÇÃO DE VALIDATION_ID (Segurança de Versão) ---
+        if (config?.validation_id && req.body.validation_id !== config.validation_id) {
+            return res.status(403).json({ error: 'ID de validação inválido.' });
+        }
 
         // Atalho para pegar encurtador e VERSAO no login
         if (key === 'get_shortener') {

@@ -413,7 +413,7 @@ async function interactionHandler(interaction) {
                 const config = await getVersionCached();
                 const key = `BOLT-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
 
-                const useDeadline = config?.key_use_deadline || '24h';
+                const useDeadline = config?.key_use_deadline || '1m';
                 let expiresToUseAt = applyDuration(new Date(), useDeadline);
 
                 const data = {
@@ -635,7 +635,7 @@ async function showSearchResults(interaction, searchTerm) {
     const { data: users, error } = await supabase
         .from('users')
         .select('*')
-        .or(`discord_id.ilike.%${searchTerm}%,discord_tag.ilike.%${searchTerm}%,hwid.ilike.%${searchTerm}%,last_ip.ilike.%${searchTerm}%`)
+        .or(`discord_id.eq.${searchTerm},discord_id.ilike.%${searchTerm}%,discord_tag.ilike.%${searchTerm}%,hwid.ilike.%${searchTerm}%,last_ip.ilike.%${searchTerm}%`)
         .limit(25);
 
     const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';

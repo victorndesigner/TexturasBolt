@@ -456,11 +456,33 @@ async function interactionHandler(interaction) {
             if (cid === 'modal_group_system') {
                 const rawTime = interaction.fields.getTextInputValue('time_input');
                 const [at, ud] = rawTime.split('|').map(p => p.trim());
+                const newVersion = interaction.fields.getTextInputValue('app_version_input');
+                const validationId = crypto.randomUUID ? crypto.randomUUID() : require('crypto').randomUUID();
+
                 const { data, error } = await supabase.from('versions').upsert({
-                    global_id: 'global', version: interaction.fields.getTextInputValue('app_version_input'), stumble_guys_version: interaction.fields.getTextInputValue('sg_version_input'), stumble_cups_version: interaction.fields.getTextInputValue('sc_version_input'), target_folder_name: interaction.fields.getTextInputValue('folder_input'), default_access_time: at || '4h', key_use_deadline: ud || '24h'
+                    global_id: 'global',
+                    version: newVersion,
+                    validation_id: validationId,
+                    stumble_guys_version: interaction.fields.getTextInputValue('sg_version_input'),
+                    stumble_cups_version: interaction.fields.getTextInputValue('sc_version_input'),
+                    target_folder_name: interaction.fields.getTextInputValue('folder_input'),
+                    default_access_time: at || '4h',
+                    key_use_deadline: ud || '24h'
                 }).select().single();
                 if (!error) invalidateVersionCache(data);
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ SISTEMA ATUALIZADO` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
+
+                // Mandar nova versão + ID para o admin copiar
+                await interaction.followUp({
+                    components: [{
+                        type: 17, accent_color: 0xc773ff, components: [{
+                            type: 9, components: [{ type: 10, content: `## 🔏 ID DE VALIDAÇÃO GERADO\n> **Versão:** \`${newVersion}\`\n> **ID Secreto:** Cole no código do App antes do build!\n\`\`\`\n${validationId}\n\`\`\`` }],
+                            accessory: { type: 11, media: { url: serverIcon } }
+                        }]
+                    }],
+                    flags: 64 | 32768
+                });
+
+                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ SISTEMA ATUALIZADO\n> **Versão:** \`${newVersion}\`\n> ID de validação gerado e enviado na éfemera acima.` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
             }
             if (cid === 'modal_create_category') {
                 await supabase.from('categories').insert({ name: interaction.fields.getTextInputValue('cat_name'), icon_url: interaction.fields.getTextInputValue('cat_icon'), description: interaction.fields.getTextInputValue('cat_desc') });

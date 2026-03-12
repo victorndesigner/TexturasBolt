@@ -45,6 +45,22 @@ app.use(cors({
 app.use(express.json());
 app.set('trust proxy', 1); // Confiar no proxy (Discloud/Heroku) para pegar IP real
 
+// --- SEGURANÇA: Validar X-App-Secret em todas as chamadas de API do App ---
+const APP_SECRET = process.env.APP_SECRET;
+const PUBLIC_ROUTES = ['/', '/api/download/start', '/api/download/confirm', '/api/download/poll', '/download/start', '/download/confirm'];
+app.use((req, res, next) => {
+    // Rotas públicas (sites, confirmação de download) não precisam do secret
+    if (PUBLIC_ROUTES.includes(req.path) || req.method === 'GET') return next();
+    // Rotas de API precisam do header secreto
+    if (req.path.startsWith('/api/')) {
+        const secret = req.headers['x-app-secret'];
+        if (!APP_SECRET || secret !== APP_SECRET) {
+            return res.status(403).json({ error: 'Acesso negado.' });
+        }
+    }
+    next();
+});
+
 // --- CONTROLE DE DOWNLOADS E KEYS (Memory Store) ---
 const pendingDownloads = new Map(); // hwid_textureId -> { status, timestamp, ip }
 const keyCooldowns = new Map();    // ip -> timestamp
@@ -316,6 +332,14 @@ app.post('/api/validate', async (req, res) => {
         // Primeira vez usando a key (Resgate)
         if (keyData.expires_to_use_at && now > new Date(keyData.expires_to_use_at)) {
             return res.status(403).json({ error: 'O prazo para resgatar esta key expirou. Gere uma nova.' });
+        }
+
+        // --- ANTI-BURLA: Verificar se quem está resgatando é o gerador da key ---
+        // O App envia o discord_id do usuário que está resgatando
+        const redeemerDiscordId = req.body.discord_id;
+        if (keyData.generated_by && redeemerDiscordId && keyData.generated_by !== redeemerDiscordId) {
+            console.warn(`[ANTI-BURLA] Tentativa de resgate bloqueada! Key gerada por ${keyData.generated_by}, tentativa de ${redeemerDiscordId}`);
+            return res.status(403).json({ error: 'Esta key foi gerada por outro usuário. Cada um deve gerar a própria key.' });
         }
 
         const { applyDuration } = require('./utils/durationParser');

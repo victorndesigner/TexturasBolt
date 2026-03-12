@@ -383,7 +383,7 @@ async function interactionHandler(interaction) {
                 return await interaction.showModal(modal);
             }
             if (cid === 'manage_categories') return await showCategoriesPanel(interaction);
-            if (cid === 'manage_textures') {
+            if (cid === 'manage_textures' || cid === 'update_textures_btn') {
                 const { data: textures } = await supabase.from('textures').select('*');
                 return await interaction.editReply({ ...createTexturePanel(interaction.guild, textures || []), flags: 32768 });
             }
@@ -579,7 +579,10 @@ async function interactionHandler(interaction) {
                 }).eq('id', catId);
 
                 if (error) return await interaction.followUp({ content: '❌ Erro ao salvar categoria.', flags: 64 | 32768 });
-                await interaction.followUp({ content: `✅ Configurações da categoria atualizadas. Status: **${isOnline ? 'ONLINE' : 'OFFLINE'}**`, flags: 64 | 32768 });
+                await interaction.followUp({
+                    components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ CATEGORIA ATUALIZADA\n> A categoria **${catId}** foi configurada com sucesso.\n> Status: **${isOnline ? '🟢 ONLINE' : '🔴 OFFLINE'}**` }], accessory: { type: 11, media: { url: serverIcon } } }] }],
+                    flags: 64 | 32768
+                });
                 return await showSystemPanel(interaction); // Refresh para limpar o select
             }
 
@@ -612,7 +615,10 @@ async function interactionHandler(interaction) {
                     target_folder: 'StumbleCups',
                     install_style: 'cups'
                 });
-                await interaction.followUp({ content: '✅ Categoria criada com sucesso!', flags: 64 | 32768 });
+                await interaction.followUp({
+                    components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ CATEGORIA CRIADA\n> A nova categoria foi registrada com sucesso.` }], accessory: { type: 11, media: { url: serverIcon } } }] }],
+                    flags: 64 | 32768
+                });
                 return await showCategoriesPanel(interaction);
             }
             if (cid.startsWith('modal_edit_category_')) {
@@ -621,16 +627,27 @@ async function interactionHandler(interaction) {
                     icon_url: interaction.fields.getTextInputValue('cat_icon'),
                     description: interaction.fields.getTextInputValue('cat_desc')
                 }).eq('id', cid.replace('modal_edit_category_', ''));
-                await interaction.followUp({ content: '✅ Categoria editada com sucesso!', flags: 64 | 32768 });
+                await interaction.followUp({
+                    components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ CATEGORIA EDITADA\n> As informações da categoria foram atualizadas.` }], accessory: { type: 11, media: { url: serverIcon } } }] }],
+                    flags: 64 | 32768
+                });
                 return await showCategoriesPanel(interaction);
             }
             if (cid === 'modal_create_texture') {
                 await supabase.from('textures').insert({ name: interaction.fields.getTextInputValue('tex_name'), download_url: interaction.fields.getTextInputValue('tex_url'), icon_url: interaction.fields.getTextInputValue('tex_icon'), category: interaction.fields.getTextInputValue('tex_cat') });
+                await interaction.followUp({
+                    components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ TEXTURA CRIADA\n> A nova textura foi adicionada com sucesso ao catálogo.` }], accessory: { type: 11, media: { url: serverIcon } } }] }],
+                    flags: 64 | 32768
+                });
                 const { data: textures } = await supabase.from('textures').select('*');
                 return await interaction.editReply({ ...createTexturePanel(interaction.guild, textures || []), flags: 32768 });
             }
             if (cid.startsWith('modal_edit_texture_')) {
                 await supabase.from('textures').update({ name: interaction.fields.getTextInputValue('tex_name'), download_url: interaction.fields.getTextInputValue('tex_url'), icon_url: interaction.fields.getTextInputValue('tex_icon'), category: interaction.fields.getTextInputValue('tex_cat') }).eq('id', cid.replace('modal_edit_texture_', ''));
+                await interaction.followUp({
+                    components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ TEXTURA ATUALIZADA\n> As informações da textura foram salvas com sucesso.` }], accessory: { type: 11, media: { url: serverIcon } } }] }],
+                    flags: 64 | 32768
+                });
                 const { data: textures } = await supabase.from('textures').select('*');
                 return await interaction.editReply({ ...createTexturePanel(interaction.guild, textures || []), flags: 32768 });
             }
@@ -664,7 +681,7 @@ async function showCategoriesPanel(interaction) {
             { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
             { type: 10, content: `## GESTÃO DE CATEGORIAS\n> **Categorias cadastradas:** \`${cats?.length || 0}\`\n\n${(cats || []).map(c => `• ${c.name}`).join('\n') || '*Nenhuma.*'}` },
             { type: 14 },
-            { type: 1, components: [{ type: 2, style: 2, label: 'Criar', custom_id: 'create_category' }, { type: 2, style: 2, label: 'Editar', custom_id: 'edit_category_btn' }, { type: 2, style: 2, label: 'Remover', custom_id: 'remove_category_btn' }, { type: 2, style: 2, label: 'Voltar', custom_id: 'group_content' }] }
+            { type: 1, components: [{ type: 2, style: 2, label: 'Criar', custom_id: 'create_category' }, { type: 2, style: 2, label: 'Editar', custom_id: 'edit_category_btn' }, { type: 2, style: 2, label: 'Remover', custom_id: 'remove_category_btn' }, { type: 2, style: 2, label: 'Atualizar', custom_id: 'manage_categories' }, { type: 2, style: 2, label: 'Voltar', custom_id: 'group_content' }] }
         ]
     };
     return await (interaction.deferred || interaction.replied ? interaction.editReply({ components: [container], flags: 32768 }) : interaction.reply({ components: [container], flags: 32768 }));
@@ -682,6 +699,7 @@ async function showUsersPanel(interaction) {
             {
                 type: 1, components: [
                     { type: 2, style: 2, label: 'Pesquisar', custom_id: 'search_users_btn' },
+                    { type: 2, style: 2, label: 'Atualizar', custom_id: 'manage_users' },
                     { type: 2, style: 2, label: 'Voltar', custom_id: 'group_keys_return' }
                 ]
             }
@@ -698,13 +716,14 @@ async function showSystemPanel(interaction) {
     const container = {
         type: 17, accent_color: 0xc773ff, components: [
             { type: 12, items: [{ media: { url: 'https://i.imgur.com/YahM0Nf.png' } }] },
-            { type: 9, components: [{ type: 10, content: `## ⚙️ PRAZOS E PASTAS\n> **Prazos Atuais:** \`${config?.default_access_time || '4h'} | ${config?.key_use_deadline || '24h'}\`\n> Configure pastas e versões específicas para cada categoria.` }], accessory: { type: 11, media: { url: serverIcon } } },
+            { type: 9, components: [{ type: 10, content: `## ⚙️ PRAZOS E PASTAS\n> **Texturas do bolttexturas | VERSÃO: ${config?.version || '1.0'}**\n> **Tempo:** \`${config?.default_access_time || '4h'} | ${config?.key_use_deadline || '24h'}\`\n> Configure pastas e versões específicas para cada categoria.` }], accessory: { type: 11, media: { url: serverIcon } } },
             { type: 14 },
-            { type: 1, components: [{ type: 3, custom_id: 'config_category_select', placeholder: 'Selecione uma categoria para configurar...', options: (cats || []).map(c => ({ label: `Configurar: ${c.name}`, value: c.id, description: `Versão: ${c.version || '1.0'} | Pasta: ${c.target_folder || '—'}` })) }] },
+            { type: 1, components: [{ type: 3, custom_id: 'config_category_select', placeholder: 'Selecione uma categoria para configurar...', options: (cats || []).map(c => ({ label: `${c.name}`, value: c.id, description: `Versão: ${c.version || '1.0'} | Pasta: ${c.target_folder || '—'}` })) }] },
             { type: 14 },
             {
                 type: 1, components: [
                     { type: 2, style: 2, label: 'Prazos', custom_id: 'manage_prazos' },
+                    { type: 2, style: 2, label: 'Atualizar', custom_id: 'group_system' },
                     { type: 2, style: 2, label: 'Voltar', custom_id: 'back_to_main' }
                 ]
             }
@@ -812,7 +831,7 @@ async function showKeysList(interaction) {
             { type: 14 },
             { type: 1, components: [{ type: 3, custom_id: 'manage_keys_select', placeholder: 'Selecione uma key...', options: (keys || []).map(k => ({ label: k.key, value: k.id, emoji: { name: k.is_used ? '🔴' : '🟢' } })) }] },
             { type: 14 },
-            { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'group_keys_return' }] }
+            { type: 1, components: [{ type: 2, style: 2, label: 'Atualizar', custom_id: 'list_keys' }, { type: 2, style: 2, label: 'Voltar', custom_id: 'group_keys_return' }] }
         ]
     };
     return await (interaction.deferred || interaction.replied ? interaction.editReply({ components: [container], flags: 32768 }) : interaction.reply({ components: [container], flags: 32768 }));

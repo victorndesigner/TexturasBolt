@@ -501,6 +501,12 @@ async function interactionHandler(interaction) {
                 const { error } = await supabase.from('keys').insert(data);
                 if (error) throw error;
 
+                // Incrementa contador permanente e poda histórico para 10 itens
+                await Promise.all([
+                    supabase.rpc('increment_total_keys_gen', { discord_id_val: interaction.user.id }),
+                    supabase.rpc('prune_keys')
+                ]);
+
                 const successContainer = {
                     type: 17, accent_color: 0x00ff88, components: [{
                         type: 9, components: [{ type: 10, content: `## ✅ KEY GERADA\n> **Key:** \`${key}\` \n> **Duração:** \`${duration}\` \n> **Tipo:** \`${type}\`${item !== 'null' ? `\n> **Alvo:** \`${data.permissions_value}\`` : ''}` }],
@@ -766,8 +772,8 @@ async function showUserProfile(interaction, userId) {
         `> **Status:** ${u.is_blacklisted ? '🔴 BANIDO' : '🟢 ATIVO'}`,
         `> **No Servidor:** ${inServer}`,
         `\n### 📊 Estatísticas`,
-        `> **Keys Geradas:** \`${genRes.count || 0}\``,
-        `> **Keys Usadas:** \`${usedRes.count || 0}\``,
+        `> **Keys Geradas (Total):** \`${u.total_keys_gen || 0}\``,
+        `> **Texturas Instaladas:** \`${u.total_installs || 0}\``,
         `> **Última Key Gerada:** \`${lastGenRes.data?.key || 'Nenhuma'}\``,
         `> **Última Key Usada:** \`${u.last_key_used || lastUsedRes.data?.key || 'Nenhuma'}\``
     ].join('\n');

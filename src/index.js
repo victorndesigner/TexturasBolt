@@ -552,12 +552,15 @@ app.get('/api/verify-download', async (req, res) => {
 
         console.log(`[Verify] Consumindo ticket para HWID: ${ticket.hwid}`);
 
-        // 2. Registra o histórico no Supabase
-        await supabase.from('download_history').insert({
-            hwid: ticket.hwid,
-            texture_id: ticket.texture_id,
-            ip: getClientIp(req)
-        });
+        // 2. Registra o histórico no Supabase e incrementa contador permanente
+        await Promise.all([
+            supabase.from('download_history').insert({
+                hwid: ticket.hwid,
+                texture_id: ticket.texture_id,
+                ip: getClientIp(req)
+            }),
+            supabase.rpc('increment_total_installs', { hwid_val: ticket.hwid })
+        ]);
 
         // 3. Autoriza no App (Mapa em memória)
         pendingDownloads.set(`${ticket.hwid}_${ticket.texture_id}`, {
@@ -621,6 +624,12 @@ setInterval(async () => {
                     pendingDownloads.delete(key);
                 }
             }
+
+            // 6. Podar histórico de downloads (Manter apenas os 10 últimos por HWID)
+            await supabase.rpc('prune_download_history');
+
+            // 7. Podar histórico de keys (Manter apenas as 10 últimas por usuário)
+            await supabase.rpc('prune_keys');
 
             const u = unusedDeleted?.length || 0;
             const s = usedDeleted?.length || 0;

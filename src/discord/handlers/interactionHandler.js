@@ -447,14 +447,26 @@ async function interactionHandler(interaction) {
             }
 
             if (cid === 'modal_group_style') {
-                const { data, error } = await supabase.from('versions').upsert({ global_id: 'global', profile_url: interaction.fields.getTextInputValue('profile_url_input'), default_banner_url: interaction.fields.getTextInputValue('default_banner_input') }).select().single();
+                const profileUrl = interaction.fields.getTextInputValue('profile_url_input');
+                const bannerUrl = interaction.fields.getTextInputValue('default_banner_input');
+                const { data, error } = await supabase.from('versions').upsert({ global_id: 'global', profile_url: profileUrl, default_banner_url: bannerUrl }).select().single();
                 if (!error) invalidateVersionCache(data);
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ ESTILO ATUALIZADO` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
+                return await interaction.followUp({
+                    components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ ESTILO ATUALIZADO\n> **Foto de Perfil (App):** ${profileUrl ? `[ver link](${profileUrl})` : '`Não alterada`'}\n> **Banner Padrão:** ${bannerUrl ? `[ver link](${bannerUrl})` : '`Não alterado`'}\n> -# As mudanças aparecem no App após o próximo login.` }], accessory: { type: 11, media: { url: serverIcon } } }] }],
+                    flags: 64 | 32768
+                });
             }
             if (cid === 'modal_group_links') {
-                const { data, error } = await supabase.from('versions').upsert({ global_id: 'global', discord_url: interaction.fields.getTextInputValue('discord_url_input'), update_url: interaction.fields.getTextInputValue('update_url_input'), key_shortener: interaction.fields.getTextInputValue('key_shortener_input'), download_shortener: interaction.fields.getTextInputValue('dl_shortener_input') }).select().single();
+                const discordUrl = interaction.fields.getTextInputValue('discord_url_input');
+                const updateUrl = interaction.fields.getTextInputValue('update_url_input');
+                const keySh = interaction.fields.getTextInputValue('key_shortener_input');
+                const dlSh = interaction.fields.getTextInputValue('dl_shortener_input');
+                const { data, error } = await supabase.from('versions').upsert({ global_id: 'global', discord_url: discordUrl, update_url: updateUrl, key_shortener: keySh, download_shortener: dlSh }).select().single();
                 if (!error) invalidateVersionCache(data);
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ LINKS ATUALIZADOS` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
+                return await interaction.followUp({
+                    components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ LINKS ATUALIZADOS\n> **Discord:** ${discordUrl ? `[ver link](${discordUrl})` : '`—`'}\n> **Atualização:** ${updateUrl ? `[ver link](${updateUrl})` : '`—`'}\n> **Encurtador KEY:** ${keySh ? `\`${keySh}\`` : '`—`'}\n> **Encurtador Download:** ${dlSh ? `\`${dlSh}\`` : '`—`'}\n> -# Os links são aplicados imediatamente no App.` }], accessory: { type: 11, media: { url: serverIcon } } }] }],
+                    flags: 64 | 32768
+                });
             }
             if (cid === 'modal_group_system') {
                 const rawTime = interaction.fields.getTextInputValue('time_input');
@@ -474,8 +486,8 @@ async function interactionHandler(interaction) {
                 }).select().single();
                 if (!error) invalidateVersionCache(data);
 
-                // Mandar nova versão + ID para o admin copiar
-                await interaction.followUp({
+                // Mandar nova versão + ID para o admin copiar (apenas éfemero)
+                return await interaction.followUp({
                     components: [{
                         type: 17, accent_color: 0xc773ff, components: [{
                             type: 9, components: [{ type: 10, content: `## 🔏 ID DE VALIDAÇÃO GERADO\n> **Versão:** \`${newVersion}\`\n> **ID Secreto:** Cole no código do App antes do build!\n\`\`\`\n${validationId}\n\`\`\`` }],
@@ -484,8 +496,6 @@ async function interactionHandler(interaction) {
                     }],
                     flags: 64 | 32768
                 });
-
-                return await interaction.editReply({ components: [{ type: 17, accent_color: 0x00ff88, components: [{ type: 9, components: [{ type: 10, content: `## ✅ SISTEMA ATUALIZADO\n> **Versão:** \`${newVersion}\`\n> ID de validação gerado e enviado na éfemera acima.` }], accessory: { type: 11, media: { url: serverIcon } } }] }], flags: 32768 });
             }
             if (cid === 'modal_create_category') {
                 await supabase.from('categories').insert({ name: interaction.fields.getTextInputValue('cat_name'), icon_url: interaction.fields.getTextInputValue('cat_icon'), description: interaction.fields.getTextInputValue('cat_desc') });

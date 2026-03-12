@@ -463,10 +463,20 @@ app.post('/api/textures', async (req, res) => {
             logoUrl: c.logo_url
         }));
 
+        const categoryConfigs = {};
+        (categories || []).forEach(c => {
+            categoryConfigs[c.name] = {
+                version: c.version || '1.0',
+                targetFolder: c.target_folder || 'StumbleCups',
+                installStyle: c.install_style || 'cups'
+            };
+        });
+
         res.json({
             textures: mappedTextures,
             categories: mappedCategories,
             permissions,
+            categoryConfigs, // Incluído na resposta padrão
             version: config?.version || '1.0',
             stumbleGuysVersion: config?.stumble_guys_version || '1.0',
             stumbleCupsVersion: config?.stumble_cups_version || '1.0',

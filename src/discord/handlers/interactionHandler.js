@@ -672,10 +672,25 @@ async function interactionHandler(interaction) {
         }
     } catch (e) {
         console.error('Interaction Error:', e);
-        if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({ content: '❌ Ocorreu um erro ao processar sua solicitação.', flags: 64 | 32768 }).catch(() => { });
-        } else {
-            await interaction.followUp({ content: '❌ Ocorreu um erro ao completar a ação.', flags: 64 | 32768 }).catch(() => { });
+        const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://i.imgur.com/bLKgTww.png';
+        const errorContainer = {
+            type: 17,
+            accent_color: 0xff0044, // Vermelho
+            components: [{
+                type: 9,
+                components: [{ type: 10, content: `## ❌ ERRO DE SISTEMA\n> Ocorreu um problema ao processar esta ação.\n> Tente novamente ou contate um administrador caso o erro persista.` }],
+                accessory: { type: 11, media: { url: serverIcon } }
+            }]
+        };
+
+        try {
+            if (!interaction.replied && !interaction.deferred) {
+                await interaction.reply({ components: [errorContainer], flags: 64 | 32768 });
+            } else {
+                await interaction.followUp({ components: [errorContainer], flags: 64 | 32768 });
+            }
+        } catch (err) {
+            console.error('Failed to send error feedback:', err);
         }
     }
 }

@@ -7,22 +7,23 @@ async function setupKeysPanel(interaction) {
     const OWNER_ID = '971163830887514132';
     const isAdmin = !!interaction.member?.permissions.has('Administrator');
     
+    const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://i.imgur.com/bLKgTww.png';
+
     if (!isAdmin && interaction.user.id !== OWNER_ID) {
         const { data: config } = await supabase.from('versions').select('key_shortener', 'update_url').eq('global_id', 'global').maybeSingle();
         const publicLink = config?.key_shortener || 'https://linkvertise.com/4171462/Phfl89HIrpV5?o=sharing';
-        const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
 
         const noPermissionContainer = {
             type: 17,
-            accent_color: 0xff0000,
+            accent_color: 0xff0044, // Vermelho
             components: [
                 {
                     type: 9,
                     components: [{ 
                         type: 10, 
                         content: `## 🚫 ACESSO RESTRITO\n> Este comando é exclusivo para a administração.\n> Para gerar suas chaves, utilize o **Painel de key no servidor oficial do bolttexturas**.` 
-                    }],
-                            accessory: { type: 11, media: { url: typeof serverIcon !== "undefined" ? serverIcon : (typeof guildIcon !== "undefined" ? guildIcon : "https://cdn.discordapp.com/embed/avatars/0.png") } }
+                    }],
+                    accessory: { type: 11, media: { url: serverIcon } }
                 },
                 { type: 14 },
                 {
@@ -41,8 +42,6 @@ async function setupKeysPanel(interaction) {
 
     await interaction.deferReply({ flags: 64 });
 
-    const guildIcon = interaction.guild.iconURL({ extension: 'png' }) || 'https://cdn-icons-png.flaticon.com/512/8050/8050935.png';
-
     const messagePayload = {
         flags: MessageFlags.IsComponentsV2,
         components: [
@@ -55,10 +54,10 @@ async function setupKeysPanel(interaction) {
                         components: [
                             {
                                 type: 10, // TEXT DISPLAY
-                                content: `## 🔑 Key Textura [v1.0]\n> Para continuar, clique no botão abaixo e gere seu acesso às texturas.\n> -# Esse processo é necessário para a chave de acesso ao sistema.`,
-                            accessory: { type: 11, media: { url: typeof serverIcon !== "undefined" ? serverIcon : (typeof guildIcon !== "undefined" ? guildIcon : "https://cdn.discordapp.com/embed/avatars/0.png") } }
+                                content: `## 🔑 Key Textura [v1.0]\n> Para continuar, clique no botão abaixo e gere seu acesso às texturas.\n> -# Esse processo é necessário para a chave de acesso ao sistema.`,
                             }
-                        ]
+                        ],
+                        accessory: { type: 11, media: { url: serverIcon } }
                     },
                     { type: 14 }, // SEPARATOR
                     {
@@ -81,16 +80,26 @@ async function setupKeysPanel(interaction) {
         await interaction.client.rest.post(Routes.channelMessages(interaction.channelId), { body: messagePayload });
         const confirmContainer = {
             type: 17,
-            accent_color: 0xc773ff,
+            accent_color: 0x00ff88,
             components: [{
                 type: 9,
-                components: [{ type: 10, content: `## ✅ Painel de Key criado.\n> O painel foi configurado neste canal com sucesso.` }]
+                components: [{ type: 10, content: `## ✅ Painel de Key criado.\n> O painel foi configurado neste canal com sucesso.` }],
+                accessory: { type: 11, media: { url: serverIcon } }
             }]
         };
         return interaction.editReply({ components: [confirmContainer], flags: 64 | MessageFlags.IsComponentsV2 });
     } catch (err) {
         console.error('Erro ao enviar V2:', err);
-        return interaction.editReply({ content: '❌ Erro ao criar painel. Verifique permissões ou suporte a V2.', flags: 64 });
+        const errorContainer = {
+            type: 17,
+            accent_color: 0xff0044,
+            components: [{
+                type: 9,
+                components: [{ type: 10, content: `## ❌ ERRO DE CONFIGURAÇÃO\n> Não foi possível criar o painel. Verifique minhas permissões no canal ou suporte a V2.` }],
+                accessory: { type: 11, media: { url: serverIcon } }
+            }]
+        };
+        return interaction.editReply({ components: [errorContainer], flags: 64 | MessageFlags.IsComponentsV2 });
     }
 }
 
@@ -103,73 +112,106 @@ async function handleKeyGeneration(interaction) {
     const isMobile = presence?.clientStatus?.mobile;
     const isDesktop = presence?.clientStatus?.desktop;
 
+    const serverIcon = interaction.guild?.iconURL({ dynamic: true, extension: 'png' }) || 'https://i.imgur.com/bLKgTww.png';
+
     if (isMobile && !isDesktop) {
+        const mobileContainer = {
+            type: 17,
+            accent_color: 0xffaa00, // Laranja
+            components: [{
+                type: 9,
+                components: [{ type: 10, content: `## 📱 ACESSO MOBILE\n> Utilize nosso site oficial para baixar texturas no celular.\n> O bot no Discord é otimizado para Desktop.` }],
+                accessory: { type: 11, media: { url: serverIcon } }
+            }]
+        };
         return interaction.editReply({
-            content: '📱 **Acesso Mobile:** Utilize nosso site oficial para baixar texturas no celular.'
+            components: [mobileContainer],
+            flags: 64 | MessageFlags.IsComponentsV2
         });
     }
 
-    // ANTI-BYPASS: Invalida solicitações anteriores do mesmo usuário
-    await supabase.from('key_requests').delete().eq('user_id', interaction.user.id);
+    try {
+        // ANTI-BYPASS: Invalida solicitações anteriores do mesmo usuário
+        await supabase.from('key_requests').delete().eq('user_id', interaction.user.id);
 
-    const token = crypto.randomBytes(16).toString('hex');
+        const token = crypto.randomBytes(16).toString('hex');
 
-    const { error: requestError } = await supabase.from('key_requests').insert({
-        token: token,
-        user_id: interaction.user.id,
-        user_tag: interaction.user.tag
-    });
+        const { error: requestError } = await supabase.from('key_requests').insert({
+            token: token,
+            user_id: interaction.user.id,
+            user_tag: interaction.user.tag
+        });
 
-    if (requestError) {
-        console.error('Erro ao salvar KeyRequest:', requestError);
-        return interaction.editReply({ content: '❌ Erro ao solicitar key. Tente novamente.', flags: 64 });
-    }
+        if (requestError) {
+            console.error('Erro ao salvar KeyRequest:', requestError);
+            const errorContainer = {
+                type: 17,
+                accent_color: 0xff0044,
+                components: [{
+                    type: 9,
+                    components: [{ type: 10, content: `## ❌ ERRO NA SOLICITAÇÃO\n> Ocorreu um problema ao processar sua key. Tente novamente em instantes.` }],
+                    accessory: { type: 11, media: { url: serverIcon } }
+                }]
+            };
+            return interaction.editReply({ components: [errorContainer], flags: 64 | MessageFlags.IsComponentsV2 });
+        }
 
-    const { data: config } = await supabase.from('versions').select('*').eq('global_id', 'global').maybeSingle();
-    // Prioritiza o link do Linkvertise fornecido pelo usuário
-    let shortenerBase = (config?.key_shortener || '').trim() || 'https://linkvertise.com/4171462/Phfl89HIrpV5?o=sharing';
-    const keysSiteUrl = 'https://referrer.bolttexturas.site';
+        const { data: config } = await supabase.from('versions').select('*').eq('global_id', 'global').maybeSingle();
+        // Prioritiza o link do Linkvertise fornecido pelo usuário
+        let shortenerBase = (config?.key_shortener || '').trim() || 'https://linkvertise.com/4171462/Phfl89HIrpV5?o=sharing';
+        const keysSiteUrl = 'https://referrer.bolttexturas.site';
 
-    // Anti-bypass: Redireciona via go.html para salvar o token ANTES do encurtador
-    const shortenerClean = shortenerBase.replace(/\?url=.*$/, '').replace(/\&url=.*$/, '');
-    const finalUrl = `${keysSiteUrl}/go.html?t=${token}&s=${encodeURIComponent(shortenerClean)}`;
+        // Anti-bypass: Redireciona via go.html para salvar o token ANTES do encurtador
+        const shortenerClean = shortenerBase.replace(/\?url=.*$/, '').replace(/\&url=.*$/, '');
+        const finalUrl = `${keysSiteUrl}/go.html?t=${token}&s=${encodeURIComponent(shortenerClean)}`;
 
-    const guildIcon = interaction.guild.iconURL({ extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+        // Resposta V2 Limpa (Sem token visível) - ícone do servidor como no painel principal
+        const responseContainer = {
+            type: 17,
+            accent_color: 0x00FF88, // Verde Sucesso
+            components: [
+                {
+                    type: 9,
+                    components: [
+                        {
+                            type: 10,
+                            content: `## 🔐 Próxima Etapa\n> Clique no link abaixo para validar seu acesso.\n> Você será redirecionado para pegar sua Key exclusiva vinculada a **${interaction.user.tag}**.`
+                        }
+                    ],
+                    accessory: { type: 11, media: { url: serverIcon } }
+                },
+                { type: 14 },
+                {
+                    type: 1,
+                    components: [
+                        {
+                            type: 2, // BUTTON
+                            style: 5, // LINK
+                            label: 'Acessar Encurtador',
+                            url: finalUrl
+                        }
+                    ]
+                }
+            ]
+        };
 
-    // Resposta V2 Limpa (Sem token visível) - ícone do servidor como no painel principal
-    const responseContainer = {
-        type: 17,
-        accent_color: 0x00FF88, // Verde Sucesso
-        components: [
-            {
+        await interaction.editReply({
+            components: [responseContainer],
+            flags: 64 | MessageFlags.IsComponentsV2
+        });
+    } catch (err) {
+        console.error('Erro ao gerar key:', err);
+        const errorContainer = {
+            type: 17,
+            accent_color: 0xff0044,
+            components: [{
                 type: 9,
-                components: [
-                    {
-                        type: 10,
-                        content: `## 🔐 Próxima Etapa\n> Clique no link abaixo para validar seu acesso.\n> Você será redirecionado para pegar sua Key exclusiva vinculada a **${interaction.user.tag}**.`
-                    }
-                ],
-                            accessory: { type: 11, media: { url: typeof serverIcon !== "undefined" ? serverIcon : (typeof guildIcon !== "undefined" ? guildIcon : "https://cdn.discordapp.com/embed/avatars/0.png") } }
-            },
-            { type: 14 },
-            {
-                type: 1,
-                components: [
-                    {
-                        type: 2, // BUTTON
-                        style: 5, // LINK
-                        label: 'Acessar Encurtador',
-                        url: finalUrl
-                    }
-                ]
-            }
-        ]
-    };
-
-    await interaction.editReply({
-        components: [responseContainer],
-        flags: 64 | MessageFlags.IsComponentsV2
-    });
+                components: [{ type: 10, content: `## ❌ ERRO NA SOLICITAÇÃO\n> Ocorreu um problema ao processar sua key. Tente novamente em instantes.` }],
+                accessory: { type: 11, media: { url: serverIcon } }
+            }]
+        };
+        return interaction.editReply({ components: [errorContainer], flags: 64 | MessageFlags.IsComponentsV2 });
+    }
 }
 
 module.exports = { setupKeysPanel, handleKeyGeneration };

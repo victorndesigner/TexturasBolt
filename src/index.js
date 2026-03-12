@@ -468,7 +468,8 @@ app.post('/api/textures', async (req, res) => {
             categoryConfigs[c.name] = {
                 version: c.version || '1.0',
                 targetFolder: c.target_folder || 'StumbleCups',
-                installStyle: c.install_style || 'cups'
+                installStyle: c.install_style || 'cups',
+                isOnline: c.is_online !== false // Padrão true se for null
             };
         });
 

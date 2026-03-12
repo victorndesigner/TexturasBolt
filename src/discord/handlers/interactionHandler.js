@@ -261,7 +261,8 @@ async function interactionHandler(interaction) {
                 modal.addComponents(
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_version').setLabel('Versão do Jogo').setValue(cat.version || '1.0').setStyle(TextInputStyle.Short)),
                     new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_folder').setLabel('Pasta Alvo (ex: StumbleCups_Data)').setValue(cat.target_folder || '').setStyle(TextInputStyle.Short)),
-                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_style').setLabel('Estilo (stumble ou cups)').setValue(cat.install_style || 'stumble').setStyle(TextInputStyle.Short))
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_style').setLabel('Estilo (stumble ou cups)').setValue(cat.install_style || 'stumble').setStyle(TextInputStyle.Short)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cat_status').setLabel('Status (on ou off)').setValue(cat.is_online !== false ? 'on' : 'off').setStyle(TextInputStyle.Short).setRequired(true))
                 );
                 return await interaction.showModal(modal);
             }
@@ -565,14 +566,18 @@ async function interactionHandler(interaction) {
 
             if (cid.startsWith('modal_config_cat_')) {
                 const catId = cid.replace('modal_config_cat_', '');
+                const statusInput = interaction.fields.getTextInputValue('cat_status').toLowerCase();
+                const isOnline = statusInput === 'on' || statusInput === 'online';
+
                 const { error } = await supabase.from('categories').update({
                     version: interaction.fields.getTextInputValue('cat_version'),
                     target_folder: interaction.fields.getTextInputValue('cat_folder'),
-                    install_style: interaction.fields.getTextInputValue('cat_style')
+                    install_style: interaction.fields.getTextInputValue('cat_style'),
+                    is_online: isOnline
                 }).eq('id', catId);
 
                 if (error) return await interaction.followUp({ content: '❌ Erro ao salvar categoria.', flags: 64 | 32768 });
-                return await interaction.followUp({ content: '✅ Configurações da categoria atualizadas.', flags: 64 | 32768 });
+                return await interaction.followUp({ content: `✅ Configurações da categoria atualizadas. Status: **${isOnline ? 'ONLINE' : 'OFFLINE'}**`, flags: 64 | 32768 });
             }
 
             if (cid === 'modal_version_update') {
